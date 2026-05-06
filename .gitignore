@@ -1,0 +1,19 @@
+.pio/
+
+# Keep editor recommendations, ignore local/generated VS Code state.
+.vscode/*
+!.vscode/extensions.json
+
+# Build and upload artifacts.
+.pioenvs/
+.piolibdeps/
+*.bin
+*.elf
+*.map
+
+# OS/editor noise.
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.swp

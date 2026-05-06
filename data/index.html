@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pixel Clock</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <svg class="iconSprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-status" viewBox="0 0 24 24">
+        <path d="M4 19h16"/>
+        <path d="M7 16V9"/>
+        <path d="M12 16V5"/>
+        <path d="M17 16v-4"/>
+      </symbol>
+      <symbol id="icon-wifi" viewBox="0 0 24 24">
+        <path d="M5 9.5a11 11 0 0 1 14 0"/>
+        <path d="M8 13a6.5 6.5 0 0 1 8 0"/>
+        <path d="M11 16.5a2 2 0 0 1 2 0"/>
+        <path d="M12 20h.01"/>
+      </symbol>
+      <symbol id="icon-weather" viewBox="0 0 24 24">
+        <path d="M14 5.5a4 4 0 1 0-6.5 3.1"/>
+        <path d="M6.5 16.5h10a3.5 3.5 0 0 0 .6-7 5.5 5.5 0 0 0-10.5 1.2 3 3 0 0 0-.1 5.8Z"/>
+        <path d="M8 20h8"/>
+      </symbol>
+      <symbol id="icon-display" viewBox="0 0 24 24">
+        <rect x="4" y="5" width="16" height="11" rx="2"/>
+        <path d="M8 20h8"/>
+        <path d="M12 16v4"/>
+      </symbol>
+      <symbol id="icon-pages" viewBox="0 0 24 24">
+        <rect x="5" y="4" width="14" height="16" rx="2"/>
+        <path d="M9 8h6"/>
+        <path d="M9 12h6"/>
+        <path d="M9 16h3"/>
+      </symbol>
+      <symbol id="icon-colors" viewBox="0 0 24 24">
+        <path d="M12 21a9 9 0 1 1 9-9 3 3 0 0 1-3 3h-1.5a2 2 0 0 0-1.7 3 2 2 0 0 1-1.8 3Z"/>
+        <path d="M7.5 10h.01"/>
+        <path d="M10 6.8h.01"/>
+        <path d="M14 6.8h.01"/>
+        <path d="M16.5 10h.01"/>
+      </symbol>
+      <symbol id="icon-brightness" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2"/>
+        <path d="M12 20v2"/>
+        <path d="m4.9 4.9 1.4 1.4"/>
+        <path d="m17.7 17.7 1.4 1.4"/>
+        <path d="M2 12h2"/>
+        <path d="M20 12h2"/>
+        <path d="m4.9 19.1 1.4-1.4"/>
+        <path d="m17.7 6.3 1.4-1.4"/>
+      </symbol>
+      <symbol id="icon-help" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M9.8 9a2.5 2.5 0 0 1 4.7 1.2c0 1.7-2.5 2.1-2.5 3.8"/>
+        <path d="M12 17.5h.01"/>
+      </symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24">
+        <path d="M5 4h12l2 2v14H5Z"/>
+        <path d="M8 4v6h8"/>
+        <path d="M8 20v-6h8v6"/>
+      </symbol>
+      <symbol id="icon-restart" viewBox="0 0 24 24">
+        <path d="M20 12a8 8 0 1 1-2.3-5.7"/>
+        <path d="M20 4v6h-6"/>
+      </symbol>
+    </svg>
+    <main>
+      <header>
+        <div>
+          <h1><img src="/favicon.svg" alt="" aria-hidden="true">Pixel Clock</h1>
+          <p id="statusLine">Lade Status...</p>
+        </div>
+        <div class="headerActions">
+          <label class="languageControl">
+            Sprache
+            <select id="languageSelect" aria-label="Sprache">
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <button id="restartBtn" type="button"><svg class="buttonIcon" aria-hidden="true"><use href="#icon-restart"></use></svg>Neustart</button>
+        </div>
+      </header>
+
+      <section class="panel statusPanel statusSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-status"></use></svg>Status</h2>
+        <div class="statusGrid">
+          <div>
+            <span>Wetter</span>
+            <strong id="weatherLine">Noch keine Wetterdaten</strong>
+          </div>
+          <div>
+            <span>Ort</span>
+            <strong id="locationLine">Noch kein Ort geladen</strong>
+          </div>
+          <div>
+            <span>Adresse</span>
+            <strong id="urlLine">-</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel wifiSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wifi"></use></svg>WLAN</h2>
+        <div class="grid">
+          <label>
+            Netzwerk
+            <input id="ssid" name="ssid" autocomplete="off">
+          </label>
+          <label>
+            Browser-Adresse
+            <input id="hostname" name="hostname" autocomplete="off" placeholder="pixelclock">
+          </label>
+        </div>
+        <div class="actionRow">
+          <button id="scanBtn" type="button">Scannen</button>
+        </div>
+        <div id="networks" class="networks"></div>
+        <label>
+          Passwort
+          <input id="password" name="password" type="password" placeholder="Leer lassen zum Beibehalten">
+        </label>
+        <label>
+          Admin-Benutzer
+          <input id="adminUsername" name="adminUsername" autocomplete="username" placeholder="admin">
+        </label>
+        <label>
+          Admin-Passwort
+          <input id="adminPassword" name="adminPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Leer lassen zum Beibehalten">
+        </label>
+      </section>
+
+      <section class="panel weatherSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-weather"></use></svg>Ort, Wetter und Zugriff</h2>
+        <div class="grid">
+          <label>
+            Stadt
+            <input id="cityName" name="cityName" autocomplete="address-level2" placeholder="z. B. Berlin">
+          </label>
+          <label>
+            Wetteranbieter
+            <select id="weatherProvider" name="weatherProvider">
+              <option value="0">Open-Meteo</option>
+              <option value="1">OpenWeatherMap</option>
+            </select>
+          </label>
+          <label>
+            OpenWeatherMap API-Key
+            <input id="openWeatherApiKey" name="openWeatherApiKey" type="password" placeholder="Leer lassen zum Beibehalten">
+          </label>
+          <label>
+            Zeitzone
+            <input id="timezone" name="timezone">
+          </label>
+        </div>
+      </section>
+
+      <section class="panel displaySection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-display"></use></svg>Display-Hardware</h2>
+        <div class="grid">
+          <label>
+            Breite
+            <input id="width" name="width" type="number" min="8" max="64">
+          </label>
+          <label>
+            Hoehe
+            <input id="height" name="height" type="number" min="8" max="16">
+          </label>
+          <label>
+            Daten-Pin
+            <select id="dataPin" name="dataPin"></select>
+          </label>
+          <label>
+            Farbreihenfolge
+            <select id="colorOrder" name="colorOrder">
+              <option>GRB</option>
+              <option>RGB</option>
+            </select>
+          </label>
+          <label>
+            Start-Ecke
+            <select id="origin" name="origin">
+              <option value="0">Oben links</option>
+              <option value="1">Oben rechts</option>
+              <option value="2">Unten links</option>
+              <option value="3">Unten rechts</option>
+            </select>
+          </label>
+          <label>
+            LED-Verkabelung
+            <select id="wiringMode" name="wiringMode">
+              <option value="0">Zeilenweise gerade</option>
+              <option value="1">Zeilenweise Serpentine</option>
+              <option value="2">Spaltenweise gerade</option>
+              <option value="3">Spaltenweise Serpentine</option>
+            </select>
+          </label>
+        </div>
+        <button id="testBtn" type="button">Testmuster</button>
+      </section>
+
+      <section class="panel pagesSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-pages"></use></svg>Anzeige und Seiten</h2>
+        <div class="grid">
+          <label>
+            Anzeige-Modus
+            <select id="displayMode" name="displayMode">
+              <option value="0">Icons links, Text rechts</option>
+              <option value="1">Text links, Icons rechts</option>
+              <option value="2">Ohne Icons, zentriert</option>
+            </select>
+          </label>
+          <label>
+            Uhrzeitformat
+            <select id="hourFormat" name="hourFormat">
+              <option value="24">24 Stunden</option>
+              <option value="12">12 Stunden</option>
+            </select>
+          </label>
+          <label>
+            Temperatur
+            <select id="temperatureUnit" name="temperatureUnit">
+              <option value="0">Celsius</option>
+              <option value="1">Fahrenheit</option>
+            </select>
+          </label>
+          <label>
+            Seitenwechsel
+            <input id="pageSeconds" name="pageSeconds" type="number" min="3" max="60">
+          </label>
+          <label>
+            Feste Seite
+            <select id="selectedPage" name="selectedPage">
+              <option value="0">Uhrzeit</option>
+              <option value="1">Datum</option>
+              <option value="2">Wetter</option>
+            </select>
+          </label>
+        </div>
+        <label class="check">
+          <input id="autoPage" name="autoPage" type="checkbox">
+          Seiten automatisch wechseln
+        </label>
+      </section>
+
+      <section class="panel colorSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-colors"></use></svg>Farben</h2>
+        <div class="grid">
+          <label>
+            Wochentag
+            <input id="colorWeekday" name="colorWeekday" type="color">
+          </label>
+          <label>
+            Text/Uhrzeit
+            <input id="colorText" name="colorText" type="color">
+          </label>
+          <label>
+            Punkt/Markierung
+            <input id="colorPoint" name="colorPoint" type="color">
+          </label>
+          <label>
+            Doppelpunkt
+            <input id="colorColon" name="colorColon" type="color">
+          </label>
+        </div>
+        <label>
+          Farbverlaufs-Modus
+          <select id="colorGradientMode" name="colorGradientMode">
+            <option value="0">Standard</option>
+            <option value="1">Pixel-Farbverlauf</option>
+            <option value="2">Sanfter Farbwechsel</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="panel brightnessSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-brightness"></use></svg>Helligkeit</h2>
+        <div class="grid">
+          <label>
+            Helligkeit (%)
+            <span class="rangeRow">
+              <input id="brightnessPercent" type="range" min="0" max="100" step="5">
+              <input id="brightnessPercentValue" type="number" min="0" max="100" inputmode="numeric" aria-label="Helligkeit in Prozent">
+              <input id="brightness" name="brightness" type="hidden">
+            </span>
+          </label>
+          <label>
+            Nacht-Helligkeit (%)
+            <span class="rangeRow">
+              <input id="nightBrightnessPercent" type="range" min="0" max="100" step="5">
+              <input id="nightBrightnessPercentValue" type="number" min="0" max="100" inputmode="numeric" aria-label="Nacht-Helligkeit in Prozent">
+              <input id="nightBrightness" name="nightBrightness" type="hidden">
+            </span>
+          </label>
+          <label>
+            Nacht ab
+            <input id="nightStart" name="nightStart" type="hidden">
+            <span class="timeRow">
+              <input id="nightStartDisplay" type="number" min="0" max="23">
+              <select id="nightStartPeriod" aria-label="Nacht ab AM/PM">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </span>
+          </label>
+          <label>
+            Nacht bis
+            <input id="nightEnd" name="nightEnd" type="hidden">
+            <span class="timeRow">
+              <input id="nightEndDisplay" type="number" min="0" max="23">
+              <select id="nightEndPeriod" aria-label="Nacht bis AM/PM">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel helpSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-help"></use></svg>Hilfe & Wiki</h2>
+        <div class="helpList">
+          <details open>
+            <summary>Schnellstart</summary>
+            <ol>
+              <li>Mit PixelClock-Setup verbinden, wenn noch kein WLAN eingerichtet ist.</li>
+              <li>http://192.168.4.1 öffnen und mit admin / pixelclock anmelden.</li>
+              <li>WLAN, Stadt, Matrixgröße und Datenpin setzen.</li>
+              <li>Speichern drücken und bei Bedarf neu starten.</li>
+            </ol>
+          </details>
+          <details>
+            <summary>Login und Sprache</summary>
+            <p>Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung im WLAN-Bereich. Die Sprache wird automatisch gewählt und kann oben umgestellt werden.</p>
+          </details>
+          <details>
+            <summary>WLAN und Adresse</summary>
+            <p>Die Browser-Adresse ist der Hostname für die .local-Adresse. Mit pixelclock erreichst du die Uhr normalerweise unter http://pixelclock.local. Wenn .local nicht klappt, nutze die IP-Adresse aus dem Router.</p>
+          </details>
+          <details>
+            <summary>Display einrichten</summary>
+            <p>Starte mit Breite 32, Höhe 8, GPIO 5 und zeilenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.</p>
+          </details>
+          <details>
+            <summary>Wetter einrichten</summary>
+            <p>Open-Meteo funktioniert ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Nach einer Änderung der Stadt speichern und danach Wetter aktualisieren.</p>
+          </details>
+          <details>
+            <summary>Helligkeit und Nachtmodus</summary>
+            <p>0% schaltet die Matrix aus. Die Nacht-Helligkeit gilt im eingestellten Zeitraum. Wenn die Uhr dunkel bleibt, prüfe zuerst Helligkeit, Nachtzeit und Stromversorgung.</p>
+          </details>
+          <details>
+            <summary>Häufige Probleme</summary>
+            <ul>
+              <li>Keine Weboberfläche: IP-Adresse aus dem Router testen oder Setup-AP verwenden.</li>
+              <li>Keine Wetterdaten: WLAN, Internet, Stadt und API-Key prüfen.</li>
+              <li>Falsche Farben: Farbreihenfolge zwischen GRB und RGB wechseln.</li>
+              <li>Durcheinanderes Bild: Start-Ecke und LED-Verkabelung anpassen.</li>
+            </ul>
+          </details>
+        </div>
+      </section>
+
+      <footer>
+        <button id="saveBtn" type="button"><svg class="buttonIcon" aria-hidden="true"><use href="#icon-save"></use></svg>Speichern</button>
+        <button id="settingsResetBtn" type="button">Einstellungen resetten</button>
+        <button id="factoryResetBtn" class="danger" type="button">Werksreset</button>
+        <button id="weatherBtn" type="button">Wetter aktualisieren</button>
+        <span id="message"></span>
+      </footer>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

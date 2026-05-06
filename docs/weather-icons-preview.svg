@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="180" viewBox="0 0 720 180">
+  <rect width="720" height="180" fill="#101113"/>
+  <style>
+    text { fill: #f4f0e7; font: 14px system-ui, sans-serif; text-anchor: middle; }
+    .grid { stroke: #22262c; stroke-width: 1; }
+  </style>
+
+  <defs>
+    <g id="cell-grid">
+      <rect x="0" y="0" width="80" height="80" fill="#15181d" stroke="#30343b"/>
+      <path class="grid" d="M10 0V80M20 0V80M30 0V80M40 0V80M50 0V80M60 0V80M70 0V80M0 10H80M0 20H80M0 30H80M0 40H80M0 50H80M0 60H80M0 70H80"/>
+    </g>
+    <rect id="px-yellow" width="10" height="10" fill="#ffbe14"/>
+    <rect id="px-orange" width="10" height="10" fill="#ff5a00"/>
+    <rect id="px-cloud" width="10" height="10" fill="#788291"/>
+    <rect id="px-darkcloud" width="10" height="10" fill="#697382"/>
+    <rect id="px-blue" width="10" height="10" fill="#2878ff"/>
+    <rect id="px-ice" width="10" height="10" fill="#a0dcff"/>
+    <rect id="px-fog" width="10" height="10" fill="#6e787d"/>
+    <rect id="px-bolt" width="10" height="10" fill="#ffdc14"/>
+  </defs>
+
+  <g transform="translate(20 22)">
+    <use href="#cell-grid"/>
+    <use href="#px-orange" x="40" y="0"/><use href="#px-orange" x="40" y="70"/>
+    <use href="#px-orange" x="0" y="30"/><use href="#px-orange" x="70" y="30"/>
+    <use href="#px-orange" x="20" y="10"/><use href="#px-orange" x="60" y="10"/>
+    <use href="#px-orange" x="20" y="60"/><use href="#px-orange" x="60" y="60"/>
+    <use href="#px-yellow" x="30" y="20"/><use href="#px-yellow" x="40" y="20"/><use href="#px-yellow" x="50" y="20"/>
+    <use href="#px-yellow" x="30" y="30"/><use href="#px-yellow" x="40" y="30"/><use href="#px-yellow" x="50" y="30"/>
+    <use href="#px-yellow" x="30" y="40"/><use href="#px-yellow" x="40" y="40"/><use href="#px-yellow" x="50" y="40"/>
+    <use href="#px-yellow" x="30" y="50"/><use href="#px-yellow" x="40" y="50"/><use href="#px-yellow" x="50" y="50"/>
+    <text x="40" y="112">Sonne</text>
+  </g>
+
+  <g transform="translate(130 22)">
+    <use href="#cell-grid"/>
+    <use href="#px-cloud" x="30" y="20"/><use href="#px-cloud" x="40" y="20"/>
+    <use href="#px-cloud" x="20" y="30"/><use href="#px-cloud" x="30" y="30"/><use href="#px-cloud" x="40" y="30"/><use href="#px-cloud" x="50" y="30"/>
+    <use href="#px-cloud" x="10" y="40"/><use href="#px-cloud" x="20" y="40"/><use href="#px-cloud" x="30" y="40"/><use href="#px-cloud" x="40" y="40"/><use href="#px-cloud" x="50" y="40"/><use href="#px-cloud" x="60" y="40"/><use href="#px-cloud" x="70" y="40"/>
+    <use href="#px-cloud" x="20" y="50"/><use href="#px-cloud" x="30" y="50"/><use href="#px-cloud" x="40" y="50"/><use href="#px-cloud" x="50" y="50"/><use href="#px-cloud" x="60" y="50"/>
+    <text x="40" y="112">Wolken</text>
+  </g>
+
+  <g transform="translate(240 22)">
+    <use href="#cell-grid"/>
+    <use href="#px-darkcloud" x="30" y="20"/><use href="#px-darkcloud" x="40" y="20"/>
+    <use href="#px-darkcloud" x="20" y="30"/><use href="#px-darkcloud" x="30" y="30"/><use href="#px-darkcloud" x="40" y="30"/><use href="#px-darkcloud" x="50" y="30"/>
+    <use href="#px-darkcloud" x="10" y="40"/><use href="#px-darkcloud" x="20" y="40"/><use href="#px-darkcloud" x="30" y="40"/><use href="#px-darkcloud" x="40" y="40"/><use href="#px-darkcloud" x="50" y="40"/><use href="#px-darkcloud" x="60" y="40"/><use href="#px-darkcloud" x="70" y="40"/>
+    <use href="#px-darkcloud" x="20" y="50"/><use href="#px-darkcloud" x="30" y="50"/><use href="#px-darkcloud" x="40" y="50"/><use href="#px-darkcloud" x="50" y="50"/><use href="#px-darkcloud" x="60" y="50"/>
+    <use href="#px-blue" x="20" y="60"/><use href="#px-blue" x="40" y="70"/><use href="#px-blue" x="60" y="60"/>
+    <text x="40" y="112">Regen</text>
+  </g>
+
+  <g transform="translate(350 22)">
+    <use href="#cell-grid"/>
+    <use href="#px-darkcloud" x="30" y="20"/><use href="#px-darkcloud" x="40" y="20"/>
+    <use href="#px-darkcloud" x="20" y="30"/><use href="#px-darkcloud" x="30" y="30"/><use href="#px-darkcloud" x="40" y="30"/><use href="#px-darkcloud" x="50" y="30"/>
+    <use href="#px-darkcloud" x="10" y="40"/><use href="#px-darkcloud" x="20" y="40"/><use href="#px-darkcloud" x="30" y="40"/><use href="#px-darkcloud" x="40" y="40"/><use href="#px-darkcloud" x="50" y="40"/><use href="#px-darkcloud" x="60" y="40"/><use href="#px-darkcloud" x="70" y="40"/>
+    <use href="#px-darkcloud" x="20" y="50"/><use href="#px-darkcloud" x="30" y="50"/><use href="#px-darkcloud" x="40" y="50"/><use href="#px-darkcloud" x="50" y="50"/><use href="#px-darkcloud" x="60" y="50"/>
+    <use href="#px-ice" x="20" y="60"/><use href="#px-ice" x="40" y="60"/><use href="#px-ice" x="60" y="60"/>
+    <use href="#px-ice" x="30" y="70"/><use href="#px-ice" x="50" y="70"/>
+    <text x="40" y="112">Schnee</text>
+  </g>
+
+  <g transform="translate(460 22)">
+    <use href="#cell-grid"/>
+    <use href="#px-fog" x="30" y="20"/><use href="#px-fog" x="40" y="20"/>
+    <use href="#px-fog" x="20" y="30"/><use href="#px-fog" x="30" y="30"/><use href="#px-fog" x="40" y="30"/><use href="#px-fog" x="50" y="30"/>
+    <use href="#px-fog" x="10" y="40"/><use href="#px-fog" x="20" y="40"/><use href="#px-fog" x="30" y="40"/><use href="#px-fog" x="40" y="40"/><use href="#px-fog" x="50" y="40"/><use href="#px-fog" x="60" y="40"/><use href="#px-fog" x="70" y="40"/>
+    <use href="#px-fog" x="20" y="50"/><use href="#px-fog" x="30" y="50"/><use href="#px-fog" x="40" y="50"/><use href="#px-fog" x="50" y="50"/><use href="#px-fog" x="60" y="50"/>
+    <use href="#px-fog" x="10" y="70"/><use href="#px-fog" x="30" y="70"/><use href="#px-fog" x="50" y="70"/><use href="#px-fog" x="70" y="70"/>
+    <text x="40" y="112">Nebel</text>
+  </g>
+
+  <g transform="translate(570 22)">
+    <use href="#cell-grid"/>
+    <use href="#px-darkcloud" x="30" y="20"/><use href="#px-darkcloud" x="40" y="20"/>
+    <use href="#px-darkcloud" x="20" y="30"/><use href="#px-darkcloud" x="30" y="30"/><use href="#px-darkcloud" x="40" y="30"/><use href="#px-darkcloud" x="50" y="30"/>
+    <use href="#px-darkcloud" x="10" y="40"/><use href="#px-darkcloud" x="20" y="40"/><use href="#px-darkcloud" x="30" y="40"/><use href="#px-darkcloud" x="40" y="40"/><use href="#px-darkcloud" x="50" y="40"/><use href="#px-darkcloud" x="60" y="40"/><use href="#px-darkcloud" x="70" y="40"/>
+    <use href="#px-darkcloud" x="20" y="50"/><use href="#px-darkcloud" x="30" y="50"/><use href="#px-darkcloud" x="40" y="50"/><use href="#px-darkcloud" x="50" y="50"/><use href="#px-darkcloud" x="60" y="50"/>
+    <use href="#px-bolt" x="50" y="50"/><use href="#px-bolt" x="40" y="60"/><use href="#px-bolt" x="50" y="60"/><use href="#px-bolt" x="30" y="70"/>
+    <text x="40" y="112">Gewitter</text>
+  </g>
+</svg>
