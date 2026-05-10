@@ -11,7 +11,6 @@ const $ = (id) => document.getElementById(id);
 const storedLanguage = localStorage.getItem("pixelClockLanguage");
 const adminReminderStorageKey = "pixelClockAdminReminderDismissed";
 let currentLanguage = storedLanguage || ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
-let adminPasswordDefault = "pixelclock";
 
 const translations = {
   en: {
@@ -42,7 +41,7 @@ const translations = {
     "Zeitzone": "Time zone",
     "Display-Hardware": "Display hardware",
     "Breite": "Width",
-    "Hoehe": "Height",
+    "Höhe": "Height",
     "Daten-Pin": "Data pin",
     "Farbreihenfolge": "Color order",
     "Start-Ecke": "Start corner",
@@ -116,7 +115,6 @@ const translations = {
     "Jetzt ändern": "Change now",
     "Nicht mehr anzeigen": "Do not show again",
     "Leer lassen zum Beibehalten": "Leave empty to keep current",
-    "Leer lassen zum Beibehalten, Standard:": "Leave empty to keep current, default:",
     "z. B. Berlin": "e.g. Berlin",
     "Helligkeit in Prozent": "Brightness in percent",
     "Nacht-Helligkeit in Prozent": "Night brightness in percent",
@@ -131,8 +129,8 @@ const translations = {
     "Gespeichert.": "Saved.",
     "Ort wird im Hintergrund aktualisiert.": "Location is updating in the background.",
     "Wetter wird aktualisiert.": "Weather is updating.",
-    "Login wurde geaendert, bitte mit den neuen Daten neu laden.": "Login changed, please reload with the new credentials.",
-    "Neustart fuer Pin, Groesse, Farbe, WLAN oder Adresse noetig.": "Restart required for pin, size, color, Wi-Fi, or address.",
+    "Login wurde geändert, bitte mit den neuen Daten neu laden.": "Login changed, please reload with the new credentials.",
+    "Neustart für Pin, Größe, Farbe, WLAN, Adresse oder Login nötig.": "Restart required for pin, size, color, Wi-Fi, address, or login.",
     "Sofort aktiv.": "Active immediately.",
     "Suche...": "Searching...",
     "Aktion fehlgeschlagen.": "Action failed.",
@@ -140,16 +138,16 @@ const translations = {
     "Wetteraktualisierung gestartet.": "Weather refresh started.",
     "Konfiguration konnte nicht geladen werden.": "Configuration could not be loaded.",
     "Testmuster gestartet.": "Test pattern started.",
-    "Neustart laeuft...": "Restarting...",
-    "Einstellungen werden zurueckgesetzt...": "Resetting settings...",
-    "Werksreset laeuft...": "Factory reset running...",
-    "Alle Einstellungen ausser WLAN zuruecksetzen und neu starten?": "Reset all settings except Wi-Fi and restart?",
-    "Werksreset ausfuehren? Dabei werden auch WLAN-Daten geloescht.": "Run factory reset? This also deletes Wi-Fi credentials.",
-    "Wirklich alles loeschen? Der ESP startet danach im Setup-Modus.": "Really delete everything? The ESP will restart in setup mode.",
+    "Neustart läuft...": "Restarting...",
+    "Einstellungen werden zurückgesetzt...": "Resetting settings...",
+    "Werksreset läuft...": "Factory reset running...",
+    "Alle Einstellungen außer WLAN zurücksetzen und neu starten?": "Reset all settings except Wi-Fi and restart?",
+    "Werksreset ausführen? Dabei werden auch WLAN-Daten gelöscht.": "Run factory reset? This also deletes Wi-Fi credentials.",
+    "Wirklich alles löschen? Der ESP startet danach im Setup-Modus.": "Really delete everything? The ESP will restart in setup mode.",
     "Klarer Himmel": "Clear sky",
-    "Ueberwiegend klar": "Mostly clear",
-    "Teilweise bewoelkt": "Partly cloudy",
-    "Bewoelkt": "Cloudy",
+    "Überwiegend klar": "Mostly clear",
+    "Teilweise bewölkt": "Partly cloudy",
+    "Bewölkt": "Cloudy",
     "Nebel": "Fog",
     "Nieselregen": "Drizzle",
     "Regen": "Rain",
@@ -203,7 +201,7 @@ function translateAttributes() {
 }
 
 function updateAdminPasswordPlaceholder() {
-  $("adminPassword").placeholder = `${tr("Leer lassen zum Beibehalten, Standard:")} ${adminPasswordDefault}`;
+  $("adminPassword").placeholder = tr("Leer lassen zum Beibehalten");
 }
 
 function applyLanguage() {
@@ -372,9 +370,9 @@ function syncNightStoredFromDisplay() {
 function weatherDescription(code) {
   if (code === null || code === undefined || code < 0) return tr("Noch keine Wetterdaten");
   if (code === 0) return tr("Klarer Himmel");
-  if (code === 1) return tr("Ueberwiegend klar");
-  if (code === 2) return tr("Teilweise bewoelkt");
-  if (code === 3) return tr("Bewoelkt");
+  if (code === 1) return tr("Überwiegend klar");
+  if (code === 2) return tr("Teilweise bewölkt");
+  if (code === 3) return tr("Bewölkt");
   if (code === 45 || code === 48) return tr("Nebel");
   if (code >= 51 && code <= 57) return tr("Nieselregen");
   if (code >= 61 && code <= 67) return tr("Regen");
@@ -396,7 +394,6 @@ function setForm(config) {
   $("locationLine").textContent = `${config.locationLabel || config.cityName || "-"} - ${config.url || ""}`;
   $("urlLine").textContent = config.url || "-";
   $("adminUsername").value = config.adminUsername || config.defaultAdminUsername || "admin";
-  adminPasswordDefault = config.defaultAdminPassword || "pixelclock";
   updateAdminPasswordPlaceholder();
   updateRangeValues();
   updateNightControlsFromStored();
@@ -471,8 +468,8 @@ async function saveConfig() {
     "Gespeichert.",
     data.cityResolutionPending ? "Ort wird im Hintergrund aktualisiert." : "",
     data.weatherRefreshPending ? "Wetter wird aktualisiert." : "",
-    data.authChanged ? "Login wurde geaendert, bitte mit den neuen Daten neu laden." : "",
-    data.restartRequired ? "Neustart fuer Pin, Groesse, Farbe, WLAN oder Adresse noetig." : "Sofort aktiv."
+    data.authChanged ? "Login wurde geändert, bitte mit den neuen Daten neu laden." : "",
+    data.restartRequired ? "Neustart für Pin, Größe, Farbe, WLAN, Adresse oder Login nötig." : "Sofort aktiv."
   ];
   $("message").textContent = statusParts.filter(Boolean).map(tr).join(" ");
 }
@@ -513,15 +510,15 @@ async function refreshWeather() {
 }
 
 async function resetSettings() {
-  if (!confirm(tr("Alle Einstellungen ausser WLAN zuruecksetzen und neu starten?"))) return;
-  await postAction("/api/reset/settings", "Einstellungen werden zurueckgesetzt...");
+  if (!confirm(tr("Alle Einstellungen außer WLAN zurücksetzen und neu starten?"))) return;
+  await postAction("/api/reset/settings", "Einstellungen werden zurückgesetzt...");
   setTimeout(() => location.reload(), 4000);
 }
 
 async function factoryReset() {
-  if (!confirm(tr("Werksreset ausfuehren? Dabei werden auch WLAN-Daten geloescht."))) return;
-  if (!confirm(tr("Wirklich alles loeschen? Der ESP startet danach im Setup-Modus."))) return;
-  await postAction("/api/reset/factory", "Werksreset laeuft...");
+  if (!confirm(tr("Werksreset ausführen? Dabei werden auch WLAN-Daten gelöscht."))) return;
+  if (!confirm(tr("Wirklich alles löschen? Der ESP startet danach im Setup-Modus."))) return;
+  await postAction("/api/reset/factory", "Werksreset läuft...");
   setTimeout(() => location.reload(), 4000);
 }
 
@@ -548,6 +545,6 @@ for (const id of ["nightStartDisplay", "nightStartPeriod", "nightEndDisplay", "n
 }
 $("testBtn").addEventListener("click", () => postAction("/api/display/test", "Testmuster gestartet."));
 $("weatherBtn").addEventListener("click", refreshWeather);
-$("restartBtn").addEventListener("click", () => postAction("/api/restart", "Neustart laeuft..."));
+$("restartBtn").addEventListener("click", () => postAction("/api/restart", "Neustart läuft..."));
 $("settingsResetBtn").addEventListener("click", resetSettings);
 $("factoryResetBtn").addEventListener("click", factoryReset);

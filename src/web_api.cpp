@@ -14,7 +14,6 @@ void sendConfigJson(AsyncWebServerRequest *request) {
   doc["hasPassword"] = !config.password.isEmpty();
   doc["adminUsername"] = config.adminUsername;
   doc["defaultAdminUsername"] = DEFAULT_ADMIN_USERNAME;
-  doc["defaultAdminPassword"] = DEFAULT_ADMIN_PASSWORD;
   doc["adminPasswordSet"] = hasAdminPassword();
   doc["adminPasswordIsDefault"] = config.adminPassword == DEFAULT_ADMIN_PASSWORD;
   doc["minAdminPasswordLength"] = MIN_ADMIN_PASSWORD_LENGTH;
@@ -168,6 +167,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   lastPageSwitch = millis();
   currentPage = config.selectedPage;
   renderDisplay();
+  const bool authChanged = oldAdminUsername != config.adminUsername || oldAdminPassword != config.adminPassword;
   const bool restartRequired =
     oldWidth != config.width ||
     oldHeight != config.height ||
@@ -175,7 +175,8 @@ void handleConfigPost(AsyncWebServerRequest *request) {
     oldColorRgb != config.colorRgb ||
     oldSsid != config.ssid ||
     oldPassword != config.password ||
-    oldHostname != config.hostname;
+    oldHostname != config.hostname ||
+    authChanged;
 
   JsonDocument doc;
   doc["ok"] = true;
@@ -183,7 +184,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   doc["cityResolutionPending"] = cityResolveQueued && WiFi.status() == WL_CONNECTED;
   doc["weatherRefreshPending"] = weatherSourceChanged && WiFi.status() == WL_CONNECTED;
   doc["adminPasswordSet"] = hasAdminPassword();
-  doc["authChanged"] = oldAdminUsername != config.adminUsername || oldAdminPassword != config.adminPassword;
+  doc["authChanged"] = authChanged;
   doc["hostname"] = config.hostname;
   doc["url"] = "http://" + config.hostname + ".local";
   doc["locationLabel"] = config.locationLabel;

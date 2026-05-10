@@ -188,6 +188,7 @@ The web interface is not embedded in the firmware binary. After changing anythin
 
 - The default is `admin` / `pixelclock`.
 - If you changed credentials, clear the browser login cache or try a private window.
+- After changing admin credentials, restart the clock if the interface reports that a restart is required.
 - If the admin reminder still appears after changing the password, hard reload the browser and check that `Save` succeeded.
 - If you still have access, use factory reset from the web interface.
 - Without access, erase NVS data or reflash the firmware with a reset helper.
