@@ -21,6 +21,11 @@
         <path d="M11 16.5a2 2 0 0 1 2 0"/>
         <path d="M12 20h.01"/>
       </symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24">
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+        <path d="M12 15v2"/>
+      </symbol>
       <symbol id="icon-weather" viewBox="0 0 24 24">
         <path d="M14 5.5a4 4 0 1 0-6.5 3.1"/>
         <path d="M6.5 16.5h10a3.5 3.5 0 0 0 .6-7 5.5 5.5 0 0 0-10.5 1.2 3 3 0 0 0-.1 5.8Z"/>
@@ -107,7 +112,7 @@
       </section>
 
       <section class="panel wifiSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wifi"></use></svg>WLAN</h2>
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wifi"></use></svg>WLAN-Zugang</h2>
         <div class="grid">
           <label>
             Netzwerk
@@ -126,6 +131,10 @@
           Passwort
           <input id="password" name="password" type="password" placeholder="Leer lassen zum Beibehalten">
         </label>
+      </section>
+
+      <section class="panel accessSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-lock"></use></svg>Admin-Zugriff</h2>
         <label>
           Admin-Benutzer
           <input id="adminUsername" name="adminUsername" autocomplete="username" placeholder="admin">
@@ -149,6 +158,10 @@
               <option value="0">Open-Meteo</option>
               <option value="1">OpenWeatherMap</option>
             </select>
+          </label>
+          <label>
+            Wetter-Intervall
+            <select id="weatherIntervalHalfHours" name="weatherIntervalHalfHours"></select>
           </label>
           <label>
             OpenWeatherMap API-Key
@@ -202,7 +215,9 @@
             </select>
           </label>
         </div>
-        <button id="testBtn" type="button">Testmuster</button>
+        <div class="actionRow panelActions">
+          <button id="testBtn" type="button">Testmuster</button>
+        </div>
       </section>
 
       <section class="panel pagesSection">
@@ -285,16 +300,16 @@
           <label>
             Helligkeit (%)
             <span class="rangeRow">
-              <input id="brightnessPercent" type="range" min="0" max="100" step="5">
-              <input id="brightnessPercentValue" type="number" min="0" max="100" inputmode="numeric" aria-label="Helligkeit in Prozent">
+              <input id="brightnessPercent" type="range" min="0" max="40" step="5">
+              <input id="brightnessPercentValue" type="number" min="0" max="40" inputmode="numeric" aria-label="Helligkeit in Prozent">
               <input id="brightness" name="brightness" type="hidden">
             </span>
           </label>
           <label>
             Nacht-Helligkeit (%)
             <span class="rangeRow">
-              <input id="nightBrightnessPercent" type="range" min="0" max="100" step="5">
-              <input id="nightBrightnessPercentValue" type="number" min="0" max="100" inputmode="numeric" aria-label="Nacht-Helligkeit in Prozent">
+              <input id="nightBrightnessPercent" type="range" min="0" max="40" step="5">
+              <input id="nightBrightnessPercentValue" type="number" min="0" max="40" inputmode="numeric" aria-label="Nacht-Helligkeit in Prozent">
               <input id="nightBrightness" name="nightBrightness" type="hidden">
             </span>
           </label>
@@ -321,6 +336,11 @@
             </span>
           </label>
         </div>
+        <label class="check">
+          <input id="fullBrightnessUnlocked" name="fullBrightnessUnlocked" type="checkbox">
+          Volle Helligkeit freischalten
+        </label>
+        <p id="brightnessWarning" class="warning" hidden>Warnung: Volle Helligkeit kann den ESP32 oder USB-Port überlasten, wenn die Matrix direkt darüber versorgt wird.</p>
       </section>
 
       <section class="panel helpSection">
@@ -337,7 +357,7 @@
           </details>
           <details>
             <summary>Login und Sprache</summary>
-            <p>Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung im WLAN-Bereich. Die Sprache wird automatisch gewählt und kann oben umgestellt werden.</p>
+            <p>Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung unter Admin-Zugriff. Die Sprache wird automatisch gewählt und kann oben umgestellt werden.</p>
           </details>
           <details>
             <summary>WLAN und Adresse</summary>
@@ -345,15 +365,15 @@
           </details>
           <details>
             <summary>Display einrichten</summary>
-            <p>Starte mit Breite 32, Höhe 8, GPIO 5 und zeilenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.</p>
+            <p>Starte mit Breite 32, Höhe 8, GPIO 18 und zeilenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.</p>
           </details>
           <details>
             <summary>Wetter einrichten</summary>
-            <p>Open-Meteo funktioniert ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Nach einer Änderung der Stadt speichern und danach Wetter aktualisieren.</p>
+            <p>Open-Meteo funktioniert ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.</p>
           </details>
           <details>
             <summary>Helligkeit und Nachtmodus</summary>
-            <p>0% schaltet die Matrix aus. Die Nacht-Helligkeit gilt im eingestellten Zeitraum. Wenn die Uhr dunkel bleibt, prüfe zuerst Helligkeit, Nachtzeit und Stromversorgung.</p>
+            <p>0% schaltet die Matrix aus. Ohne Freischalter ist die maximale Helligkeit auf 40% begrenzt. Die Nacht-Helligkeit gilt im eingestellten Zeitraum.</p>
           </details>
           <details>
             <summary>Häufige Probleme</summary>
@@ -368,13 +388,25 @@
       </section>
 
       <footer>
-        <button id="saveBtn" type="button"><svg class="buttonIcon" aria-hidden="true"><use href="#icon-save"></use></svg>Speichern</button>
-        <button id="settingsResetBtn" type="button">Einstellungen resetten</button>
-        <button id="factoryResetBtn" class="danger" type="button">Werksreset</button>
-        <button id="weatherBtn" type="button">Wetter aktualisieren</button>
-        <span id="message"></span>
+        <div class="footerActions">
+          <button id="saveBtn" type="button"><svg class="buttonIcon" aria-hidden="true"><use href="#icon-save"></use></svg>Speichern</button>
+          <button id="settingsResetBtn" type="button">Einstellungen resetten</button>
+          <button id="factoryResetBtn" class="danger" type="button">Werksreset</button>
+          <button id="weatherBtn" type="button">Wetter aktualisieren</button>
+        </div>
+        <div id="message" class="footerStatus" role="status" aria-live="polite"></div>
       </footer>
     </main>
+    <div id="adminReminder" class="modalOverlay" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="adminReminderTitle">
+        <h2 id="adminReminderTitle">Admin-Passwort ändern</h2>
+        <p>Der Standardzugang ist noch aktiv. Ändere das Admin-Passwort, damit niemand im Netzwerk die Uhr einfach umstellen kann.</p>
+        <div class="modalActions">
+          <button id="adminReminderGo" type="button">Jetzt ändern</button>
+          <button id="adminReminderDismiss" type="button">Nicht mehr anzeigen</button>
+        </div>
+      </section>
+    </div>
     <script src="/app.js"></script>
   </body>
 </html>

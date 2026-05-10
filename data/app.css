@@ -60,13 +60,19 @@ footer {
   position: sticky;
   bottom: 0;
   z-index: 5;
-  justify-content: flex-start;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(26, 28, 32, 0.96);
   padding: 12px;
   backdrop-filter: blur(8px);
+}
+
+.footerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 h1,
@@ -135,7 +141,16 @@ p,
 }
 
 #message {
-  margin-left: auto;
+  min-height: 38px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-soft);
+  padding: 9px 11px;
+}
+
+#message:empty {
+  display: none;
 }
 
 .panel {
@@ -159,6 +174,12 @@ p,
   --section-accent: #50b4ff;
   --section-tint: rgba(80, 180, 255, 0.08);
   --section-line: rgba(80, 180, 255, 0.34);
+}
+
+.accessSection {
+  --section-accent: #d0b5ff;
+  --section-tint: rgba(208, 181, 255, 0.08);
+  --section-line: rgba(208, 181, 255, 0.34);
 }
 
 .weatherSection {
@@ -245,6 +266,10 @@ p,
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.panelActions {
+  margin-top: 18px;
 }
 
 label {
@@ -357,6 +382,20 @@ button:hover {
   font-size: 13px;
 }
 
+.warning {
+  margin-top: 10px;
+  border: 1px solid rgba(255, 122, 144, 0.42);
+  border-radius: 6px;
+  background: rgba(255, 122, 144, 0.08);
+  color: #ffd0d8;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.warning[hidden] {
+  display: none;
+}
+
 .networks {
   display: flex;
   flex-wrap: wrap;
@@ -409,17 +448,54 @@ details li + li {
   margin-top: 5px;
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.62);
+  padding: 18px;
+}
+
+.modalOverlay[hidden] {
+  display: none;
+}
+
+.modal {
+  width: min(440px, 100%);
+  border: 1px solid rgba(208, 181, 255, 0.42);
+  border-radius: 8px;
+  background: #1a1c20;
+  padding: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.modal h2 {
+  margin-bottom: 10px;
+}
+
+.modalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modalActions button:first-child {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #041313;
+  font-weight: 700;
+}
+
 @media (max-width: 560px) {
   header,
   .headerActions,
-  footer,
+  .footerActions,
   .row {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
-  }
-
-  #message {
-    margin-left: 0;
   }
 }

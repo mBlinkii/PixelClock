@@ -1,231 +1,249 @@
 # Pixel Clock
 
-Deutsch | [English](README.en.md)
+[Deutsch](README.de.md) | English
 
-ESP32-basierte Pixeluhr fuer WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird ueber eine geschuetzte Weboberflaeche eingerichtet.
+ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-## Funktionen
+## Features
 
-- Uhrzeit, Datum und Wetter auf einer 32x8-LED-Matrix
-- konfigurierbare Matrixgroesse bis 64x16, maximal 512 LEDs
-- Reihen- oder Spaltenverkabelung, gerade oder Serpentine
-- Start-Ecke, Datenpin und Farbreihenfolge einstellbar
-- Helligkeit und Nacht-Helligkeit in Prozent
-- automatische Seitenrotation oder feste Seite
-- Open-Meteo ohne API-Key oder OpenWeatherMap mit eigenem API-Key
-- Standortsuche per Stadtname mit automatischer Zeitzone fuer viele Regionen
-- zweisprachige Weboberflaeche, Deutsch/Englisch, automatische Browser-Sprachauswahl
-- integrierte Hilfe/Wiki direkt in der Weboberflaeche
-- HTTP-Login vor der Weboberflaeche
+- time, date, and weather on a 32x8 LED matrix
+- configurable matrix size up to 64x16, maximum 512 LEDs
+- row or column wiring, straight or serpentine
+- configurable start corner, data pin, and color order
+- day and night brightness in percent, limited to 40% by default
+- automatic page rotation or fixed page
+- Open-Meteo without an API key or OpenWeatherMap with your own API key
+- city-based location lookup with automatic time zone for many regions
+- bilingual web interface, German/English, automatic browser language selection
+- integrated help/wiki directly inside the web interface
+- HTTP login before the web interface is shown
+- reminder to change the default admin password
 
 ## Hardware
 
-Getestete Zielplattform:
+Tested target platform:
 
-- ESP32 Dev Module, 4 MB Flash
-- WS2812B/NeoPixel-Matrix, Standard 32x8
-- Standard-Datenpin: GPIO 5
-- separate, ausreichend starke 5-V-Stromversorgung fuer die LEDs
+- ESP32 Dev Module, 4 MB flash
+- WS2812B/NeoPixel matrix, default 32x8
+- default data pin: GPIO 18
+- separate, sufficiently powerful 5 V power supply for the LEDs
 
-Wichtig: Versorge groessere LED-Matrizen nicht ueber den 5-V-Pin des ESP32. Verbinde die Masse der LED-Stromversorgung mit GND des ESP32.
+Important: Do not power larger LED matrices from the ESP32 5 V pin. Connect the LED power supply ground to ESP32 GND.
 
-## Projektstruktur
+## Project Structure
 
 ```text
-src/main.cpp                  PlatformIO-Firmware
-src/weather_icons.h           Wetter-Icons fuer die Matrix
-data/                         LittleFS-Weboberflaeche
-platformio.ini                PlatformIO-Konfiguration
-partitions.csv                Flash-Layout
-docs/                         Zusatzmaterial
+src/main.cpp                  Firmware entry point, setup(), and loop()
+src/app_state.h/.cpp          Shared types, constants, and runtime state
+src/config.cpp                Persisted settings and helpers
+src/network_time.cpp          Wi-Fi, setup AP, mDNS, and NTP
+src/weather.cpp               Weather, geocoding, time zones, and HTTPS certificates
+src/display.cpp               LED mapping, text, icons, and matrix rendering
+src/web_api.cpp               HTTP API, auth, restart/reset, and LittleFS serving
+src/weather_icons.h           Weather icons for the matrix
+data/                         LittleFS web interface
+data/index.html               HTML for the configuration interface
+data/app.js                   Web UI logic, API calls, and translations
+data/app.css                  Styling for the web interface
+platformio.ini                PlatformIO configuration
+partitions.csv                Flash layout
+docs/                         Additional material
 ```
 
-## Standardzugang
+New contributors can start with the compact technical overview in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Beim Zugriff auf die Weboberflaeche erscheint ein Browser-Login.
+## Default Login
+
+The browser asks for a login before the web interface is shown.
 
 ```text
-Benutzer: admin
-Passwort: pixelclock
+User: admin
+Password: pixelclock
 ```
 
-Aendere diese Daten nach der ersten Einrichtung unter `WLAN > Admin-Benutzer` und `Admin-Passwort`.
+Change these credentials after the first setup under `Admin access`. While the default password is still active, the web interface reminds you when it opens.
 
-Wenn keine WLAN-Verbindung moeglich ist, startet die Uhr einen Setup-Access-Point:
+If no Wi-Fi connection is possible, the clock starts a setup access point:
 
 ```text
-WLAN: PixelClock-Setup
-Passwort: pixelclock
+Wi-Fi: PixelClock-Setup
+Password: pixelclock
 Web UI: http://192.168.4.1
 ```
 
-## Installation mit PlatformIO
+## Installation with PlatformIO
 
-1. PlatformIO installieren, zum Beispiel ueber VS Code oder die PlatformIO Core CLI.
-2. Projektordner oeffnen.
-3. Firmware bauen:
+1. Install PlatformIO, for example through VS Code or the PlatformIO Core CLI.
+2. Open the project folder.
+3. Build the firmware:
 
 ```powershell
 pio run
 ```
 
-4. ESP32 per USB verbinden und Firmware flashen:
+4. Connect the ESP32 through USB and flash the firmware:
 
 ```powershell
 pio run --target upload
 ```
 
-5. Weboberflaeche nach LittleFS hochladen:
+5. Upload the web interface to LittleFS:
 
 ```powershell
 pio run --target uploadfs
 ```
 
-6. ESP32 neu starten.
+6. Restart the ESP32.
 
-Falls `pio` nicht im PATH liegt, kann PlatformIO unter Windows zum Beispiel hier liegen:
+If `pio` is not in your PATH on Windows, PlatformIO may be located here:
 
 ```powershell
 & "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe" run
 ```
 
-## Erste Einrichtung
+## First Setup
 
-1. ESP32 starten.
-2. Falls die Uhr noch kein WLAN kennt, mit `PixelClock-Setup` verbinden.
-3. `http://192.168.4.1` oeffnen.
-4. Mit `admin` / `pixelclock` anmelden.
-5. Unter `WLAN` Netzwerk, Passwort und Browser-Adresse setzen.
-6. Unter `Ort, Wetter und Zugriff` Stadt und Wetteranbieter setzen.
-7. Unter `Display-Hardware` Matrixgroesse, Datenpin, Start-Ecke und Verkabelung setzen.
-8. Unter `Helligkeit` Helligkeit und Nachtzeiten einstellen.
-9. `Speichern` druecken.
-10. Wenn die Oberflaeche einen Neustart meldet, `Neustart` ausfuehren.
+1. Start the ESP32.
+2. If the clock does not know a Wi-Fi network yet, connect to `PixelClock-Setup`.
+3. Open `http://192.168.4.1`.
+4. Log in with `admin` / `pixelclock`.
+5. Under `Wi-Fi access`, set network, Wi-Fi password, and browser address.
+6. Under `Location, weather and access`, set city and weather provider.
+7. Under `Display hardware`, set matrix size, data pin, start corner, and wiring.
+8. Under `Brightness`, set brightness and night hours.
+9. Under `Admin access`, change the default admin password.
+10. Press `Save`.
+11. If the interface reports that a restart is required, press `Restart`.
 
-Nach erfolgreicher WLAN-Verbindung ist die Oberflaeche normalerweise erreichbar unter:
+After a successful Wi-Fi connection, the interface is usually reachable at:
 
 ```text
 http://pixelclock.local
 ```
 
-Wenn du die Browser-Adresse geaendert hast, verwende entsprechend:
+If you changed the browser address, use:
 
 ```text
-http://<dein-hostname>.local
+http://<your-hostname>.local
 ```
 
-## Bedienung der Weboberflaeche
+## Using the Web Interface
 
-- `Status`: zeigt Wetter, Ort und Adresse.
-- `WLAN`: Netzwerk, Hostname und Login-Daten.
-- `Ort, Wetter und Zugriff`: Stadt, Wetteranbieter, API-Key und Zeitzone.
-- `Display-Hardware`: Matrixgroesse, Datenpin, Farbreihenfolge und LED-Mapping.
-- `Anzeige und Seiten`: Layout, Zeitformat, Temperaturformat und Seitenrotation.
-- `Farben`: Farben fuer Wochentag, Text, Punkte und Doppelpunkt.
-- `Helligkeit`: Tages- und Nacht-Helligkeit in Prozent sowie Nachtzeitraum.
-- `Hilfe & Wiki`: kurze Einrichtungshilfe und Problembehandlung direkt im Interface.
+- `Status`: shows weather, location, and address.
+- `Wi-Fi access`: network, Wi-Fi password, browser address, and Wi-Fi scan.
+- `Admin access`: admin user and admin password for the browser login.
+- `Location, weather and access`: city, weather provider, API key, and time zone.
+- `Display hardware`: matrix size, data pin, color order, and LED mapping.
+- `Display and pages`: layout, time format, temperature format, and page rotation.
+- `Colors`: colors for weekday, text, dots, and colon.
+- `Brightness`: day and night brightness in percent, safety unlock, and night period.
+- `Help & Wiki`: short setup guide and troubleshooting directly in the interface.
 
-Die Sprache wird automatisch anhand der Browser-/Systemsprache gewaehlt. Oben im Header kannst du manuell zwischen Deutsch und Englisch wechseln. Die Auswahl wird im Browser gespeichert.
+The language is selected automatically from your browser or system language. You can manually switch between German and English in the header. The selection is saved in the browser.
 
-## Wetter
+## Weather
 
-Standard ist Open-Meteo. Dafuer ist kein API-Key noetig.
+The default provider is Open-Meteo. It does not require an API key.
 
-Optional kann OpenWeatherMap genutzt werden:
+OpenWeatherMap can be used optionally:
 
-1. OpenWeatherMap-Konto erstellen.
-2. API-Key erzeugen.
-3. In der Weboberflaeche `OpenWeatherMap` auswaehlen.
-4. API-Key eintragen.
-5. Speichern.
+1. Create an OpenWeatherMap account.
+2. Create an API key.
+3. Select `OpenWeatherMap` in the web interface.
+4. Enter the API key.
+5. Save.
 
-Wetterdaten werden beim Start und danach etwa alle 2 Stunden aktualisiert. Manuell kannst du `Wetter aktualisieren` druecken.
+Weather data is fetched on startup and then on the configured interval. The default is 2 hours; you can change it in the web UI in 0.5-hour steps. You can trigger an update manually with `Refresh weather`.
 
-## Flash-Layout
+## Flash Layout
 
-Das Projekt nutzt eine eigene Partitionstabelle:
+The project uses a custom partition table:
 
 ```text
 factory  0x180000  Firmware
-littlefs 0x270000  Weboberflaeche und Assets
+littlefs 0x270000  Web interface and assets
 ```
 
-Die Weboberflaeche liegt nicht im Firmware-Binary. Nach Aenderungen an `data/` muss immer auch `uploadfs` ausgefuehrt werden.
+The web interface is not embedded in the firmware binary. After changing anything in `data/`, always run `uploadfs`.
 
-## Sicherheit
+## Security
 
-- Die Weboberflaeche ist per HTTP Basic Auth geschuetzt.
-- Der Setup-AP nutzt das Passwort `pixelclock`.
-- Aendere nach der ersten Einrichtung den Admin-Benutzer und das Admin-Passwort.
-- HTTP Basic Auth ist in einem normalen Heimnetz praktisch, aber nicht verschluesselt. Nutze die Uhr nicht ungeschuetzt in oeffentlichen oder fremden Netzwerken.
+- The web interface is protected with HTTP Basic Auth.
+- The setup access point uses the password `pixelclock`.
+- Change the admin user and admin password after the first setup under `Admin access`.
+- If the default admin password is still active, the web interface shows a reminder. You can jump directly to the password field or hide the reminder for that browser.
+- HTTP Basic Auth is practical in a normal home network, but it is not encrypted. Do not expose the clock in public or untrusted networks.
 
-## Problembehandlung
+## Troubleshooting
 
-### Weboberflaeche ist nicht erreichbar
+### Web interface is not reachable
 
-- Pruefe, ob der ESP32 im WLAN verbunden ist.
-- Oeffne die IP-Adresse aus dem Router statt `pixelclock.local`.
-- Falls kein WLAN gespeichert ist, mit `PixelClock-Setup` verbinden und `http://192.168.4.1` oeffnen.
-- Wenn mDNS nicht funktioniert, ist `*.local` im Netzwerk eventuell nicht aufloesbar.
+- Check whether the ESP32 is connected to Wi-Fi.
+- Open the IP address from your router instead of `pixelclock.local`.
+- If no Wi-Fi is saved, connect to `PixelClock-Setup` and open `http://192.168.4.1`.
+- If mDNS does not work, `*.local` may not resolve in your network.
 
-### Login funktioniert nicht
+### Login does not work
 
-- Standard ist `admin` / `pixelclock`.
-- Wenn du Login-Daten geaendert hast, Browser-Login im Browser loeschen oder ein privates Fenster testen.
-- Bei komplett verlorenen Daten hilft ein Werksreset ueber die Weboberflaeche, solange du noch eingeloggt bist.
-- Ohne Zugriff musst du die NVS-Daten loeschen oder die Firmware mit einem Reset-Hilfsweg neu flashen.
+- The default is `admin` / `pixelclock`.
+- If you changed credentials, clear the browser login cache or try a private window.
+- If the admin reminder still appears after changing the password, hard reload the browser and check that `Save` succeeded.
+- If you still have access, use factory reset from the web interface.
+- Without access, erase NVS data or reflash the firmware with a reset helper.
 
-### Wetter wird nicht angezeigt
+### Weather is not shown
 
-- Pruefe WLAN-Verbindung und Internetzugriff.
-- Pruefe unter `Status`, ob ein Fehler angezeigt wird.
-- Bei OpenWeatherMap pruefen, ob der API-Key gueltig und aktiv ist.
-- Bei falscher Stadt einen eindeutigeren Namen eingeben.
-- Nach Aenderungen `Speichern` und danach `Wetter aktualisieren` druecken.
+- Check Wi-Fi connection and internet access.
+- Check `Status` for an error message.
+- If using OpenWeatherMap, make sure the API key is valid and active.
+- If the city is ambiguous, enter a more specific name.
+- After changes, press `Save` and then `Refresh weather`.
 
-### Uhrzeit stimmt nicht
+### Time is wrong
 
-- WLAN und Internetzugriff pruefen.
-- Zeitzone pruefen. Fuer Deutschland ist der Standard:
+- Check Wi-Fi and internet access.
+- Check the time zone. For Germany the default is:
 
 ```text
 CET-1CEST,M3.5.0,M10.5.0/3
 ```
 
-- Nach Standortwechsel speichern und kurz warten, bis NTP synchronisiert.
+- After changing location, save and wait briefly for NTP sync.
 
-### LEDs bleiben dunkel
+### LEDs stay dark
 
-- Helligkeit pruefen. 0% schaltet die Anzeige aus.
-- Nacht-Helligkeit und Nachtzeitraum pruefen.
-- Datenpin pruefen, Standard ist GPIO 5.
-- GND zwischen ESP32 und LED-Netzteil verbinden.
-- Matrix mit `Testmuster` pruefen.
+- Check brightness. 0% turns the display off.
+- Without the unlock switch, brightness is limited to 40%.
+- Check night brightness and night period.
+- Check the data pin, default is GPIO 18.
+- Connect GND between ESP32 and LED power supply.
+- Test the matrix with `Test pattern`.
 
-### Farben sind falsch
+### Colors are wrong
 
-- `Farbreihenfolge` zwischen `GRB` und `RGB` wechseln.
-- Danach speichern und neu starten.
+- Switch `Color order` between `GRB` and `RGB`.
+- Save and restart afterward.
 
-### Matrix ist gespiegelt oder durcheinander
+### Matrix is mirrored or scrambled
 
-- `Start-Ecke` pruefen.
-- `LED-Verkabelung` zwischen Zeile/Spalte und Gerade/Serpentine umstellen.
-- Mit `Testmuster` die Richtung pruefen.
+- Check `Start corner`.
+- Change `LED wiring` between rows/columns and straight/serpentine.
+- Use `Test pattern` to verify direction.
 
-### Aenderungen an der Weboberflaeche erscheinen nicht
+### Web interface changes do not appear
 
-- Nach Datei-Aenderungen in `data/` ausfuehren:
+- After changing files in `data/`, run:
 
 ```powershell
 pio run --target uploadfs
 ```
 
-- Browser-Cache leeren oder Seite hart neu laden.
+- Clear the browser cache or hard reload the page.
 
-## Entwicklung
+## Development
 
-Typischer PlatformIO-Ablauf:
+Typical PlatformIO workflow:
 
 ```powershell
 pio run
@@ -234,16 +252,29 @@ pio run --target uploadfs
 pio device monitor
 ```
 
-Siehe auch [CONTRIBUTING.md](CONTRIBUTING.md) fuer Hinweise zu Pull Requests.
+Good entry points:
+
+- `docs/ARCHITECTURE.md`: technical overview and change checklists.
+- `src/main.cpp`: boot flow and main loop.
+- `src/web_api.cpp`: API routes and form save logic.
+- `src/display.cpp`: matrix rendering and LED coordinates.
+- `src/weather.cpp`: weather and location logic.
+- `data/app.js`: browser logic, form sync, status refresh, and translations.
+- `data/index.html`: web interface structure.
+
+When adding or changing a setting, the firmware configuration, API JSON, form
+field, translations, and documentation usually need to change together.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for pull request guidance.
 
 ## Credits
 
-Dieses Projekt wurde gemeinsam mit Codex, einem KI-Coding-Assistenten von OpenAI, entworfen, implementiert und dokumentiert.
+This project was designed, implemented, and documented together with Codex, an AI coding assistant from OpenAI.
 
-## Lizenz
+## License
 
-Dieses Projekt steht unter der MIT-Lizenz. Details stehen in [LICENSE](LICENSE).
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-## Sicherheit
+## Security
 
-Hinweise zum Melden von Sicherheitsproblemen stehen in [SECURITY.md](SECURITY.md).
+See [SECURITY.md](SECURITY.md) for vulnerability reporting guidance.

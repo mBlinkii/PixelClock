@@ -10,7 +10,7 @@ Use this before publishing a release or pushing a public branch.
 
 ## Documentation
 
-- Keep `README.md` and `README.en.md` aligned.
+- Keep `README.md` and `README.de.md` aligned.
 - Update troubleshooting notes when behavior changes.
 
 ## Security
@@ -18,6 +18,7 @@ Use this before publishing a release or pushing a public branch.
 - Do not commit real Wi-Fi credentials.
 - Do not commit real OpenWeatherMap API keys.
 - Confirm default login and setup AP warnings are documented.
+- Confirm the admin password reminder appears only while the default admin password is active.
 
 ## Git
 

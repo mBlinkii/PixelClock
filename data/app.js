@@ -1,13 +1,15 @@
 const pins = [2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
+const safeBrightnessPercent = 40;
 const fields = [
-  "ssid", "hostname", "cityName", "timezone", "weatherProvider", "width", "height", "dataPin",
-  "brightness", "wiringMode", "origin", "displayMode", "colorOrder",
+  "ssid", "hostname", "cityName", "timezone", "weatherProvider", "weatherIntervalHalfHours", "width", "height", "dataPin",
+  "brightness", "fullBrightnessUnlocked", "wiringMode", "origin", "displayMode", "colorOrder",
   "temperatureUnit", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "pageSeconds",
   "colorGradientMode", "autoPage", "selectedPage", "nightBrightness", "nightStart", "nightEnd"
 ];
 
 const $ = (id) => document.getElementById(id);
 const storedLanguage = localStorage.getItem("pixelClockLanguage");
+const adminReminderStorageKey = "pixelClockAdminReminderDismissed";
 let currentLanguage = storedLanguage || ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
 let adminPasswordDefault = "pixelclock";
 
@@ -24,15 +26,18 @@ const translations = {
     "Noch keine Wetterdaten": "No weather data yet",
     "Noch kein Ort geladen": "No location loaded",
     "WLAN": "Wi-Fi",
+    "WLAN-Zugang": "Wi-Fi access",
     "Netzwerk": "Network",
     "Browser-Adresse": "Browser address",
     "Scannen": "Scan",
     "Passwort": "Password",
+    "Admin-Zugriff": "Admin access",
     "Admin-Benutzer": "Admin user",
     "Admin-Passwort": "Admin password",
     "Ort, Wetter und Zugriff": "Location, weather and access",
     "Stadt": "City",
     "Wetteranbieter": "Weather provider",
+    "Wetter-Intervall": "Weather interval",
     "OpenWeatherMap API-Key": "OpenWeatherMap API key",
     "Zeitzone": "Time zone",
     "Display-Hardware": "Display hardware",
@@ -77,6 +82,8 @@ const translations = {
     "Helligkeit": "Brightness",
     "Helligkeit (%)": "Brightness (%)",
     "Nacht-Helligkeit (%)": "Night brightness (%)",
+    "Volle Helligkeit freischalten": "Unlock full brightness",
+    "Warnung: Volle Helligkeit kann den ESP32 oder USB-Port überlasten, wenn die Matrix direkt darüber versorgt wird.": "Warning: Full brightness can overload the ESP32 or USB port when the matrix is powered directly from it.",
     "Nacht ab": "Night starts",
     "Nacht bis": "Night ends",
     "Hilfe & Wiki": "Help & Wiki",
@@ -86,15 +93,15 @@ const translations = {
     "WLAN, Stadt, Matrixgröße und Datenpin setzen.": "Set Wi-Fi, city, matrix size, and data pin.",
     "Speichern drücken und bei Bedarf neu starten.": "Press Save and restart if needed.",
     "Login und Sprache": "Login and language",
-    "Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung im WLAN-Bereich. Die Sprache wird automatisch gewählt und kann oben umgestellt werden.": "The default login is admin / pixelclock. Change user and password after setup in the Wi-Fi section. The language is selected automatically and can be changed at the top.",
+    "Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung unter Admin-Zugriff. Die Sprache wird automatisch gewählt und kann oben umgestellt werden.": "The default login is admin / pixelclock. Change user and password after setup under Admin access. The language is selected automatically and can be changed at the top.",
     "WLAN und Adresse": "Wi-Fi and address",
     "Die Browser-Adresse ist der Hostname für die .local-Adresse. Mit pixelclock erreichst du die Uhr normalerweise unter http://pixelclock.local. Wenn .local nicht klappt, nutze die IP-Adresse aus dem Router.": "The browser address is the hostname for the .local address. With pixelclock you usually reach the clock at http://pixelclock.local. If .local does not work, use the IP address from your router.",
     "Display einrichten": "Set up the display",
-    "Starte mit Breite 32, Höhe 8, GPIO 5 und zeilenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.": "Start with width 32, height 8, GPIO 5, and row serpentine wiring. If the display is mirrored, change start corner or LED wiring. The test pattern helps verify direction.",
+    "Starte mit Breite 32, Höhe 8, GPIO 18 und zeilenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.": "Start with width 32, height 8, GPIO 18, and row serpentine wiring. If the display is mirrored, change start corner or LED wiring. The test pattern helps verify direction.",
     "Wetter einrichten": "Set up weather",
-    "Open-Meteo funktioniert ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Nach einer Änderung der Stadt speichern und danach Wetter aktualisieren.": "Open-Meteo works without an API key. For OpenWeatherMap you need your own API key. After changing the city, save and then refresh weather.",
+    "Open-Meteo funktioniert ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.": "Open-Meteo works without an API key. For OpenWeatherMap you need your own API key. You can set the weather interval in 0.5-hour steps.",
     "Helligkeit und Nachtmodus": "Brightness and night mode",
-    "0% schaltet die Matrix aus. Die Nacht-Helligkeit gilt im eingestellten Zeitraum. Wenn die Uhr dunkel bleibt, prüfe zuerst Helligkeit, Nachtzeit und Stromversorgung.": "0% turns the matrix off. Night brightness applies during the configured period. If the clock stays dark, check brightness, night time, and power supply first.",
+    "0% schaltet die Matrix aus. Ohne Freischalter ist die maximale Helligkeit auf 40% begrenzt. Die Nacht-Helligkeit gilt im eingestellten Zeitraum.": "0% turns the matrix off. Without the unlock switch, maximum brightness is limited to 40%. Night brightness applies during the configured period.",
     "Häufige Probleme": "Common problems",
     "Keine Weboberfläche: IP-Adresse aus dem Router testen oder Setup-AP verwenden.": "No web interface: try the IP address from the router or use the setup AP.",
     "Keine Wetterdaten: WLAN, Internet, Stadt und API-Key prüfen.": "No weather data: check Wi-Fi, internet, city, and API key.",
@@ -104,6 +111,10 @@ const translations = {
     "Einstellungen resetten": "Reset settings",
     "Werksreset": "Factory reset",
     "Wetter aktualisieren": "Refresh weather",
+    "Admin-Passwort ändern": "Change admin password",
+    "Der Standardzugang ist noch aktiv. Ändere das Admin-Passwort, damit niemand im Netzwerk die Uhr einfach umstellen kann.": "The default login is still active. Change the admin password so nobody on the network can easily change the clock.",
+    "Jetzt ändern": "Change now",
+    "Nicht mehr anzeigen": "Do not show again",
     "Leer lassen zum Beibehalten": "Leave empty to keep current",
     "Leer lassen zum Beibehalten, Standard:": "Leave empty to keep current, default:",
     "z. B. Berlin": "e.g. Berlin",
@@ -198,7 +209,9 @@ function updateAdminPasswordPlaceholder() {
 function applyLanguage() {
   document.documentElement.lang = currentLanguage;
   $("languageSelect").value = currentLanguage;
+  fillWeatherIntervals();
   translateTextNodes(document.querySelector("main"));
+  translateTextNodes($("adminReminder"));
   translateAttributes();
   updateAdminPasswordPlaceholder();
 }
@@ -214,19 +227,66 @@ function message(text) {
   $("message").textContent = tr(text);
 }
 
+function showAdminReminder(config) {
+  if (!config.adminPasswordIsDefault || localStorage.getItem(adminReminderStorageKey) === "1") return;
+  $("adminReminder").hidden = false;
+  $("adminReminderGo").focus();
+}
+
+function closeAdminReminder(rememberDismissal) {
+  $("adminReminder").hidden = true;
+  if (rememberDismissal) localStorage.setItem(adminReminderStorageKey, "1");
+}
+
+function openAdminAccess() {
+  closeAdminReminder(false);
+  document.querySelector(".accessSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  $("adminPassword").focus();
+}
+
 function fillPins() {
   $("dataPin").innerHTML = pins.map((pin) => `<option value="${pin}">${pin}</option>`).join("");
 }
 
+function fillWeatherIntervals(selectedValue) {
+  const current = selectedValue || $("weatherIntervalHalfHours").value || "4";
+  $("weatherIntervalHalfHours").innerHTML = "";
+  for (let halfHours = 1; halfHours <= 48; halfHours++) {
+    const option = document.createElement("option");
+    const hours = halfHours / 2;
+    option.value = String(halfHours);
+    option.textContent = `${currentLanguage === "de" ? String(hours).replace(".", ",") : hours} h`;
+    $("weatherIntervalHalfHours").append(option);
+  }
+  $("weatherIntervalHalfHours").value = current;
+}
+
 function updateRangeValues() {
+  updateBrightnessLimits(false);
   setBrightnessPercent("brightness", "brightnessPercent", "brightnessPercentValue", byteToPercent($("brightness").value));
   setBrightnessPercent("nightBrightness", "nightBrightnessPercent", "nightBrightnessPercentValue", byteToPercent($("nightBrightness").value));
+}
+
+function brightnessMaxPercent() {
+  return $("fullBrightnessUnlocked").checked ? 100 : safeBrightnessPercent;
+}
+
+function updateBrightnessLimits(clampValues = true) {
+  const max = brightnessMaxPercent();
+  for (const id of ["brightnessPercent", "brightnessPercentValue", "nightBrightnessPercent", "nightBrightnessPercentValue"]) {
+    $(id).max = String(max);
+  }
+  $("brightnessWarning").hidden = !$("fullBrightnessUnlocked").checked;
+  if (clampValues) {
+    setBrightnessPercent("brightness", "brightnessPercent", "brightnessPercentValue", $("brightnessPercentValue").value);
+    setBrightnessPercent("nightBrightness", "nightBrightnessPercent", "nightBrightnessPercentValue", $("nightBrightnessPercentValue").value);
+  }
 }
 
 function clampPercent(value) {
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) return 0;
-  return Math.min(100, Math.max(0, parsed));
+  return Math.min(brightnessMaxPercent(), Math.max(0, parsed));
 }
 
 function byteToPercent(value) {
@@ -332,6 +392,7 @@ function setForm(config) {
     if (el.type === "checkbox") el.checked = Boolean(config[field]);
     else el.value = config[field] ?? "";
   }
+  updateBrightnessLimits(false);
   $("locationLine").textContent = `${config.locationLabel || config.cityName || "-"} - ${config.url || ""}`;
   $("urlLine").textContent = config.url || "-";
   $("adminUsername").value = config.adminUsername || config.defaultAdminUsername || "admin";
@@ -339,9 +400,11 @@ function setForm(config) {
   updateAdminPasswordPlaceholder();
   updateRangeValues();
   updateNightControlsFromStored();
+  showAdminReminder(config);
 }
 
 function formBody() {
+  updateBrightnessLimits(true);
   syncNightStoredFromDisplay();
   const data = new URLSearchParams();
   for (const field of fields) {
@@ -404,11 +467,14 @@ async function saveConfig() {
     return;
   }
   $("adminPassword").value = "";
-  const location = data.cityResolutionPending ? " Ort wird im Hintergrund aktualisiert." : "";
-  const weather = data.weatherRefreshPending ? " Wetter wird aktualisiert." : "";
-  const auth = data.authChanged ? " Login wurde geaendert, bitte mit den neuen Daten neu laden." : "";
-  const restart = data.restartRequired ? " Neustart fuer Pin, Groesse, Farbe, WLAN oder Adresse noetig." : " Sofort aktiv.";
-  $("message").textContent = `${tr("Gespeichert.")}${location ? " " + tr(location.trim()) : ""}${weather ? " " + tr(weather.trim()) : ""}${auth ? " " + tr(auth.trim()) : ""}${tr(restart.trim())}`;
+  const statusParts = [
+    "Gespeichert.",
+    data.cityResolutionPending ? "Ort wird im Hintergrund aktualisiert." : "",
+    data.weatherRefreshPending ? "Wetter wird aktualisiert." : "",
+    data.authChanged ? "Login wurde geaendert, bitte mit den neuen Daten neu laden." : "",
+    data.restartRequired ? "Neustart fuer Pin, Groesse, Farbe, WLAN oder Adresse noetig." : "Sofort aktiv."
+  ];
+  $("message").textContent = statusParts.filter(Boolean).map(tr).join(" ");
 }
 
 async function scanNetworks() {
@@ -460,18 +526,22 @@ async function factoryReset() {
 }
 
 fillPins();
+fillWeatherIntervals();
 applyLanguage();
 loadConfig().catch(() => message("Konfiguration konnte nicht geladen werden."));
 loadStatus().catch(() => {});
 setInterval(loadStatus, 5000);
 
 $("languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
+$("adminReminderGo").addEventListener("click", openAdminAccess);
+$("adminReminderDismiss").addEventListener("click", () => closeAdminReminder(true));
 $("saveBtn").addEventListener("click", saveConfig);
 $("scanBtn").addEventListener("click", scanNetworks);
 $("brightnessPercent").addEventListener("input", () => syncBrightnessNumberFromSlider("brightness", "brightnessPercent", "brightnessPercentValue"));
 $("nightBrightnessPercent").addEventListener("input", () => syncBrightnessNumberFromSlider("nightBrightness", "nightBrightnessPercent", "nightBrightnessPercentValue"));
 $("brightnessPercentValue").addEventListener("input", () => syncBrightnessSliderFromNumber("brightness", "brightnessPercent", "brightnessPercentValue"));
 $("nightBrightnessPercentValue").addEventListener("input", () => syncBrightnessSliderFromNumber("nightBrightness", "nightBrightnessPercent", "nightBrightnessPercentValue"));
+$("fullBrightnessUnlocked").addEventListener("change", () => updateBrightnessLimits(true));
 $("hourFormat").addEventListener("change", updateNightControlsFromStored);
 for (const id of ["nightStartDisplay", "nightStartPeriod", "nightEndDisplay", "nightEndPeriod"]) {
   $(id).addEventListener("change", syncNightStoredFromDisplay);
