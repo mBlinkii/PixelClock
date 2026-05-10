@@ -31,7 +31,9 @@ void loadConfig() {
   config.brightness = prefs.getUChar("bright", config.brightness);
   config.fullBrightnessUnlocked = prefs.getBool("fullBright", config.fullBrightnessUnlocked);
   config.wiringMode = prefs.getUChar("wiring", 255);
-  if (config.wiringMode == 255) config.wiringMode = prefs.getBool("serp", true) ? 1 : 0;
+  if (config.wiringMode == 255) {
+    config.wiringMode = prefs.isKey("serp") ? (prefs.getBool("serp", true) ? 1 : 0) : DEFAULT_WIRING_MODE;
+  }
   config.origin = prefs.getUChar("origin", config.origin);
   config.displayMode = prefs.getUChar("dispMode", config.displayMode);
   config.temperatureUnit = prefs.getUChar("tempUnit", config.temperatureUnit);

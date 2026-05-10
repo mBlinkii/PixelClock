@@ -10,6 +10,7 @@
 constexpr uint16_t MAX_LEDS = 512;
 constexpr uint8_t DEFAULT_WIDTH = 32;
 constexpr uint8_t DEFAULT_HEIGHT = 8;
+constexpr uint8_t DEFAULT_WIRING_MODE = 3;
 constexpr uint8_t DEFAULT_WEATHER_INTERVAL_HALF_HOURS = 4;
 constexpr uint32_t WEATHER_INTERVAL_STEP_MS = 30UL * 60UL * 1000UL;
 constexpr uint8_t SAFE_BRIGHTNESS_MAX = 102;
@@ -49,7 +50,7 @@ struct AppConfig {
   uint8_t dataPin = 18;
   uint8_t brightness = 64;
   bool fullBrightnessUnlocked = false;
-  uint8_t wiringMode = 1;
+  uint8_t wiringMode = DEFAULT_WIRING_MODE;
   uint8_t origin = 0;
   uint8_t displayMode = 0;
   uint8_t temperatureUnit = 0;

@@ -96,7 +96,7 @@ const translations = {
     "WLAN und Adresse": "Wi-Fi and address",
     "Die Browser-Adresse ist der Hostname für die .local-Adresse. Mit pixelclock erreichst du die Uhr normalerweise unter http://pixelclock.local. Wenn .local nicht klappt, nutze die IP-Adresse aus dem Router.": "The browser address is the hostname for the .local address. With pixelclock you usually reach the clock at http://pixelclock.local. If .local does not work, use the IP address from your router.",
     "Display einrichten": "Set up the display",
-    "Starte mit Breite 32, Höhe 8, GPIO 18 und zeilenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.": "Start with width 32, height 8, GPIO 18, and row serpentine wiring. If the display is mirrored, change start corner or LED wiring. The test pattern helps verify direction.",
+    "Starte mit Breite 32, Höhe 8, GPIO 18 und spaltenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.": "Start with width 32, height 8, GPIO 18, and column serpentine wiring. If the display is mirrored, change start corner or LED wiring. The test pattern helps verify direction.",
     "Wetter einrichten": "Set up weather",
     "Open-Meteo funktioniert ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.": "Open-Meteo works without an API key. For OpenWeatherMap you need your own API key. You can set the weather interval in 0.5-hour steps.",
     "Helligkeit und Nachtmodus": "Brightness and night mode",
