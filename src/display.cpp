@@ -573,11 +573,19 @@ void drawWeatherPage() {
   const String text = currentTemperatureText();
   if (config.displayMode == 1) {
     drawText3x5(LEFT_VALUE_X, 1, text, packedColor(config.colorText));
-    drawTemperatureIcon(RIGHT_ICON_X, 0);
+    if (config.weatherIconEnabled) {
+      drawWeatherIcon(RIGHT_ICON_X, 0);
+    } else {
+      drawTemperatureIcon(RIGHT_ICON_X, 0);
+    }
   } else if (config.displayMode == 2) {
     drawBigTextCentered(1, text);
   } else {
-    drawTemperatureIcon(LEFT_SLOT_X, 0);
+    if (config.weatherIconEnabled) {
+      drawWeatherIcon(LEFT_SLOT_X, 0);
+    } else {
+      drawTemperatureIcon(LEFT_SLOT_X, 0);
+    }
     drawRightAlignedText(VALUE_SLOT_X, 1, VALUE_SLOT_W, text, packedColor(config.colorText));
   }
 }

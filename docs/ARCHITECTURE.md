@@ -14,6 +14,10 @@ The firmware serves the web UI from LittleFS and exposes JSON endpoints under
 `/api/*`. The browser UI reads and writes those endpoints; it is not bundled
 into the firmware binary.
 
+The partition table uses two OTA app slots. Once that layout and the LittleFS
+image have been flashed over USB, later firmware and LittleFS image binaries
+can be uploaded through the web UI.
+
 ## Main Files
 
 ```text
@@ -21,7 +25,8 @@ src/main.cpp
   Firmware entry point. Keeps boot orchestration and the main loop easy to scan.
 
 src/app_state.h
-  Shared constants, structs, globals, and cross-module function declarations.
+  Shared constants, firmware version, structs, globals, and cross-module
+  function declarations.
 
 src/app_state.cpp
   Definitions for shared runtime state such as config, weather, server, LEDs,
@@ -45,6 +50,12 @@ src/web_api.cpp
   HTTP Basic Auth, `/api/*` routes, JSON serialization, reset/restart actions,
   and static LittleFS serving.
 
+src/web_updates.cpp
+  Firmware and LittleFS OTA upload handlers used by the update routes.
+
+src/web_updates.h
+  Route callback declarations for the OTA handlers.
+
 src/weather_icons.h
   Packed 8 px high bitmap weather icons used by the matrix renderer.
 
@@ -54,10 +65,16 @@ data/index.html
 data/app.css
   Styling for the configuration interface.
 
+data/i18n.js
+  Browser-side language selection and translation strings.
+
+data/updates.js
+  Firmware/LittleFS version scanning and browser-side binary upload flow.
+
 data/app.js
-  Browser-side behavior, translations, form serialization, API calls, and
-  status refresh. Also owns browser-local UI state such as the one-time admin
-  password reminder dismissal.
+  Browser-side app bootstrap, form serialization, API calls, status refresh,
+  and browser-local UI state such as the one-time admin password reminder
+  dismissal.
 
 platformio.ini
   Board, framework, filesystem, partition table, and library dependencies.
@@ -95,7 +112,7 @@ setting, update these places together:
 - JSON output and POST parsing in `src/web_api.cpp`,
 - form field list in `data/app.js`,
 - markup in `data/index.html`,
-- user-facing text/translations in `data/app.js`,
+- user-facing text/translations in `data/i18n.js`,
 - README or troubleshooting notes if the setting affects setup.
 
 Passwords and API keys intentionally use "leave empty to keep current" semantics
@@ -117,12 +134,44 @@ GET  /api/networks        Wi-Fi scan results
 POST /api/restart         restart the ESP32
 POST /api/reset/settings  reset settings but keep Wi-Fi and admin login
 POST /api/reset/factory   clear all persisted settings
+POST /api/update/firmware upload a new firmware binary to the inactive OTA slot
+POST /api/update/web      upload a new LittleFS image to the web UI partition
 POST /api/weather/refresh queue a weather refresh
 POST /api/display/test    show a temporary test pattern
 ```
 
 Every API route requires HTTP Basic Auth. Static UI files are also served with
 the same authentication.
+
+`GET /api/status` exposes `firmwareVersion`, sourced from `FIRMWARE_VERSION` in
+`src/app_state.h`. Bump that constant for every firmware change and keep README
+version mentions aligned.
+
+The LittleFS web interface version lives in `littleFsVersionMarker` in
+`data/updates.js`. Bump it for every change under `data/` and keep README version
+mentions aligned. The browser shows this installed web UI version in the status
+panel and scans selected LittleFS update images for the same marker before
+uploading them.
+
+## Web/Firmware Compatibility
+
+Firmware and LittleFS can be updated independently. Because of that, the web UI
+must stay compatible with the firmware API that is already installed on the
+device.
+
+Keep the update endpoints stable:
+
+```text
+POST /api/update/firmware
+POST /api/update/web
+```
+
+Do not rename or remove those routes unless the old route remains as an alias
+for at least one release. If the web UI needs a new firmware feature, add a
+capability or version field to `GET /api/status` and make the browser choose a
+fallback path when the field is missing. This prevents a separately uploaded web
+UI from showing 404 errors on devices that have not received the matching
+firmware yet.
 
 `GET /api/config` includes `adminPasswordIsDefault`. The browser uses this to
 show the first-run admin password reminder when the default login is still
@@ -147,6 +196,8 @@ If a matrix looks mirrored or scrambled, inspect `xy()`, `wiringMode`, and
 
 - Open-Meteo is the default weather provider and does not need an API key.
 - OpenWeatherMap needs a user-provided API key.
+- DWD weather uses the Bright Sky JSON API for DWD open weather data and does
+  not need an API key.
 - City lookup uses Open-Meteo geocoding and stores latitude, longitude,
   location label, and a POSIX-style timezone string.
 - NTP uses `configTime()` with the configured POSIX timezone.
@@ -169,7 +220,17 @@ When `data/` changed, also upload LittleFS on hardware:
 pio run --target uploadfs
 ```
 
-For firmware changes, flash and watch the serial monitor:
+To build the upload binaries without flashing anything, use:
+
+```powershell
+.\build-pixel-clock.cmd
+```
+
+It creates versioned copies of `firmware.bin` and `littlefs.bin` in `dist/`.
+
+For firmware or LittleFS changes, use the web UI's update section after the OTA
+partition layout is already on the device, or flash over USB and watch the
+serial monitor for firmware changes:
 
 ```powershell
 pio run --target upload

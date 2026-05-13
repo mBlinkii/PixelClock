@@ -10,6 +10,9 @@
 *.bin
 *.elf
 *.map
+tools/
+build-pixel-clock.cmd
+flash-pixel-clock.cmd
 
 # OS/editor noise.
 .DS_Store

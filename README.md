@@ -4,6 +4,9 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
+Current firmware version: `0.1.3`
+Current LittleFS web interface version: `0.1.7`
+
 ## Features
 
 - time, date, and weather on a 32x8 LED matrix
@@ -12,7 +15,7 @@ ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, dat
 - configurable start corner, data pin, and color order
 - day and night brightness in percent, limited to 40% by default
 - automatic page rotation or fixed page
-- Open-Meteo without an API key or OpenWeatherMap with your own API key
+- Open-Meteo or DWD without an API key, or OpenWeatherMap with your own API key
 - city-based location lookup with automatic time zone for many regions
 - bilingual web interface, German/English, automatic browser language selection
 - integrated help/wiki directly inside the web interface
@@ -34,16 +37,19 @@ Important: Do not power larger LED matrices from the ESP32 5 V pin. Connect the 
 
 ```text
 src/main.cpp                  Firmware entry point, setup(), and loop()
-src/app_state.h/.cpp          Shared types, constants, and runtime state
+src/app_state.h/.cpp          Shared types, constants, firmware version, and runtime state
 src/config.cpp                Persisted settings and helpers
 src/network_time.cpp          Wi-Fi, setup AP, mDNS, and NTP
 src/weather.cpp               Weather, geocoding, time zones, and HTTPS certificates
 src/display.cpp               LED mapping, text, icons, and matrix rendering
 src/web_api.cpp               HTTP API, auth, restart/reset, and LittleFS serving
+src/web_updates.cpp           Firmware and LittleFS OTA upload handlers
 src/weather_icons.h           Weather icons for the matrix
 data/                         LittleFS web interface
 data/index.html               HTML for the configuration interface
-data/app.js                   Web UI logic, API calls, and translations
+data/i18n.js                  Web UI translations and language selection
+data/updates.js               Web UI update upload and version checks
+data/app.js                   Web UI logic, API calls, forms, and status refresh
 data/app.css                  Styling for the web interface
 platformio.ini                PlatformIO configuration
 partitions.csv                Flash layout
@@ -146,6 +152,9 @@ The language is selected automatically from your browser or system language. You
 
 The default provider is Open-Meteo. It does not require an API key.
 
+The `Deutscher Wetterdienst (DWD)` provider uses the Bright Sky JSON API for
+DWD open weather data and also does not require an API key.
+
 OpenWeatherMap can be used optionally:
 
 1. Create an OpenWeatherMap account.
@@ -161,11 +170,15 @@ Weather data is fetched on startup and then on the configured interval. The defa
 The project uses a custom partition table:
 
 ```text
-factory  0x180000  Firmware
-littlefs 0x270000  Web interface and assets
+otadata  0x002000  OTA selector
+app0     0x170000  Firmware slot 1
+app1     0x170000  Firmware slot 2
+littlefs 0x110000  Web interface and assets
 ```
 
-The web interface is not embedded in the firmware binary. After changing anything in `data/`, always run `uploadfs`.
+The two app slots enable firmware updates through the web interface. After changing `partitions.csv`, flash the ESP32 once over USB with `pio run --target upload` and `pio run --target uploadfs`. After that, upload new firmware and web-interface binaries in the web UI's `Firmware update` section.
+
+The web interface is not embedded in the firmware binary. After changing anything in `data/`, build a new LittleFS image. You can then update it either over USB with `uploadfs` or through the web interface.
 
 ## Security
 
@@ -260,11 +273,30 @@ Good entry points:
 - `src/web_api.cpp`: API routes and form save logic.
 - `src/display.cpp`: matrix rendering and LED coordinates.
 - `src/weather.cpp`: weather and location logic.
-- `data/app.js`: browser logic, form sync, status refresh, and translations.
+- `data/i18n.js`: browser translations and language selection.
+- `data/updates.js`: firmware/LittleFS upload flow and version checks.
+- `data/app.js`: browser logic, form sync, and status refresh.
 - `data/index.html`: web interface structure.
 
 When adding or changing a setting, the firmware configuration, API JSON, form
 field, translations, and documentation usually need to change together.
+
+The firmware version shown in the web interface is set through
+`FIRMWARE_VERSION` in `src/app_state.h` and exposed through `/api/status`.
+Every firmware change should bump that version and keep the README files
+aligned, even when the change is not part of a formal release yet.
+
+The LittleFS web interface version is set in `data/updates.js` through
+`littleFsVersionMarker`. Every change under `data/` should bump that version and
+keep the README files aligned. The web interface shows both the installed
+LittleFS version and, when possible, the version found in a selected LittleFS
+update image before upload.
+
+Firmware and LittleFS can be updated separately, so the web interface must stay
+compatible with the firmware API that is already installed. Do not remove or
+rename update routes such as `/api/update/firmware` and `/api/update/web`
+without keeping the old route as an alias. For new features, expose capability
+flags through `/api/status` and keep a browser fallback for older firmware.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for pull request guidance.
 

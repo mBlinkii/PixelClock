@@ -37,6 +37,7 @@ void loadConfig() {
   config.origin = prefs.getUChar("origin", config.origin);
   config.displayMode = prefs.getUChar("dispMode", config.displayMode);
   config.temperatureUnit = prefs.getUChar("tempUnit", config.temperatureUnit);
+  config.weatherIconEnabled = prefs.getBool("tempIcon", config.weatherIconEnabled);
   config.hourFormat = prefs.getUChar("hourFmt", config.hourFormat);
   config.colorRgb = prefs.getBool("rgb", config.colorRgb);
   config.pageSeconds = prefs.getUChar("pageSec", config.pageSeconds);
@@ -59,7 +60,7 @@ void loadConfig() {
   config.brightness = constrain(config.brightness, 0, maxBrightness);
   config.nightBrightness = constrain(config.nightBrightness, 0, maxBrightness);
   config.pageSeconds = constrain(config.pageSeconds, 3, 60);
-  config.weatherProvider = constrain(config.weatherProvider, 0, 1);
+  config.weatherProvider = constrain(config.weatherProvider, 0, WEATHER_PROVIDER_DWD);
   config.weatherIntervalHalfHours = constrain(config.weatherIntervalHalfHours, 1, 48);
   config.wiringMode = constrain(config.wiringMode, 0, 3);
   config.origin = constrain(config.origin, 0, 3);
@@ -99,6 +100,7 @@ void saveConfig() {
   prefs.putUChar("origin", config.origin);
   prefs.putUChar("dispMode", config.displayMode);
   prefs.putUChar("tempUnit", config.temperatureUnit);
+  prefs.putBool("tempIcon", config.weatherIconEnabled);
   prefs.putUChar("hourFmt", config.hourFormat);
   prefs.putBool("rgb", config.colorRgb);
   prefs.putUChar("pageSec", config.pageSeconds);

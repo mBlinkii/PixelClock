@@ -4,6 +4,7 @@
 #include <math.h>
 
 #include "app_state.h"
+#include "web_updates.h"
 
 // HTTP API used by the LittleFS web UI. Keep routes and response fields aligned
 // with data/app.js.
@@ -36,6 +37,7 @@ void sendConfigJson(AsyncWebServerRequest *request) {
   doc["origin"] = config.origin;
   doc["displayMode"] = config.displayMode;
   doc["temperatureUnit"] = config.temperatureUnit;
+  doc["weatherIconEnabled"] = config.weatherIconEnabled;
   doc["hourFormat"] = config.hourFormat;
   doc["colorOrder"] = config.colorRgb ? "RGB" : "GRB";
   doc["pageSeconds"] = config.pageSeconds;
@@ -56,6 +58,17 @@ void sendConfigJson(AsyncWebServerRequest *request) {
 
 String paramValue(AsyncWebServerRequest *request, const char *name, const String &fallback = "") {
   return request->hasParam(name, true) ? request->getParam(name, true)->value() : fallback;
+}
+
+const char *weatherProviderName() {
+  switch (config.weatherProvider) {
+    case WEATHER_PROVIDER_OPEN_WEATHER_MAP:
+      return "OpenWeatherMap";
+    case WEATHER_PROVIDER_DWD:
+      return "DWD (Bright Sky)";
+    default:
+      return "Open-Meteo";
+  }
 }
 
 bool hasAdminPassword() {
@@ -81,6 +94,11 @@ bool requireAdminAuth(AsyncWebServerRequest *request) {
   }
   request->requestAuthentication("Pixel Clock", false);
   return false;
+}
+
+void scheduleRestart(uint32_t delayMs) {
+  pendingRestart = true;
+  restartAt = millis() + delayMs;
 }
 
 void handleConfigPost(AsyncWebServerRequest *request) {
@@ -116,7 +134,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   config.hostname = sanitizeHostname(paramValue(request, "hostname", config.hostname));
   config.cityName = paramValue(request, "cityName", config.cityName);
   config.cityName.trim();
-  config.weatherProvider = constrain(paramValue(request, "weatherProvider", String(config.weatherProvider)).toInt(), 0, 1);
+  config.weatherProvider = constrain(paramValue(request, "weatherProvider", String(config.weatherProvider)).toInt(), 0, WEATHER_PROVIDER_DWD);
   config.weatherIntervalHalfHours = constrain(paramValue(request, "weatherIntervalHalfHours", String(config.weatherIntervalHalfHours)).toInt(), 1, 48);
   const String newOpenWeatherApiKey = paramValue(request, "openWeatherApiKey", "");
   if (newOpenWeatherApiKey.length() > 0) config.openWeatherApiKey = newOpenWeatherApiKey;
@@ -133,6 +151,10 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   config.origin = constrain(paramValue(request, "origin", String(config.origin)).toInt(), 0, 3);
   config.displayMode = constrain(paramValue(request, "displayMode", String(config.displayMode)).toInt(), 0, 2);
   config.temperatureUnit = constrain(paramValue(request, "temperatureUnit", String(config.temperatureUnit)).toInt(), 0, 1);
+  config.weatherIconEnabled = paramValue(
+    request,
+    "weatherIconEnabled",
+    config.weatherIconEnabled ? "1" : "0") == "1";
   config.hourFormat = paramValue(request, "hourFormat", String(config.hourFormat)).toInt() == 12 ? 12 : 24;
   config.colorRgb = paramValue(request, "colorOrder", "GRB") == "RGB";
   config.pageSeconds = constrain(paramValue(request, "pageSeconds", String(config.pageSeconds)).toInt(), 3, 60);
@@ -203,7 +225,8 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   doc["url"] = "http://" + config.hostname + ".local";
   doc["cityName"] = config.cityName;
   doc["locationLabel"] = config.locationLabel;
-  doc["weatherProvider"] = config.weatherProvider == 1 ? "OpenWeatherMap" : "Open-Meteo";
+  doc["firmwareVersion"] = FIRMWARE_VERSION;
+  doc["weatherProvider"] = weatherProviderName();
   doc["rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   doc["lastWeatherMs"] = weather.lastFetch;
   doc["lastWeatherAttemptMs"] = weather.lastAttempt;
@@ -258,8 +281,7 @@ void handleNetworks(AsyncWebServerRequest *request) {
 void restartSoon(AsyncWebServerRequest *request) {
   if (!requireAdminAuth(request)) return;
   request->send(200, "application/json", "{\"ok\":true}");
-  delay(300);
-  ESP.restart();
+  scheduleRestart();
 }
 
 void handleSettingsReset(AsyncWebServerRequest *request) {
@@ -278,8 +300,7 @@ void handleSettingsReset(AsyncWebServerRequest *request) {
   config.adminPassword = keepAdminPassword;
   saveConfig();
   request->send(200, "application/json", "{\"ok\":true}");
-  delay(300);
-  ESP.restart();
+  scheduleRestart();
 }
 
 void handleFactoryReset(AsyncWebServerRequest *request) {
@@ -288,8 +309,7 @@ void handleFactoryReset(AsyncWebServerRequest *request) {
   prefs.clear();
   prefs.end();
   request->send(200, "application/json", "{\"ok\":true}");
-  delay(300);
-  ESP.restart();
+  scheduleRestart();
 }
 
 void setupServer() {
@@ -300,6 +320,8 @@ void setupServer() {
   server.on("/api/restart", HTTP_POST, restartSoon);
   server.on("/api/reset/settings", HTTP_POST, handleSettingsReset);
   server.on("/api/reset/factory", HTTP_POST, handleFactoryReset);
+  server.on("/api/update/firmware", HTTP_POST, handleFirmwareUpdateDone, handleFirmwareUpdateUpload);
+  server.on("/api/update/web", HTTP_POST, handleWebUpdateDone, handleWebUpdateUpload);
   server.on("/api/weather/refresh", HTTP_POST, [](AsyncWebServerRequest *request) {
     if (!requireAdminAuth(request)) return;
     pendingWeatherFetch = true;

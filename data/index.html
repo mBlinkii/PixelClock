@@ -74,6 +74,14 @@
         <path d="M20 12a8 8 0 1 1-2.3-5.7"/>
         <path d="M20 4v6h-6"/>
       </symbol>
+      <symbol id="icon-update" viewBox="0 0 24 24">
+        <path d="M12 3v12"/>
+        <path d="m7 8 5-5 5 5"/>
+        <path d="M5 15v4h14v-4"/>
+      </symbol>
+      <symbol id="icon-chevron" viewBox="0 0 24 24">
+        <path d="m6 9 6 6 6-6"/>
+      </symbol>
     </svg>
     <main>
       <header>
@@ -107,6 +115,12 @@
           <div>
             <span>Adresse</span>
             <strong id="urlLine">-</strong>
+          </div>
+          <div>
+            <span>Firmware</span>
+            <strong id="firmwareLine">-</strong>
+            <span>Weboberfläche</span>
+            <strong id="littleFsLine">-</strong>
           </div>
         </div>
       </section>
@@ -157,6 +171,7 @@
             <select id="weatherProvider" name="weatherProvider">
               <option value="0">Open-Meteo</option>
               <option value="1">OpenWeatherMap</option>
+              <option value="2">Deutscher Wetterdienst (DWD)</option>
             </select>
           </label>
           <label>
@@ -262,6 +277,10 @@
           <input id="autoPage" name="autoPage" type="checkbox">
           Seiten automatisch wechseln
         </label>
+        <label class="check">
+          <input id="weatherIconEnabled" name="weatherIconEnabled" type="checkbox">
+          Aktuelles Wetter-Icon anzeigen
+        </label>
       </section>
 
       <section class="panel colorSection">
@@ -343,6 +362,36 @@
         <p id="brightnessWarning" class="warning" hidden>Warnung: Volle Helligkeit kann den ESP32 oder USB-Port überlasten, wenn die Matrix direkt darüber versorgt wird.</p>
       </section>
 
+      <section class="panel updateSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-update"></use></svg>Firmware-Update</h2>
+        <div class="updateStack">
+          <div>
+            <div class="fileRow">
+              <label>
+                Firmware-Datei
+                <input id="firmwareFile" type="file" accept=".bin,application/octet-stream">
+              </label>
+              <button id="firmwareUpdateBtn" type="button">Firmware aktualisieren</button>
+            </div>
+            <progress id="firmwareProgress" value="0" max="100" hidden></progress>
+            <p id="firmwareSelectedVersion" class="hint updateVersion" hidden></p>
+            <p id="firmwareHint" class="hint">Wähle eine passende Firmware-Datei im .bin-Format aus. Während des Updates die Stromversorgung nicht trennen; danach startet die Uhr neu.</p>
+          </div>
+          <div>
+            <div class="fileRow">
+              <label>
+                Weboberflächen-Datei
+                <input id="webFile" type="file" accept=".bin,application/octet-stream">
+              </label>
+              <button id="webUpdateBtn" type="button">Weboberfläche aktualisieren</button>
+            </div>
+            <progress id="webProgress" value="0" max="100" hidden></progress>
+            <p id="webSelectedVersion" class="hint updateVersion" hidden></p>
+            <p id="webHint" class="hint">Wähle eine passende Weboberflächen-Datei im .bin-Format aus. Die Uhr startet danach neu und lädt die neue Oberfläche.</p>
+          </div>
+        </div>
+      </section>
+
       <section class="panel helpSection">
         <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-help"></use></svg>Hilfe & Wiki</h2>
         <div class="helpList">
@@ -369,7 +418,7 @@
           </details>
           <details>
             <summary>Wetter einrichten</summary>
-            <p>Open-Meteo funktioniert ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.</p>
+            <p>Open-Meteo und DWD funktionieren ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.</p>
           </details>
           <details>
             <summary>Helligkeit und Nachtmodus</summary>
@@ -407,6 +456,8 @@
         </div>
       </section>
     </div>
+    <script src="/i18n.js"></script>
+    <script src="/updates.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

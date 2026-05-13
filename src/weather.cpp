@@ -146,8 +146,23 @@ int normalizeOpenWeatherCode(int code) {
   return -1;
 }
 
-void configureWeatherClient(WiFiClientSecure &client, bool openWeatherMap) {
-  client.setCACert(openWeatherMap ? SECTIGO_PUBLIC_SERVER_AUTH_ROOT_R46 : ISRG_ROOT_X1);
+int normalizeBrightSkyIcon(const char *icon) {
+  if (icon == nullptr || strlen(icon) == 0) return -1;
+  if (strcmp(icon, "clear-day") == 0 || strcmp(icon, "clear-night") == 0) return 0;
+  if (strcmp(icon, "partly-cloudy-day") == 0 || strcmp(icon, "partly-cloudy-night") == 0) return 2;
+  if (strcmp(icon, "cloudy") == 0) return 3;
+  if (strcmp(icon, "fog") == 0) return 45;
+  if (strcmp(icon, "drizzle") == 0) return 51;
+  if (strcmp(icon, "rain") == 0) return 61;
+  if (strcmp(icon, "sleet") == 0) return 67;
+  if (strcmp(icon, "snow") == 0) return 71;
+  if (strcmp(icon, "hail") == 0) return 77;
+  if (strcmp(icon, "thunderstorm") == 0) return 95;
+  return -1;
+}
+
+void configureWeatherClient(WiFiClientSecure &client, uint8_t weatherProvider) {
+  client.setCACert(weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP ? SECTIGO_PUBLIC_SERVER_AUTH_ROOT_R46 : ISRG_ROOT_X1);
 }
 
 // Weather and geocoding requests run synchronously but are triggered only from
@@ -155,20 +170,23 @@ void configureWeatherClient(WiFiClientSecure &client, bool openWeatherMap) {
 void fetchWeather() {
   if (WiFi.status() != WL_CONNECTED) return;
   weather.lastAttempt = millis();
-  if (config.weatherProvider == 1 && config.openWeatherApiKey.isEmpty()) {
+  if (config.weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP && config.openWeatherApiKey.isEmpty()) {
     weather.lastError = "OpenWeatherMap API-Key fehlt";
     return;
   }
   WiFiClientSecure client;
-  configureWeatherClient(client, config.weatherProvider == 1);
+  configureWeatherClient(client, config.weatherProvider);
   HTTPClient http;
   http.setTimeout(HTTP_TIMEOUT_MS);
   String url;
-  if (config.weatherProvider == 1) {
+  if (config.weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP) {
     url = "https://api.openweathermap.org/data/2.5/weather?lat=" + String(config.latitude, 5) +
       "&lon=" + String(config.longitude, 5) +
       "&appid=" + config.openWeatherApiKey +
       "&units=metric&lang=de";
+  } else if (config.weatherProvider == WEATHER_PROVIDER_DWD) {
+    url = "https://api.brightsky.dev/current_weather?lat=" + String(config.latitude, 5) +
+      "&lon=" + String(config.longitude, 5);
   } else {
     url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(config.latitude, 5) +
       "&longitude=" + String(config.longitude, 5) +
@@ -193,7 +211,7 @@ void fetchWeather() {
     weather.lastError = err.c_str();
     return;
   }
-  if (config.weatherProvider == 1) {
+  if (config.weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP) {
     weather.temperature = doc["main"]["temp"] | NAN;
     weather.temperatureMax = doc["main"]["temp_max"] | weather.temperature;
     weather.temperatureMin = doc["main"]["temp_min"] | weather.temperature;
@@ -201,6 +219,13 @@ void fetchWeather() {
     weather.weatherCode = normalizeOpenWeatherCode(openWeatherCode);
     const char *icon = doc["weather"][0]["icon"] | "";
     weather.isDay = strlen(icon) < 3 || icon[2] != 'n';
+  } else if (config.weatherProvider == WEATHER_PROVIDER_DWD) {
+    weather.temperature = doc["weather"]["temperature"] | NAN;
+    weather.temperatureMax = NAN;
+    weather.temperatureMin = NAN;
+    const char *icon = doc["weather"]["icon"] | "";
+    weather.weatherCode = normalizeBrightSkyIcon(icon);
+    weather.isDay = strstr(icon, "night") == nullptr;
   } else {
     weather.temperature = doc["current"]["temperature_2m"] | NAN;
     weather.temperatureMax = doc["daily"]["temperature_2m_max"][0] | NAN;
@@ -216,7 +241,7 @@ bool resolveCity() {
   if (WiFi.status() != WL_CONNECTED || config.cityName.length() < 2) return false;
 
   WiFiClientSecure client;
-  configureWeatherClient(client, false);
+  configureWeatherClient(client, WEATHER_PROVIDER_OPEN_METEO);
   HTTPClient http;
   http.setTimeout(HTTP_TIMEOUT_MS);
   const String url = "https://geocoding-api.open-meteo.com/v1/search?name=" + urlEncode(config.cityName) +

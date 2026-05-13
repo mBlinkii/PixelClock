@@ -6,6 +6,7 @@
 
 void setup() {
   Serial.begin(115200);
+  keepFirmwareVersionBinaryMarker();
   bootStarted = millis();
   loadConfig();
   seedTimeFromBuild();
@@ -30,6 +31,9 @@ void setup() {
 
 void loop() {
   const uint32_t now = millis();
+  if (pendingRestart && now >= restartAt) {
+    ESP.restart();
+  }
   if (now - lastRender >= 200) {
     lastRender = now;
     renderDisplay();

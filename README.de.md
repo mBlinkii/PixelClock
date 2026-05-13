@@ -4,6 +4,9 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
+Aktuelle Firmware-Version: `0.1.3`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.7`
+
 ## Funktionen
 
 - Uhrzeit, Datum und Wetter auf einer 32x8-LED-Matrix
@@ -12,7 +15,7 @@ ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datu
 - Start-Ecke, Datenpin und Farbreihenfolge einstellbar
 - Helligkeit und Nacht-Helligkeit in Prozent, standardmäßig auf 40% begrenzt
 - automatische Seitenrotation oder feste Seite
-- Open-Meteo ohne API-Key oder OpenWeatherMap mit eigenem API-Key
+- Open-Meteo oder DWD ohne API-Key, oder OpenWeatherMap mit eigenem API-Key
 - Standortsuche per Stadtname mit automatischer Zeitzone für viele Regionen
 - zweisprachige Weboberfläche, Deutsch/Englisch, automatische Browser-Sprachauswahl
 - integrierte Hilfe/Wiki direkt in der Weboberfläche
@@ -34,16 +37,19 @@ Wichtig: Versorge größere LED-Matrizen nicht über den 5-V-Pin des ESP32. Verb
 
 ```text
 src/main.cpp                  Firmware-Einstieg, setup() und loop()
-src/app_state.h/.cpp          gemeinsame Typen, Konstanten und Laufzeitstatus
+src/app_state.h/.cpp          gemeinsame Typen, Konstanten, Firmware-Version und Laufzeitstatus
 src/config.cpp                gespeicherte Einstellungen und Hilfsfunktionen
 src/network_time.cpp          WLAN, Setup-AP, mDNS und NTP
 src/weather.cpp               Wetter, Geocoding, Zeitzonen und HTTPS-Zertifikate
 src/display.cpp               LED-Mapping, Text, Icons und Matrix-Rendering
 src/web_api.cpp               HTTP-API, Auth, Neustart/Reset und LittleFS-Serving
+src/web_updates.cpp           Firmware- und LittleFS-OTA-Upload-Handler
 src/weather_icons.h           Wetter-Icons für die Matrix
 data/                         LittleFS-Weboberfläche
 data/index.html               HTML der Konfigurationsoberfläche
-data/app.js                   Web-UI-Logik, API-Aufrufe und Übersetzungen
+data/i18n.js                  Web-UI-Uebersetzungen und Sprachauswahl
+data/updates.js               Web-UI-Updates und Versionspruefungen
+data/app.js                   Web-UI-Logik, API-Aufrufe, Formulare und Status
 data/app.css                  Styling der Weboberfläche
 platformio.ini                PlatformIO-Konfiguration
 partitions.csv                Flash-Layout
@@ -146,6 +152,9 @@ Die Sprache wird automatisch anhand der Browser-/Systemsprache gewählt. Oben im
 
 Standard ist Open-Meteo. Dafür ist kein API-Key nötig.
 
+Der Anbieter `Deutscher Wetterdienst (DWD)` nutzt die Bright-Sky-JSON-API
+für offene DWD-Wetterdaten und braucht ebenfalls keinen API-Key.
+
 Optional kann OpenWeatherMap genutzt werden:
 
 1. OpenWeatherMap-Konto erstellen.
@@ -161,11 +170,15 @@ Wetterdaten werden beim Start und danach im eingestellten Intervall aktualisiert
 Das Projekt nutzt eine eigene Partitionstabelle:
 
 ```text
-factory  0x180000  Firmware
-littlefs 0x270000  Weboberfläche und Assets
+otadata  0x002000  OTA-Auswahl
+app0     0x170000  Firmware-Slot 1
+app1     0x170000  Firmware-Slot 2
+littlefs 0x110000  Weboberfläche und Assets
 ```
 
-Die Weboberfläche liegt nicht im Firmware-Binary. Nach Änderungen an `data/` muss immer auch `uploadfs` ausgeführt werden.
+Die zwei App-Slots ermöglichen Firmware-Updates über die Weboberfläche. Nach einer Änderung an `partitions.csv` muss der ESP32 einmal per USB mit `pio run --target upload` und `pio run --target uploadfs` neu geflasht werden. Danach können neue Firmware- und Weboberflächen-Binaries im Bereich `Firmware-Update` der Weboberfläche hochgeladen werden.
+
+Die Weboberfläche liegt nicht im Firmware-Binary. Nach Änderungen an `data/` muss ein neues LittleFS-Image gebaut werden. Du kannst es danach entweder per USB mit `uploadfs` oder über die Weboberfläche aktualisieren.
 
 ## Sicherheit
 
@@ -260,11 +273,31 @@ Gute Einstiegspunkte:
 - `src/web_api.cpp`: API-Routen und Formular-Speicherlogik.
 - `src/display.cpp`: Matrix-Rendering und LED-Koordinaten.
 - `src/weather.cpp`: Wetter- und Standortlogik.
-- `data/app.js`: Browser-Logik, Formular-Sync, Status-Refresh und Übersetzungen.
+- `data/i18n.js`: Browser-Uebersetzungen und Sprachauswahl.
+- `data/updates.js`: Firmware-/LittleFS-Upload und Versionspruefungen.
+- `data/app.js`: Browser-Logik, Formular-Sync und Status-Refresh.
 - `data/index.html`: Struktur der Weboberfläche.
 
 Wenn du eine Einstellung erweiterst, müssen meist Firmware-Konfiguration,
 API-JSON, Formularfeld, Übersetzungen und Doku gemeinsam angepasst werden.
+
+Die in der Weboberfläche angezeigte Firmware-Version wird über
+`FIRMWARE_VERSION` in `src/app_state.h` gesetzt und über `/api/status`
+ausgeliefert. Bei jeder Firmware-Änderung diese Version erhöhen und die
+README-Dateien mitziehen, auch wenn daraus noch kein formales Release entsteht.
+
+Die LittleFS-Weboberflächen-Version wird in `data/updates.js` über
+`littleFsVersionMarker` gesetzt. Bei jeder Änderung unter `data/` diese Version
+erhöhen und die README-Dateien mitziehen. Die Weboberfläche zeigt sowohl die
+installierte LittleFS-Version als auch, wenn möglich, die Version aus einem
+ausgewählten LittleFS-Update-Image vor dem Upload an.
+
+Firmware und LittleFS können getrennt aktualisiert werden. Die Weboberfläche
+muss deshalb mit der bereits installierten Firmware-API kompatibel bleiben.
+Update-Routen wie `/api/update/firmware` und `/api/update/web` nicht entfernen
+oder umbenennen, ohne die alte Route als Alias beizubehalten. Für neue
+Funktionen besser Fähigkeiten über `/api/status` melden und im Browser einen
+Fallback für ältere Firmware anbieten.
 
 Siehe auch [CONTRIBUTING.md](CONTRIBUTING.md) für Hinweise zu Pull Requests.
 

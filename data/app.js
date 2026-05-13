@@ -3,170 +3,14 @@ const safeBrightnessPercent = 40;
 const fields = [
   "ssid", "hostname", "cityName", "timezone", "weatherProvider", "weatherIntervalHalfHours", "width", "height", "dataPin",
   "brightness", "fullBrightnessUnlocked", "wiringMode", "origin", "displayMode", "colorOrder",
-  "temperatureUnit", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "pageSeconds",
+  "temperatureUnit", "weatherIconEnabled", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "pageSeconds",
   "colorGradientMode", "autoPage", "selectedPage", "nightBrightness", "nightStart", "nightEnd"
 ];
 
 const $ = (id) => document.getElementById(id);
-const storedLanguage = localStorage.getItem("pixelClockLanguage");
 const adminReminderStorageKey = "pixelClockAdminReminderDismissed";
+const panelCollapsedStoragePrefix = "pixelClockPanelCollapsed:";
 let currentLanguage = storedLanguage || ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
-
-const translations = {
-  en: {
-    "Lade Status...": "Loading status...",
-    "Neustart": "Restart",
-    "Sprache": "Language",
-    "Deutsch": "German",
-    "Status": "Status",
-    "Wetter": "Weather",
-    "Ort": "Location",
-    "Adresse": "Address",
-    "Noch keine Wetterdaten": "No weather data yet",
-    "Noch kein Ort geladen": "No location loaded",
-    "WLAN": "Wi-Fi",
-    "WLAN-Zugang": "Wi-Fi access",
-    "Netzwerk": "Network",
-    "Browser-Adresse": "Browser address",
-    "Scannen": "Scan",
-    "Passwort": "Password",
-    "Admin-Zugriff": "Admin access",
-    "Admin-Benutzer": "Admin user",
-    "Admin-Passwort": "Admin password",
-    "Ort, Wetter und Zugriff": "Location, weather and access",
-    "Stadt": "City",
-    "Wetteranbieter": "Weather provider",
-    "Wetter-Intervall": "Weather interval",
-    "OpenWeatherMap API-Key": "OpenWeatherMap API key",
-    "Zeitzone": "Time zone",
-    "Display-Hardware": "Display hardware",
-    "Breite": "Width",
-    "Höhe": "Height",
-    "Daten-Pin": "Data pin",
-    "Farbreihenfolge": "Color order",
-    "Start-Ecke": "Start corner",
-    "Oben links": "Top left",
-    "Oben rechts": "Top right",
-    "Unten links": "Bottom left",
-    "Unten rechts": "Bottom right",
-    "LED-Verkabelung": "LED wiring",
-    "Zeilenweise gerade": "Rows, straight",
-    "Zeilenweise Serpentine": "Rows, serpentine",
-    "Spaltenweise gerade": "Columns, straight",
-    "Spaltenweise Serpentine": "Columns, serpentine",
-    "Testmuster": "Test pattern",
-    "Anzeige und Seiten": "Display and pages",
-    "Anzeige-Modus": "Display mode",
-    "Icons links, Text rechts": "Icons left, text right",
-    "Text links, Icons rechts": "Text left, icons right",
-    "Ohne Icons, zentriert": "No icons, centered",
-    "Uhrzeitformat": "Time format",
-    "24 Stunden": "24 hours",
-    "12 Stunden": "12 hours",
-    "Temperatur": "Temperature",
-    "Seitenwechsel": "Page interval",
-    "Feste Seite": "Fixed page",
-    "Uhrzeit": "Time",
-    "Datum": "Date",
-    "Seiten automatisch wechseln": "Switch pages automatically",
-    "Farben": "Colors",
-    "Wochentag": "Weekday",
-    "Text/Uhrzeit": "Text/time",
-    "Punkt/Markierung": "Dot/marker",
-    "Doppelpunkt": "Colon",
-    "Farbverlaufs-Modus": "Color gradient mode",
-    "Standard": "Default",
-    "Pixel-Farbverlauf": "Pixel gradient",
-    "Sanfter Farbwechsel": "Smooth color cycle",
-    "Helligkeit": "Brightness",
-    "Helligkeit (%)": "Brightness (%)",
-    "Nacht-Helligkeit (%)": "Night brightness (%)",
-    "Volle Helligkeit freischalten": "Unlock full brightness",
-    "Warnung: Volle Helligkeit kann den ESP32 oder USB-Port überlasten, wenn die Matrix direkt darüber versorgt wird.": "Warning: Full brightness can overload the ESP32 or USB port when the matrix is powered directly from it.",
-    "Nacht ab": "Night starts",
-    "Nacht bis": "Night ends",
-    "Hilfe & Wiki": "Help & Wiki",
-    "Schnellstart": "Quick start",
-    "Mit PixelClock-Setup verbinden, wenn noch kein WLAN eingerichtet ist.": "Connect to PixelClock-Setup if Wi-Fi is not configured yet.",
-    "http://192.168.4.1 öffnen und mit admin / pixelclock anmelden.": "Open http://192.168.4.1 and log in with admin / pixelclock.",
-    "WLAN, Stadt, Matrixgröße und Datenpin setzen.": "Set Wi-Fi, city, matrix size, and data pin.",
-    "Speichern drücken und bei Bedarf neu starten.": "Press Save and restart if needed.",
-    "Login und Sprache": "Login and language",
-    "Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung unter Admin-Zugriff. Die Sprache wird automatisch gewählt und kann oben umgestellt werden.": "The default login is admin / pixelclock. Change user and password after setup under Admin access. The language is selected automatically and can be changed at the top.",
-    "WLAN und Adresse": "Wi-Fi and address",
-    "Die Browser-Adresse ist der Hostname für die .local-Adresse. Mit pixelclock erreichst du die Uhr normalerweise unter http://pixelclock.local. Wenn .local nicht klappt, nutze die IP-Adresse aus dem Router.": "The browser address is the hostname for the .local address. With pixelclock you usually reach the clock at http://pixelclock.local. If .local does not work, use the IP address from your router.",
-    "Display einrichten": "Set up the display",
-    "Starte mit Breite 32, Höhe 8, GPIO 18 und spaltenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.": "Start with width 32, height 8, GPIO 18, and column serpentine wiring. If the display is mirrored, change start corner or LED wiring. The test pattern helps verify direction.",
-    "Wetter einrichten": "Set up weather",
-    "Open-Meteo funktioniert ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.": "Open-Meteo works without an API key. For OpenWeatherMap you need your own API key. You can set the weather interval in 0.5-hour steps.",
-    "Helligkeit und Nachtmodus": "Brightness and night mode",
-    "0% schaltet die Matrix aus. Ohne Freischalter ist die maximale Helligkeit auf 40% begrenzt. Die Nacht-Helligkeit gilt im eingestellten Zeitraum.": "0% turns the matrix off. Without the unlock switch, maximum brightness is limited to 40%. Night brightness applies during the configured period.",
-    "Häufige Probleme": "Common problems",
-    "Keine Weboberfläche: IP-Adresse aus dem Router testen oder Setup-AP verwenden.": "No web interface: try the IP address from the router or use the setup AP.",
-    "Keine Wetterdaten: WLAN, Internet, Stadt und API-Key prüfen.": "No weather data: check Wi-Fi, internet, city, and API key.",
-    "Falsche Farben: Farbreihenfolge zwischen GRB und RGB wechseln.": "Wrong colors: switch color order between GRB and RGB.",
-    "Durcheinanderes Bild: Start-Ecke und LED-Verkabelung anpassen.": "Scrambled image: adjust start corner and LED wiring.",
-    "Speichern": "Save",
-    "Einstellungen resetten": "Reset settings",
-    "Werksreset": "Factory reset",
-    "Wetter aktualisieren": "Refresh weather",
-    "Admin-Passwort ändern": "Change admin password",
-    "Der Standardzugang ist noch aktiv. Ändere das Admin-Passwort, damit niemand im Netzwerk die Uhr einfach umstellen kann.": "The default login is still active. Change the admin password so nobody on the network can easily change the clock.",
-    "Jetzt ändern": "Change now",
-    "Nicht mehr anzeigen": "Do not show again",
-    "Leer lassen zum Beibehalten": "Leave empty to keep current",
-    "z. B. Berlin": "e.g. Berlin",
-    "Helligkeit in Prozent": "Brightness in percent",
-    "Nacht-Helligkeit in Prozent": "Night brightness in percent",
-    "Nacht ab AM/PM": "Night starts AM/PM",
-    "Nacht bis AM/PM": "Night ends AM/PM",
-    "Setup-AP": "Setup AP",
-    "keine Uhrzeit": "no time",
-    "Fehler": "Error",
-    "Speichere...": "Saving...",
-    "Admin-Anmeldung erforderlich.": "Admin login required.",
-    "Speichern fehlgeschlagen.": "Save failed.",
-    "Gespeichert.": "Saved.",
-    "Ort wird im Hintergrund aktualisiert.": "Location is updating in the background.",
-    "Wetter wird aktualisiert.": "Weather is updating.",
-    "Login wurde geändert, bitte mit den neuen Daten neu laden.": "Login changed, please reload with the new credentials.",
-    "Neustart für Pin, Größe, Farbe, WLAN, Adresse oder Login nötig.": "Restart required for pin, size, color, Wi-Fi, address, or login.",
-    "Sofort aktiv.": "Active immediately.",
-    "Suche...": "Searching...",
-    "Aktion fehlgeschlagen.": "Action failed.",
-    "Wetter konnte nicht aktualisiert werden.": "Weather could not be refreshed.",
-    "Wetteraktualisierung gestartet.": "Weather refresh started.",
-    "Konfiguration konnte nicht geladen werden.": "Configuration could not be loaded.",
-    "Testmuster gestartet.": "Test pattern started.",
-    "Neustart läuft...": "Restarting...",
-    "Einstellungen werden zurückgesetzt...": "Resetting settings...",
-    "Werksreset läuft...": "Factory reset running...",
-    "Alle Einstellungen außer WLAN zurücksetzen und neu starten?": "Reset all settings except Wi-Fi and restart?",
-    "Werksreset ausführen? Dabei werden auch WLAN-Daten gelöscht.": "Run factory reset? This also deletes Wi-Fi credentials.",
-    "Wirklich alles löschen? Der ESP startet danach im Setup-Modus.": "Really delete everything? The ESP will restart in setup mode.",
-    "Klarer Himmel": "Clear sky",
-    "Überwiegend klar": "Mostly clear",
-    "Teilweise bewölkt": "Partly cloudy",
-    "Bewölkt": "Cloudy",
-    "Nebel": "Fog",
-    "Nieselregen": "Drizzle",
-    "Regen": "Rain",
-    "Schnee": "Snow",
-    "Regenschauer": "Rain showers",
-    "Schneeschauer": "Snow showers",
-    "Gewitter": "Thunderstorm",
-    "Wettercode": "Weather code",
-    "OpenWeatherMap API-Key fehlt": "OpenWeatherMap API key missing",
-    "Stadt nicht gefunden": "City not found",
-    "HTTP begin failed": "HTTP begin failed",
-    "Geocoding begin failed": "Geocoding begin failed"
-  }
-};
-
-function tr(text) {
-  return currentLanguage === "de" ? text : (translations[currentLanguage]?.[text] || text);
-}
-
 function translateTextNodes(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
@@ -212,6 +56,7 @@ function applyLanguage() {
   translateTextNodes($("adminReminder"));
   translateAttributes();
   updateAdminPasswordPlaceholder();
+  updateWifiSummary();
 }
 
 function setLanguage(language) {
@@ -223,6 +68,10 @@ function setLanguage(language) {
 
 function message(text) {
   $("message").textContent = tr(text);
+}
+
+function messageText(text) {
+  $("message").textContent = text;
 }
 
 function showAdminReminder(config) {
@@ -238,8 +87,101 @@ function closeAdminReminder(rememberDismissal) {
 
 function openAdminAccess() {
   closeAdminReminder(false);
-  document.querySelector(".accessSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const section = document.querySelector(".accessSection");
+  if (section) setPanelCollapsed(section, false, true);
+  section?.scrollIntoView({ behavior: "smooth", block: "start" });
   $("adminPassword").focus();
+}
+
+function panelId(panel) {
+  return panel.dataset.panelId || Array.from(panel.classList).find((name) => name.endsWith("Section")) || "";
+}
+
+function storedPanelCollapsed(panel) {
+  const id = panelId(panel);
+  if (!id) return null;
+  const value = localStorage.getItem(panelCollapsedStoragePrefix + id);
+  if (value === null) return null;
+  return value === "1";
+}
+
+function rememberPanelCollapsed(panel, collapsed) {
+  const id = panelId(panel);
+  if (id) localStorage.setItem(panelCollapsedStoragePrefix + id, collapsed ? "1" : "0");
+}
+
+function setPanelToggleLabel(button, collapsed) {
+  const source = collapsed ? "Bereich ausklappen" : "Bereich einklappen";
+  button.dataset.i18nAria = source;
+  button.setAttribute("aria-label", tr(source));
+}
+
+function setPanelCollapsed(panel, collapsed, remember = false) {
+  const button = panel.querySelector(".panelToggle");
+  panel.classList.toggle("isCollapsed", collapsed);
+  if (button) {
+    button.setAttribute("aria-expanded", String(!collapsed));
+    setPanelToggleLabel(button, collapsed);
+  }
+  if (remember) rememberPanelCollapsed(panel, collapsed);
+}
+
+function initCollapsiblePanels() {
+  for (const panel of document.querySelectorAll("section.panel")) {
+    const heading = panel.querySelector(":scope > h2");
+    if (!heading || heading.querySelector(".panelToggle")) continue;
+    const id = panelId(panel);
+    if (id) panel.dataset.panelId = id;
+
+    const title = document.createElement("span");
+    title.className = "panelTitle";
+    while (heading.firstChild) title.append(heading.firstChild);
+
+    const summary = document.createElement("span");
+    summary.className = "panelSummary";
+    if (panel.classList.contains("wifiSection")) summary.classList.add("wifiSummary");
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "panelToggle";
+    toggle.innerHTML = '<svg aria-hidden="true"><use href="#icon-chevron"></use></svg>';
+    toggle.addEventListener("click", () => setPanelCollapsed(panel, !panel.classList.contains("isCollapsed"), true));
+
+    heading.classList.add("panelHeader");
+    heading.append(title, summary, toggle);
+
+    const body = document.createElement("div");
+    body.className = "panelBody";
+    while (heading.nextSibling) body.append(heading.nextSibling);
+    panel.append(body);
+    setPanelCollapsed(panel, true);
+  }
+}
+
+function applyPanelStartState(config) {
+  const setupOpenPanels = new Set(["statusSection", "wifiSection", "accessSection", "weatherSection", "helpSection"]);
+  const normalOpenPanels = new Set(["statusSection", "helpSection"]);
+  const isFirstSetup = !String(config.ssid || "").trim() || config.adminPasswordIsDefault;
+  const openPanels = isFirstSetup ? setupOpenPanels : normalOpenPanels;
+
+  for (const panel of document.querySelectorAll("section.panel")) {
+    const id = panelId(panel);
+    const savedCollapsed = storedPanelCollapsed(panel);
+    const shouldBeCollapsed = savedCollapsed ?? (id === "displaySection" || !openPanels.has(id));
+    setPanelCollapsed(panel, shouldBeCollapsed);
+  }
+}
+
+function applyNormalPanelStartState() {
+  applyPanelStartState({ ssid: "configured", adminPasswordIsDefault: false });
+}
+
+function updateWifiSummary() {
+  const summary = document.querySelector(".wifiSummary");
+  if (!summary) return;
+  const ssid = $("ssid")?.value.trim() || "";
+  summary.textContent = ssid;
+  summary.hidden = !ssid;
 }
 
 function fillPins() {
@@ -395,6 +337,8 @@ function setForm(config) {
   $("urlLine").textContent = config.url || "-";
   $("adminUsername").value = config.adminUsername || config.defaultAdminUsername || "admin";
   updateAdminPasswordPlaceholder();
+  updateWifiSummary();
+  applyPanelStartState(config);
   updateRangeValues();
   updateNightControlsFromStored();
   showAdminReminder(config);
@@ -445,6 +389,10 @@ async function loadStatus() {
   const weatherError = status.weatherError ? ` - ${tr("Fehler")}: ${tr(status.weatherError)}` : "";
   $("weatherLine").textContent = `${weatherDescription(status.weatherCode)}${weatherTemp}${weatherRange}${provider}${weatherError}`;
   $("urlLine").textContent = status.url || "-";
+  currentFirmwareVersion = status.firmwareVersion || currentFirmwareVersion;
+  $("firmwareLine").textContent = formatVersion(status.firmwareVersion) || "-";
+  updateStaticVersionLines();
+  renderFirmwareSelectionVersion(selectedFirmwareVersion);
   if (status.locationLabel || status.cityName) {
     $("locationLine").textContent = `${status.locationLabel || status.cityName} - ${status.url || ""}`;
   }
@@ -485,6 +433,7 @@ async function scanNetworks() {
     btn.textContent = `${network.ssid} ${network.rssi} dBm`;
     btn.addEventListener("click", () => {
       $("ssid").value = network.ssid;
+      updateWifiSummary();
     });
     $("networks").append(btn);
   }
@@ -524,12 +473,17 @@ async function factoryReset() {
 
 fillPins();
 fillWeatherIntervals();
+initCollapsiblePanels();
+applyNormalPanelStartState();
+resetUpdateInputs();
 applyLanguage();
+updateStaticVersionLines();
 loadConfig().catch(() => message("Konfiguration konnte nicht geladen werden."));
 loadStatus().catch(() => {});
 setInterval(loadStatus, 5000);
 
 $("languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
+$("ssid").addEventListener("input", updateWifiSummary);
 $("adminReminderGo").addEventListener("click", openAdminAccess);
 $("adminReminderDismiss").addEventListener("click", () => closeAdminReminder(true));
 $("saveBtn").addEventListener("click", saveConfig);
@@ -548,3 +502,8 @@ $("weatherBtn").addEventListener("click", refreshWeather);
 $("restartBtn").addEventListener("click", () => postAction("/api/restart", "Neustart läuft..."));
 $("settingsResetBtn").addEventListener("click", resetSettings);
 $("factoryResetBtn").addEventListener("click", factoryReset);
+$("firmwareUpdateBtn").addEventListener("click", uploadFirmware);
+$("firmwareFile").addEventListener("change", updateFirmwareSelectionInfo);
+$("webUpdateBtn").addEventListener("click", uploadWebInterface);
+$("webFile").addEventListener("change", updateWebSelectionInfo);
+window.addEventListener("pageshow", resetUpdateInputs);

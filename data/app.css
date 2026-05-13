@@ -27,6 +27,8 @@ body {
 }
 
 main {
+  display: flex;
+  flex-direction: column;
   width: min(860px, calc(100% - 24px));
   margin: 0 auto;
   padding: 20px 0 32px;
@@ -57,6 +59,7 @@ footer {
 }
 
 footer {
+  order: 3;
   position: sticky;
   bottom: 0;
   z-index: 5;
@@ -103,6 +106,30 @@ h2 {
   margin-bottom: 14px;
 }
 
+.panelHeader {
+  margin-bottom: 0;
+}
+
+.panelTitle {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.panelSummary {
+  display: none;
+  min-width: 0;
+  max-width: 240px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .iconSprite {
   display: none;
 }
@@ -132,6 +159,27 @@ h2 {
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
+}
+
+.panelToggle {
+  width: 36px;
+  min-height: 36px;
+  margin-left: auto;
+  padding: 0;
+  border-color: var(--section-line);
+  background: var(--section-tint);
+  color: var(--section-accent);
+}
+
+.panelToggle svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  transition: transform 0.16s ease;
 }
 
 p,
@@ -164,6 +212,26 @@ p,
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
 }
 
+.panelBody {
+  margin-top: 14px;
+}
+
+.panel.isCollapsed {
+  background: var(--panel);
+}
+
+.panel.isCollapsed .panelBody {
+  display: none;
+}
+
+.panel.isCollapsed .wifiSummary:not([hidden]) {
+  display: inline-block;
+}
+
+.panel.isCollapsed .panelToggle svg {
+  transform: rotate(-90deg);
+}
+
 .statusSection {
   --section-accent: #4fd1c5;
   --section-tint: rgba(79, 209, 197, 0.08);
@@ -189,6 +257,7 @@ p,
 }
 
 .displaySection {
+  order: 1;
   --section-accent: #f8d66d;
   --section-tint: rgba(248, 214, 109, 0.08);
   --section-line: rgba(248, 214, 109, 0.34);
@@ -212,7 +281,14 @@ p,
   --section-line: rgba(255, 196, 125, 0.34);
 }
 
+.updateSection {
+  --section-accent: #70e0a1;
+  --section-tint: rgba(112, 224, 161, 0.08);
+  --section-line: rgba(112, 224, 161, 0.34);
+}
+
 .helpSection {
+  order: 2;
   --section-accent: #9bd7ff;
   --section-tint: rgba(155, 215, 255, 0.08);
   --section-line: rgba(155, 215, 255, 0.34);
@@ -247,6 +323,10 @@ p,
   font-size: 14px;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.statusGrid strong + span {
+  margin-top: 8px;
 }
 
 .grid {
@@ -326,6 +406,35 @@ input[type="color"] {
   display: none;
 }
 
+.fileRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.updateStack {
+  display: grid;
+  gap: 18px;
+}
+
+.updateStack > div + div {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
+input[type="file"] {
+  min-height: 40px;
+  padding: 7px 10px;
+}
+
+progress {
+  width: 100%;
+  height: 12px;
+  margin-top: 12px;
+  accent-color: var(--section-accent);
+}
+
 .rangeRow input[type="number"] {
   padding: 0 8px;
   color: var(--accent-strong);
@@ -380,6 +489,24 @@ button:hover {
 .hint {
   margin-top: 12px;
   font-size: 13px;
+}
+
+.updateVersion {
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+.updateVersion.isMuted {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.updateVersion.isWarning {
+  color: #ffd0d8;
+}
+
+.updateVersion[hidden] {
+  display: none;
 }
 
 .warning {
@@ -492,6 +619,7 @@ details li + li {
 @media (max-width: 560px) {
   header,
   .headerActions,
+  .fileRow,
   .footerActions,
   .row {
     grid-template-columns: 1fr;

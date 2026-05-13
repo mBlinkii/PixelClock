@@ -20,6 +20,9 @@ constexpr uint32_t NTP_RETRY_MS = 5UL * 60UL * 1000UL;
 constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 20000;
 constexpr uint32_t HTTP_TIMEOUT_MS = 8000;
 constexpr uint32_t BOOT_GREETING_MS = 9000;
+constexpr uint8_t WEATHER_PROVIDER_OPEN_METEO = 0;
+constexpr uint8_t WEATHER_PROVIDER_OPEN_WEATHER_MAP = 1;
+constexpr uint8_t WEATHER_PROVIDER_DWD = 2;
 constexpr int LEFT_SLOT_X = 1;
 constexpr int VALUE_SLOT_X = 13;
 constexpr int VALUE_SLOT_W = 18;
@@ -28,6 +31,9 @@ constexpr int LEFT_VALUE_X = 1;
 constexpr int LEFT_VALUE_W = 18;
 constexpr const char *DEFAULT_ADMIN_USERNAME = "admin";
 constexpr const char *DEFAULT_ADMIN_PASSWORD = "pixelclock";
+#define FIRMWARE_VERSION_TEXT "0.1.3"
+constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
+extern const char FIRMWARE_VERSION_BINARY_MARKER[];
 constexpr uint8_t AUTH_CONFIG_VERSION = 1;
 constexpr uint8_t MIN_ADMIN_PASSWORD_LENGTH = 8;
 
@@ -42,7 +48,7 @@ struct AppConfig {
   String timezone = "CET-1CEST,M3.5.0,M10.5.0/3";
   float latitude = 52.52;
   float longitude = 13.41;
-  uint8_t weatherProvider = 0;
+  uint8_t weatherProvider = WEATHER_PROVIDER_OPEN_METEO;
   uint8_t weatherIntervalHalfHours = DEFAULT_WEATHER_INTERVAL_HALF_HOURS;
   String openWeatherApiKey;
   uint8_t width = DEFAULT_WIDTH;
@@ -54,6 +60,7 @@ struct AppConfig {
   uint8_t origin = 0;
   uint8_t displayMode = 0;
   uint8_t temperatureUnit = 0;
+  bool weatherIconEnabled = true;
   uint8_t hourFormat = 24;
   bool colorRgb = false;
   uint8_t pageSeconds = 8;
@@ -100,9 +107,12 @@ extern bool authConfigMigrationNeeded;
 extern bool pendingCityResolve;
 extern bool pendingWeatherFetch;
 extern bool pendingTimeSync;
+extern bool pendingRestart;
+extern uint32_t restartAt;
 
 void loadConfig();
 void saveConfig();
+void keepFirmwareVersionBinaryMarker();
 CRGB packedColor(uint32_t value);
 String colorToHex(uint32_t value);
 uint32_t parseColor(String value, uint32_t fallback);
@@ -127,9 +137,11 @@ bool resolveCity();
 String urlEncode(const String &input);
 String timezoneFromIana(const String &iana);
 int normalizeOpenWeatherCode(int code);
-void configureWeatherClient(WiFiClientSecure &client, bool openWeatherMap);
+int normalizeBrightSkyIcon(const char *icon);
+void configureWeatherClient(WiFiClientSecure &client, uint8_t weatherProvider);
 
 bool hasAdminPassword();
 bool requireAdminAuth(AsyncWebServerRequest *request);
 void sendJsonError(AsyncWebServerRequest *request, int code, const String &message);
+void scheduleRestart(uint32_t delayMs = 800);
 void setupServer();
