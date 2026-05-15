@@ -63,7 +63,14 @@ function setLanguage(language) {
   currentLanguage = language === "de" ? "de" : "en";
   localStorage.setItem("pixelClockLanguage", currentLanguage);
   applyLanguage();
+  saveLanguagePreference().catch(() => {});
   loadStatus().catch(() => {});
+}
+
+async function saveLanguagePreference() {
+  const data = new URLSearchParams();
+  data.set("language", currentLanguage);
+  await fetch("/api/language", { method: "POST", body: data, credentials: "same-origin" });
 }
 
 function message(text) {
@@ -326,6 +333,11 @@ function weatherDescription(code) {
 }
 
 function setForm(config) {
+  if (config.language === "de" || config.language === "en") {
+    currentLanguage = config.language;
+    localStorage.setItem("pixelClockLanguage", currentLanguage);
+    applyLanguage();
+  }
   for (const field of fields) {
     const el = $(field);
     if (!el) continue;
@@ -348,6 +360,7 @@ function formBody() {
   updateBrightnessLimits(true);
   syncNightStoredFromDisplay();
   const data = new URLSearchParams();
+  data.set("language", currentLanguage);
   for (const field of fields) {
     const el = $(field);
     if (!el) continue;

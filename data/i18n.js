@@ -90,7 +90,7 @@ const translations = {
     "WLAN, Stadt, Matrixgröße und Datenpin setzen.": "Set Wi-Fi, city, matrix size, and data pin.",
     "Speichern drücken und bei Bedarf neu starten.": "Press Save and restart if needed.",
     "Login und Sprache": "Login and language",
-    "Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung unter Admin-Zugriff. Die Sprache wird automatisch gewählt und kann oben umgestellt werden.": "The default login is admin / pixelclock. Change user and password after setup under Admin access. The language is selected automatically and can be changed at the top.",
+    "Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung unter Admin-Zugriff. Die Sprache kann oben umgestellt werden und steuert auch die Wochentage auf dem Display.": "The default login is admin / pixelclock. Change user and password after setup under Admin access. The language can be changed at the top and also controls the weekdays on the display.",
     "WLAN und Adresse": "Wi-Fi and address",
     "Die Browser-Adresse ist der Hostname für die .local-Adresse. Mit pixelclock erreichst du die Uhr normalerweise unter http://pixelclock.local. Wenn .local nicht klappt, nutze die IP-Adresse aus dem Router.": "The browser address is the hostname for the .local address. With pixelclock you usually reach the clock at http://pixelclock.local. If .local does not work, use the IP address from your router.",
     "Display einrichten": "Set up the display",

@@ -122,6 +122,7 @@ const char *glyphFor(char c) {
     case 'R': return "110101110101101";
     case 'S': return "111100111001111";
     case 'T': return "111010010010010";
+    case 'U': return "101101101101111";
     case 'E': return "111100110100111";
     case 'P': return "110101110100100";
     case 'W': return "101101111111101";
@@ -506,7 +507,9 @@ void drawSetupPrompt() {
 }
 
 String weekdayShort(const tm &t) {
-  static const char *days[] = {"SO", "MO", "DI", "MI", "DO", "FR", "SA"};
+  static const char *daysDe[] = {"SO", "MO", "DI", "MI", "DO", "FR", "SA"};
+  static const char *daysEn[] = {"SU", "MO", "TU", "WE", "TH", "FR", "SA"};
+  const char **days = config.language == "en" ? daysEn : daysDe;
   return days[t.tm_wday];
 }
 

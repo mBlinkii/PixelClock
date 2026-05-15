@@ -18,6 +18,7 @@ void sendConfigJson(AsyncWebServerRequest *request) {
   doc["adminPasswordSet"] = hasAdminPassword();
   doc["adminPasswordIsDefault"] = config.adminPassword == DEFAULT_ADMIN_PASSWORD;
   doc["minAdminPasswordLength"] = MIN_ADMIN_PASSWORD_LENGTH;
+  doc["language"] = config.language;
   doc["hostname"] = config.hostname;
   doc["url"] = "http://" + config.hostname + ".local";
   doc["cityName"] = config.cityName;
@@ -131,6 +132,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   if (newPassword.length() > 0) config.password = newPassword;
   config.adminUsername = newAdminUsername;
   if (newAdminPassword.length() > 0) config.adminPassword = newAdminPassword;
+  config.language = normalizeLanguage(paramValue(request, "language", config.language));
   config.hostname = sanitizeHostname(paramValue(request, "hostname", config.hostname));
   config.cityName = paramValue(request, "cityName", config.cityName);
   config.cityName.trim();
@@ -215,6 +217,20 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   request->send(200, "application/json", body);
 }
 
+void handleLanguagePost(AsyncWebServerRequest *request) {
+  if (!requireAdminAuth(request)) return;
+  config.language = normalizeLanguage(paramValue(request, "language", config.language));
+  saveConfig();
+  renderDisplay();
+
+  JsonDocument doc;
+  doc["ok"] = true;
+  doc["language"] = config.language;
+  String body;
+  serializeJson(doc, body);
+  request->send(200, "application/json", body);
+}
+
 void sendStatusJson(AsyncWebServerRequest *request) {
   if (!requireAdminAuth(request)) return;
   JsonDocument doc;
@@ -225,6 +241,7 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   doc["url"] = "http://" + config.hostname + ".local";
   doc["cityName"] = config.cityName;
   doc["locationLabel"] = config.locationLabel;
+  doc["language"] = config.language;
   doc["firmwareVersion"] = FIRMWARE_VERSION;
   doc["weatherProvider"] = weatherProviderName();
   doc["rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
@@ -315,6 +332,7 @@ void handleFactoryReset(AsyncWebServerRequest *request) {
 void setupServer() {
   server.on("/api/config", HTTP_GET, sendConfigJson);
   server.on("/api/config", HTTP_POST, handleConfigPost);
+  server.on("/api/language", HTTP_POST, handleLanguagePost);
   server.on("/api/status", HTTP_GET, sendStatusJson);
   server.on("/api/networks", HTTP_GET, handleNetworks);
   server.on("/api/restart", HTTP_POST, restartSoon);

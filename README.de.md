@@ -4,8 +4,8 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.3`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.7`
+Aktuelle Firmware-Version: `0.1.4`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.8`
 
 ## Funktionen
 
@@ -17,7 +17,7 @@ Aktuelle LittleFS-Weboberflächen-Version: `0.1.7`
 - automatische Seitenrotation oder feste Seite
 - Open-Meteo oder DWD ohne API-Key, oder OpenWeatherMap mit eigenem API-Key
 - Standortsuche per Stadtname mit automatischer Zeitzone für viele Regionen
-- zweisprachige Weboberfläche, Deutsch/Englisch, automatische Browser-Sprachauswahl
+- zweisprachige Weboberfläche, Deutsch/Englisch, mit passenden Wochentagen auf dem Display
 - integrierte Hilfe/Wiki direkt in der Weboberfläche
 - HTTP-Login vor der Weboberfläche
 - Erinnerung zum Ändern des Standard-Admin-Passworts
@@ -146,7 +146,7 @@ http://<dein-hostname>.local
 - `Helligkeit`: Tages- und Nacht-Helligkeit in Prozent, Sicherheits-Freischalter und Nachtzeitraum.
 - `Hilfe & Wiki`: kurze Einrichtungshilfe und Problembehandlung direkt im Interface.
 
-Die Sprache wird automatisch anhand der Browser-/Systemsprache gewählt. Oben im Header kannst du manuell zwischen Deutsch und Englisch wechseln. Die Auswahl wird im Browser gespeichert.
+Oben im Header kannst du zwischen Deutsch und Englisch wechseln. Die Auswahl wird im Browser und auf der Uhr gespeichert; die Wochentage auf dem Display folgen dieser Sprache.
 
 ## Wetter
 

@@ -1,5 +1,5 @@
 const littleFsVersionMarkerPrefix = "PIXEL_CLOCK_LITTLEFS_VERSION=";
-const littleFsVersionMarker = "PIXEL_CLOCK_LITTLEFS_VERSION=0.1.7";
+const littleFsVersionMarker = "PIXEL_CLOCK_LITTLEFS_VERSION=0.1.8";
 const littleFsVersion = littleFsVersionMarker.slice(littleFsVersionMarkerPrefix.length);
 let currentFirmwareVersion = "";
 let selectedFirmwareVersion = "";

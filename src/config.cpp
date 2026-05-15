@@ -3,6 +3,12 @@
 // Configuration is stored in ESP32 Preferences. Keep AppConfig defaults,
 // loadConfig(), saveConfig(), sendConfigJson(), handleConfigPost(), and
 // data/app.js in sync when adding or changing a setting.
+String normalizeLanguage(String value) {
+  value.trim();
+  value.toLowerCase();
+  return value == "en" ? "en" : DEFAULT_LANGUAGE;
+}
+
 void loadConfig() {
   prefs.begin("pixel-clock", true);
   const uint8_t authConfigVersion = prefs.getUChar("authVer", 0);
@@ -16,6 +22,7 @@ void loadConfig() {
     config.adminPassword = DEFAULT_ADMIN_PASSWORD;
     authConfigMigrationNeeded = true;
   }
+  config.language = prefs.getString("lang", config.language);
   config.hostname = prefs.getString("host", config.hostname);
   config.cityName = prefs.getString("city", config.cityName);
   config.locationLabel = prefs.getString("locLabel", config.locationLabel);
@@ -68,6 +75,7 @@ void loadConfig() {
   config.temperatureUnit = constrain(config.temperatureUnit, 0, 1);
   config.colorGradientMode = constrain(config.colorGradientMode, 0, 2);
   if (config.hourFormat != 12) config.hourFormat = 24;
+  config.language = normalizeLanguage(config.language);
   config.selectedPage = constrain(config.selectedPage, 0, 2);
   config.hostname = sanitizeHostname(config.hostname);
   config.adminUsername = sanitizeHostname(config.adminUsername);
@@ -82,6 +90,7 @@ void saveConfig() {
   prefs.putUChar("authVer", AUTH_CONFIG_VERSION);
   prefs.putString("adminUser", config.adminUsername);
   prefs.putString("admin", config.adminPassword);
+  prefs.putString("lang", config.language);
   prefs.putString("host", config.hostname);
   prefs.putString("city", config.cityName);
   prefs.putString("locLabel", config.locationLabel);
