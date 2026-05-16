@@ -66,6 +66,9 @@ void setupFastLed() {
 }
 
 // Matrix text, icon, page, and frame rendering.
+constexpr int TIME_HOUR_OFFSET_X = 1;
+constexpr int DATE_PAGE_OFFSET_X = 1;
+
 void updateBrightnessForTime() {
   struct tm timeinfo;
   uint8_t target = config.brightness;
@@ -257,8 +260,8 @@ void drawBigClockCentered(const tm &timeinfo) {
   snprintf(minutes, sizeof(minutes), "%02d", timeinfo.tm_min);
   const CRGB textColor = packedColor(config.colorText);
   const CRGB colonColor = packedColor(config.colorColon);
-  drawBigChar(1, 1, hours[0], textColor);
-  drawBigChar(7, 1, hours[1], textColor);
+  drawBigChar(1 + TIME_HOUR_OFFSET_X, 1, hours[0], textColor);
+  drawBigChar(7 + TIME_HOUR_OFFSET_X, 1, hours[1], textColor);
   px(15, 3, textPixelColor(15, 3, colonColor));
   px(16, 3, textPixelColor(16, 3, colonColor));
   px(15, 5, textPixelColor(15, 5, colonColor));
@@ -310,7 +313,7 @@ void drawLargeDateCentered(int y) {
   char buffer[9];
   snprintf(buffer, sizeof(buffer), "%02d.%02d.%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1, (timeinfo.tm_year + 1900) % 100);
   const String text(buffer);
-  int cursor = max(0, (int(config.width) - 28) / 2);
+  int cursor = max(0, (int(config.width) - 28) / 2) + DATE_PAGE_OFFSET_X;
   for (uint8_t i = 0; i < text.length(); i++) {
     if (text[i] == '.') {
       px(cursor, y + 5, textPixelColor(cursor, y + 5, packedColor(config.colorPoint)));
@@ -352,7 +355,7 @@ void drawCompactDateCentered(int y) {
   char buffer[11];
   snprintf(buffer, sizeof(buffer), "%02d.%02d.%04d", timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900);
   const String text(buffer);
-  int cursor = max(0, (int(config.width) - int(compactTextWidth3x5(text))) / 2);
+  int cursor = max(0, (int(config.width) - int(compactTextWidth3x5(text))) / 2) + DATE_PAGE_OFFSET_X;
   for (uint8_t i = 0; i < text.length(); i++) {
     if (text[i] == '.') {
       px(cursor, y + 4, textPixelColor(cursor, y + 4, packedColor(config.colorPoint)));
@@ -385,7 +388,7 @@ void drawFixedClock(int x, int y, const tm &timeinfo, bool showColon) {
   }
   snprintf(hours, sizeof(hours), "%02d", hour);
   snprintf(minutes, sizeof(minutes), "%02d", timeinfo.tm_min);
-  drawText3x5(x, y, hours, packedColor(config.colorText));
+  drawText3x5(x + TIME_HOUR_OFFSET_X, y, hours, packedColor(config.colorText));
   if (showColon) drawChar3x5(x + 8, y, ':', packedColor(config.colorColon));
   drawText3x5(x + 11, y, minutes, packedColor(config.colorText));
 }
@@ -562,13 +565,13 @@ void drawDatePage() {
     return;
   }
   if (config.displayMode == 1) {
-    drawDateValue(LEFT_VALUE_X, 1);
-    drawRightAlignedText(RIGHT_ICON_X, 1, 9, weekdayShort(timeinfo), packedColor(config.colorWeekday));
+    drawDateValue(LEFT_VALUE_X + DATE_PAGE_OFFSET_X, 1);
+    drawRightAlignedText(RIGHT_ICON_X + DATE_PAGE_OFFSET_X, 1, 9, weekdayShort(timeinfo), packedColor(config.colorWeekday));
   } else if (config.displayMode == 2) {
     drawLargeDateCentered(1);
   } else {
-    drawText3x5(LEFT_SLOT_X, 1, weekdayShort(timeinfo), packedColor(config.colorWeekday));
-    drawDateValue(VALUE_SLOT_X, 1);
+    drawText3x5(LEFT_SLOT_X + DATE_PAGE_OFFSET_X, 1, weekdayShort(timeinfo), packedColor(config.colorWeekday));
+    drawDateValue(VALUE_SLOT_X + DATE_PAGE_OFFSET_X, 1);
   }
 }
 

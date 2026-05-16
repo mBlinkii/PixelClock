@@ -4,7 +4,7 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.4`
+Current firmware version: `0.1.5`
 Current LittleFS web interface version: `0.1.8`
 
 ## Features
