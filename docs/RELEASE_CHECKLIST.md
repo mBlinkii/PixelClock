@@ -32,3 +32,6 @@ Use this before publishing a release or pushing a public branch.
 - Check `git status --short`.
 - Check ignored files with `git status --ignored --short` if unsure.
 - Avoid committing `.pio/`, generated firmware binaries, local VS Code C++ config, or upload logs.
+- Push a `vX.Y.Z` tag after merging the release commit. The `Release` GitHub
+  Actions workflow builds firmware and LittleFS images, creates the GitHub
+  release, and uploads the versioned `.bin` files.
