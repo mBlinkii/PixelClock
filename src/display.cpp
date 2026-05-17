@@ -68,6 +68,8 @@ void setupFastLed() {
 // Matrix text, icon, page, and frame rendering.
 constexpr int TIME_HOUR_OFFSET_X = 1;
 constexpr int DATE_PAGE_OFFSET_X = 1;
+constexpr int TEXT_LEFT_ICON_RIGHT_OFFSET_X = -1;
+constexpr int TEXT_LEFT_ICON_RIGHT_ICON_OFFSET_X = 1;
 
 void updateBrightnessForTime() {
   struct tm timeinfo;
@@ -548,8 +550,8 @@ void drawClockPage() {
     return;
   }
   if (config.displayMode == 1) {
-    drawFixedClock(LEFT_VALUE_X, 1, timeinfo, true);
-    drawWeatherIcon(RIGHT_ICON_X, 0);
+    drawFixedClock(LEFT_VALUE_X + TEXT_LEFT_ICON_RIGHT_OFFSET_X, 1, timeinfo, true);
+    drawWeatherIcon(RIGHT_ICON_X + TEXT_LEFT_ICON_RIGHT_ICON_OFFSET_X, 0);
   } else if (config.displayMode == 2) {
     drawBigClockCentered(timeinfo);
   } else {
@@ -565,7 +567,7 @@ void drawDatePage() {
     return;
   }
   if (config.displayMode == 1) {
-    drawDateValue(LEFT_VALUE_X + DATE_PAGE_OFFSET_X, 1);
+    drawDateValue(LEFT_VALUE_X + DATE_PAGE_OFFSET_X + TEXT_LEFT_ICON_RIGHT_OFFSET_X, 1);
     drawRightAlignedText(RIGHT_ICON_X + DATE_PAGE_OFFSET_X, 1, 9, weekdayShort(timeinfo), packedColor(config.colorWeekday));
   } else if (config.displayMode == 2) {
     drawLargeDateCentered(1);
@@ -580,9 +582,9 @@ void drawWeatherPage() {
   if (config.displayMode == 1) {
     drawText3x5(LEFT_VALUE_X, 1, text, packedColor(config.colorText));
     if (config.weatherIconEnabled) {
-      drawWeatherIcon(RIGHT_ICON_X, 0);
+      drawWeatherIcon(RIGHT_ICON_X + TEXT_LEFT_ICON_RIGHT_ICON_OFFSET_X, 0);
     } else {
-      drawTemperatureIcon(RIGHT_ICON_X, 0);
+      drawTemperatureIcon(RIGHT_ICON_X + TEXT_LEFT_ICON_RIGHT_ICON_OFFSET_X, 0);
     }
   } else if (config.displayMode == 2) {
     drawBigTextCentered(1, text);
