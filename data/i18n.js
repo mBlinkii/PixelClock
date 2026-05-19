@@ -56,6 +56,8 @@ const translations = {
     "Temperatur": "Temperature",
     "Aktuelles Wetter-Icon anzeigen": "Show current weather icon",
     "Seitenwechsel": "Page interval",
+    "Uhrzeit-Dauer": "Time duration",
+    "Andere Seiten": "Other pages",
     "Feste Seite": "Fixed page",
     "Uhrzeit": "Time",
     "Datum": "Date",

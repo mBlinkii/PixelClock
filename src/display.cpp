@@ -70,6 +70,7 @@ constexpr int TIME_HOUR_OFFSET_X = 1;
 constexpr int DATE_PAGE_OFFSET_X = 1;
 constexpr int TEXT_LEFT_ICON_RIGHT_OFFSET_X = -1;
 constexpr int TEXT_LEFT_ICON_RIGHT_ICON_OFFSET_X = 1;
+constexpr int TEXT_RIGHT_ICON_LEFT_WEEKDAY_OFFSET_X = -1;
 
 void updateBrightnessForTime() {
   struct tm timeinfo;
@@ -94,7 +95,7 @@ CRGB textPixelColor(int x, int y, CRGB fallback) {
   if (forceTextGradient && mode == 0) mode = 1;
   if (mode == 0) return fallback;
   const uint8_t hue = mode == 2
-    ? (uint8_t)((millis() / 55) & 0xff)
+    ? (uint8_t)((millis() / 180) & 0xff)
     : (uint8_t)((x * 9 + y * 4 + millis() / 90) & 0xff);
   return CHSV(hue, 220, 255);
 }
@@ -572,7 +573,7 @@ void drawDatePage() {
   } else if (config.displayMode == 2) {
     drawLargeDateCentered(1);
   } else {
-    drawText3x5(LEFT_SLOT_X + DATE_PAGE_OFFSET_X, 1, weekdayShort(timeinfo), packedColor(config.colorWeekday));
+    drawText3x5(LEFT_SLOT_X + DATE_PAGE_OFFSET_X + TEXT_RIGHT_ICON_LEFT_WEEKDAY_OFFSET_X, 1, weekdayShort(timeinfo), packedColor(config.colorWeekday));
     drawDateValue(VALUE_SLOT_X + DATE_PAGE_OFFSET_X, 1);
   }
 }

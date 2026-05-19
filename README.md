@@ -4,8 +4,8 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.7`
-Current LittleFS web interface version: `0.1.8`
+Current firmware version: `0.1.10`
+Current LittleFS web interface version: `0.1.9`
 
 ## Features
 
@@ -141,7 +141,7 @@ http://<your-hostname>.local
 - `Admin access`: admin user and admin password for the browser login.
 - `Location, weather and access`: city, weather provider, API key, and time zone.
 - `Display hardware`: matrix size, data pin, color order, and LED mapping.
-- `Display and pages`: layout, time format, temperature format, and page rotation.
+- `Display and pages`: layout, time format, temperature format, fixed page, and separate rotation durations for the time page and other pages.
 - `Colors`: colors for weekday, text, dots, and colon.
 - `Brightness`: day and night brightness in percent, safety unlock, and night period.
 - `Help & Wiki`: short setup guide and troubleshooting directly in the interface.

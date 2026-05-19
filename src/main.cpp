@@ -38,7 +38,8 @@ void loop() {
     lastRender = now;
     renderDisplay();
   }
-  if (config.autoPage && !displayTest && now - lastPageSwitch >= config.pageSeconds * 1000UL) {
+  const uint8_t pageDurationSeconds = currentPage == 0 ? config.timePageSeconds : config.pageSeconds;
+  if (config.autoPage && !displayTest && now - lastPageSwitch >= pageDurationSeconds * 1000UL) {
     lastPageSwitch = now;
     currentPage = (currentPage + 1) % 3;
   }

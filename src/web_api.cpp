@@ -42,6 +42,7 @@ void sendConfigJson(AsyncWebServerRequest *request) {
   doc["hourFormat"] = config.hourFormat;
   doc["colorOrder"] = config.colorRgb ? "RGB" : "GRB";
   doc["pageSeconds"] = config.pageSeconds;
+  doc["timePageSeconds"] = config.timePageSeconds;
   doc["autoPage"] = config.autoPage;
   doc["selectedPage"] = config.selectedPage;
   doc["nightBrightness"] = config.nightBrightness;
@@ -160,6 +161,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   config.hourFormat = paramValue(request, "hourFormat", String(config.hourFormat)).toInt() == 12 ? 12 : 24;
   config.colorRgb = paramValue(request, "colorOrder", "GRB") == "RGB";
   config.pageSeconds = constrain(paramValue(request, "pageSeconds", String(config.pageSeconds)).toInt(), 3, 60);
+  config.timePageSeconds = constrain(paramValue(request, "timePageSeconds", String(config.timePageSeconds)).toInt(), 3, 60);
   config.autoPage = paramValue(request, "autoPage", "0") == "1";
   config.selectedPage = constrain(paramValue(request, "selectedPage", String(config.selectedPage)).toInt(), 0, 2);
   config.nightBrightness = constrain(paramValue(request, "nightBrightness", String(config.nightBrightness)).toInt(), 0, maxBrightness);

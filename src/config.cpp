@@ -48,6 +48,7 @@ void loadConfig() {
   config.hourFormat = prefs.getUChar("hourFmt", config.hourFormat);
   config.colorRgb = prefs.getBool("rgb", config.colorRgb);
   config.pageSeconds = prefs.getUChar("pageSec", config.pageSeconds);
+  config.timePageSeconds = prefs.getUChar("timePageSec", config.timePageSeconds);
   config.autoPage = prefs.getBool("autoPage", config.autoPage);
   config.selectedPage = prefs.getUChar("selPage", config.selectedPage);
   config.nightBrightness = prefs.getUChar("nightB", config.nightBrightness);
@@ -67,6 +68,7 @@ void loadConfig() {
   config.brightness = constrain(config.brightness, 0, maxBrightness);
   config.nightBrightness = constrain(config.nightBrightness, 0, maxBrightness);
   config.pageSeconds = constrain(config.pageSeconds, 3, 60);
+  config.timePageSeconds = constrain(config.timePageSeconds, 3, 60);
   config.weatherProvider = constrain(config.weatherProvider, 0, WEATHER_PROVIDER_DWD);
   config.weatherIntervalHalfHours = constrain(config.weatherIntervalHalfHours, 1, 48);
   config.wiringMode = constrain(config.wiringMode, 0, 3);
@@ -113,6 +115,7 @@ void saveConfig() {
   prefs.putUChar("hourFmt", config.hourFormat);
   prefs.putBool("rgb", config.colorRgb);
   prefs.putUChar("pageSec", config.pageSeconds);
+  prefs.putUChar("timePageSec", config.timePageSeconds);
   prefs.putBool("autoPage", config.autoPage);
   prefs.putUChar("selPage", config.selectedPage);
   prefs.putUChar("nightB", config.nightBrightness);

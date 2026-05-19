@@ -3,7 +3,7 @@ const safeBrightnessPercent = 40;
 const fields = [
   "ssid", "hostname", "cityName", "timezone", "weatherProvider", "weatherIntervalHalfHours", "width", "height", "dataPin",
   "brightness", "fullBrightnessUnlocked", "wiringMode", "origin", "displayMode", "colorOrder",
-  "temperatureUnit", "weatherIconEnabled", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "pageSeconds",
+  "temperatureUnit", "weatherIconEnabled", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "timePageSeconds", "pageSeconds",
   "colorGradientMode", "autoPage", "selectedPage", "nightBrightness", "nightStart", "nightEnd"
 ];
 
@@ -333,6 +333,9 @@ function weatherDescription(code) {
 }
 
 function setForm(config) {
+  if (config.timePageSeconds === undefined || config.timePageSeconds === null) {
+    config.timePageSeconds = config.pageSeconds ?? 8;
+  }
   if (config.language === "de" || config.language === "en") {
     currentLanguage = config.language;
     localStorage.setItem("pixelClockLanguage", currentLanguage);
