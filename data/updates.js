@@ -1,5 +1,5 @@
 const littleFsVersionMarkerPrefix = "PIXEL_CLOCK_LITTLEFS_VERSION=";
-const littleFsVersionMarker = "PIXEL_CLOCK_LITTLEFS_VERSION=0.1.9";
+const littleFsVersionMarker = "PIXEL_CLOCK_LITTLEFS_VERSION=0.1.10";
 const littleFsVersion = littleFsVersionMarker.slice(littleFsVersionMarkerPrefix.length);
 let currentFirmwareVersion = "";
 let selectedFirmwareVersion = "";
@@ -297,6 +297,9 @@ async function uploadBinaryUpdate(options) {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", options.url);
     xhr.withCredentials = true;
+    if (window.authHeaderValue?.()) {
+      xhr.setRequestHeader("Authorization", window.authHeaderValue());
+    }
     xhr.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) progress.value = Math.round(event.loaded * 100 / event.total);
     });
@@ -311,6 +314,9 @@ async function uploadBinaryUpdate(options) {
         progress.value = 100;
         if (options.doneMessage) messageText(options.doneMessage(uploadInfo));
         else message(options.doneText);
+        if (data.restart && window.showRestartOverlay) {
+          window.showRestartOverlay("Neustart läuft...");
+        }
         setTimeout(() => location.reload(), 9000);
       } else {
         message(data.error || (xhr.status === 401 ? "Admin-Anmeldung erforderlich." : options.failedText));

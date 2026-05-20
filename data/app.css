@@ -34,6 +34,50 @@ main {
   padding: 20px 0 32px;
 }
 
+main[hidden],
+.loginView[hidden],
+.restartNotice[hidden] {
+  display: none;
+}
+
+.loginView {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.loginPanel {
+  width: min(380px, 100%);
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(79, 209, 197, 0.34);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+}
+
+.loginPanel h1 {
+  margin-bottom: 2px;
+}
+
+.loginPanel h2 {
+  margin-bottom: 2px;
+}
+
+.loginPanel button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #041313;
+  font-weight: 700;
+}
+
+#loginMessage {
+  min-height: 20px;
+  color: var(--muted);
+}
+
 header,
 footer {
   display: flex;
@@ -199,6 +243,21 @@ p,
 
 #message:empty {
   display: none;
+}
+
+.restartNotice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(248, 214, 109, 0.42);
+  border-radius: 6px;
+  background: rgba(248, 214, 109, 0.08);
+  padding: 10px 12px;
+}
+
+.restartNotice strong {
+  color: var(--accent-strong);
 }
 
 .panel {
@@ -575,7 +634,8 @@ details li + li {
   margin-top: 5px;
 }
 
-.modalOverlay {
+.modalOverlay,
+.restartOverlay {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -585,11 +645,13 @@ details li + li {
   padding: 18px;
 }
 
-.modalOverlay[hidden] {
+.modalOverlay[hidden],
+.restartOverlay[hidden] {
   display: none;
 }
 
-.modal {
+.modal,
+.restartPanel {
   width: min(440px, 100%);
   border: 1px solid rgba(208, 181, 255, 0.42);
   border-radius: 8px;
@@ -600,6 +662,32 @@ details li + li {
 
 .modal h2 {
   margin-bottom: 10px;
+}
+
+.restartPanel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.restartPanel h2 {
+  margin-bottom: 0;
+}
+
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(79, 209, 197, 0.22);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .modalActions {
@@ -621,6 +709,7 @@ details li + li {
   .headerActions,
   .fileRow,
   .footerActions,
+  .restartNotice,
   .row {
     grid-template-columns: 1fr;
     flex-direction: column;

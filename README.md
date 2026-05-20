@@ -4,8 +4,8 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.10`
-Current LittleFS web interface version: `0.1.9`
+Current firmware version: `0.1.14`
+Current LittleFS web interface version: `0.1.10`
 
 ## Features
 
@@ -19,7 +19,7 @@ Current LittleFS web interface version: `0.1.9`
 - city-based location lookup with automatic time zone for many regions
 - bilingual web interface, German/English, with matching weekdays on the display
 - integrated help/wiki directly inside the web interface
-- HTTP login before the web interface is shown
+- Login page before settings are loaded
 - reminder to change the default admin password
 
 ## Hardware
@@ -61,7 +61,7 @@ New contributors can start with the compact technical overview in
 
 ## Default Login
 
-The browser asks for a login before the web interface is shown.
+The web interface shows its own login page before settings are loaded.
 
 ```text
 User: admin
@@ -134,11 +134,14 @@ If you changed the browser address, use:
 http://<your-hostname>.local
 ```
 
+Routers usually list the device as `pixelclock-xxxxxx`, where `xxxxxx` is built
+from the last three bytes of the ESP32 MAC address.
+
 ## Using the Web Interface
 
 - `Status`: shows weather, location, and address.
 - `Wi-Fi access`: network, Wi-Fi password, browser address, and Wi-Fi scan.
-- `Admin access`: admin user and admin password for the browser login.
+- `Admin access`: admin user and admin password for the web login.
 - `Location, weather and access`: city, weather provider, API key, and time zone.
 - `Display hardware`: matrix size, data pin, color order, and LED mapping.
 - `Display and pages`: layout, time format, temperature format, fixed page, and separate rotation durations for the time page and other pages.
@@ -200,7 +203,7 @@ The web interface is not embedded in the firmware binary. After changing anythin
 ### Login does not work
 
 - The default is `admin` / `pixelclock`.
-- If you changed credentials, clear the browser login cache or try a private window.
+- If you changed credentials, log in again with the new user and password.
 - After changing admin credentials, restart the clock if the interface reports that a restart is required.
 - If the admin reminder still appears after changing the password, hard reload the browser and check that `Save` succeeded.
 - If you still have access, use factory reset from the web interface.

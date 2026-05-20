@@ -10,7 +10,77 @@ const fields = [
 const $ = (id) => document.getElementById(id);
 const adminReminderStorageKey = "pixelClockAdminReminderDismissed";
 const panelCollapsedStoragePrefix = "pixelClockPanelCollapsed:";
+const authStorageKey = "pixelClockAuth";
 let currentLanguage = storedLanguage || ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
+let statusRefreshTimer = 0;
+
+function authHeaderValue() {
+  return sessionStorage.getItem(authStorageKey) || "";
+}
+
+window.authHeaderValue = authHeaderValue;
+
+function setAuthHeader(value) {
+  if (value) sessionStorage.setItem(authStorageKey, value);
+  else sessionStorage.removeItem(authStorageKey);
+}
+
+function basicAuthValue(username, password) {
+  const bytes = new TextEncoder().encode(`${username}:${password}`);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `Basic ${btoa(binary)}`;
+}
+
+function authHeaders(existingHeaders) {
+  const headers = new Headers(existingHeaders || {});
+  const auth = authHeaderValue();
+  if (auth) headers.set("Authorization", auth);
+  return headers;
+}
+
+function setAuthenticatedView(isAuthenticated) {
+  $("loginView").hidden = isAuthenticated;
+  $("appShell").hidden = !isAuthenticated;
+}
+
+function showLogin(text = "Bitte anmelden.") {
+  setAuthHeader("");
+  setAuthenticatedView(false);
+  $("loginMessage").textContent = tr(text);
+  $("loginPassword").value = "";
+  $("loginUsername").focus();
+  if (statusRefreshTimer) {
+    clearInterval(statusRefreshTimer);
+    statusRefreshTimer = 0;
+  }
+}
+
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    credentials: "same-origin",
+    headers: authHeaders(options.headers)
+  });
+  if (res.status === 401) {
+    showLogin("Bitte anmelden.");
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
+function showRestartNotice(visible) {
+  $("restartNotice").hidden = !visible;
+}
+
+function showRestartOverlay(text = "Neustart läuft...") {
+  $("restartOverlay").hidden = false;
+  const title = $("restartOverlay").querySelector("h2");
+  title.textContent = tr(text);
+  setTimeout(() => location.reload(), 9000);
+}
+
+window.showRestartOverlay = showRestartOverlay;
 function translateTextNodes(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
@@ -52,8 +122,10 @@ function applyLanguage() {
   document.documentElement.lang = currentLanguage;
   $("languageSelect").value = currentLanguage;
   fillWeatherIntervals();
-  translateTextNodes(document.querySelector("main"));
+  translateTextNodes($("appShell"));
+  translateTextNodes($("loginView"));
   translateTextNodes($("adminReminder"));
+  translateTextNodes($("restartOverlay"));
   translateAttributes();
   updateAdminPasswordPlaceholder();
   updateWifiSummary();
@@ -70,7 +142,7 @@ function setLanguage(language) {
 async function saveLanguagePreference() {
   const data = new URLSearchParams();
   data.set("language", currentLanguage);
-  await fetch("/api/language", { method: "POST", body: data, credentials: "same-origin" });
+  await apiFetch("/api/language", { method: "POST", body: data });
 }
 
 function message(text) {
@@ -381,12 +453,12 @@ function formBody() {
 }
 
 async function loadConfig() {
-  const res = await fetch("/api/config", { credentials: "same-origin" });
+  const res = await apiFetch("/api/config");
   setForm(await res.json());
 }
 
 async function loadStatus() {
-  const res = await fetch("/api/status", { credentials: "same-origin" });
+  const res = await apiFetch("/api/status");
   const status = await res.json();
   const mode = status.setupMode ? tr("Setup-AP") : tr("WLAN");
   const unit = status.temperatureUnit || "C";
@@ -416,7 +488,7 @@ async function loadStatus() {
 
 async function saveConfig() {
   message("Speichere...");
-  const res = await fetch("/api/config", { method: "POST", body: formBody(), credentials: "same-origin" });
+  const res = await apiFetch("/api/config", { method: "POST", body: formBody() });
   let data = {};
   try {
     data = await res.json();
@@ -432,15 +504,17 @@ async function saveConfig() {
     "Gespeichert.",
     data.cityResolutionPending ? "Ort wird im Hintergrund aktualisiert." : "",
     data.weatherRefreshPending ? "Wetter wird aktualisiert." : "",
-    data.authChanged ? "Login wurde geändert, bitte mit den neuen Daten neu laden." : "",
+    data.authChanged ? "Login wurde geändert, bitte mit den neuen Daten anmelden." : "",
     data.restartRequired ? "Neustart für Pin, Größe, Farbe, WLAN, Adresse oder Login nötig." : "Sofort aktiv."
   ];
   $("message").textContent = statusParts.filter(Boolean).map(tr).join(" ");
+  showRestartNotice(Boolean(data.restartRequired));
+  if (data.authChanged) showLogin("Login wurde geändert, bitte mit den neuen Daten anmelden.");
 }
 
 async function scanNetworks() {
   $("networks").textContent = tr("Suche...");
-  const res = await fetch("/api/networks", { credentials: "same-origin" });
+  const res = await apiFetch("/api/networks");
   const data = await res.json();
   $("networks").innerHTML = "";
   for (const network of data.networks || []) {
@@ -455,17 +529,18 @@ async function scanNetworks() {
   }
 }
 
-async function postAction(url, doneText) {
-  const res = await fetch(url, { method: "POST", credentials: "same-origin" });
+async function postAction(url, doneText, options = {}) {
+  const res = await apiFetch(url, { method: "POST" });
   if (!res.ok) {
     message(res.status === 401 ? "Admin-Anmeldung erforderlich." : "Aktion fehlgeschlagen.");
     return;
   }
   message(doneText);
+  if (options.restart) showRestartOverlay(doneText);
 }
 
 async function refreshWeather() {
-  const res = await fetch("/api/weather/refresh", { method: "POST", credentials: "same-origin" });
+  const res = await apiFetch("/api/weather/refresh", { method: "POST" });
   if (!res.ok) {
     message(res.status === 401 ? "Admin-Anmeldung erforderlich." : "Wetter konnte nicht aktualisiert werden.");
     return;
@@ -476,28 +551,73 @@ async function refreshWeather() {
 
 async function resetSettings() {
   if (!confirm(tr("Alle Einstellungen außer WLAN zurücksetzen und neu starten?"))) return;
-  await postAction("/api/reset/settings", "Einstellungen werden zurückgesetzt...");
-  setTimeout(() => location.reload(), 4000);
+  await postAction("/api/reset/settings", "Einstellungen werden zurückgesetzt...", { restart: true });
 }
 
 async function factoryReset() {
   if (!confirm(tr("Werksreset ausführen? Dabei werden auch WLAN-Daten gelöscht."))) return;
   if (!confirm(tr("Wirklich alles löschen? Der ESP startet danach im Setup-Modus."))) return;
-  await postAction("/api/reset/factory", "Werksreset läuft...");
-  setTimeout(() => location.reload(), 4000);
+  await postAction("/api/reset/factory", "Werksreset läuft...", { restart: true });
 }
 
-fillPins();
-fillWeatherIntervals();
-initCollapsiblePanels();
+async function startAuthenticatedApp() {
+  setAuthenticatedView(true);
+  try {
+    await loadConfig();
+    await loadStatus();
+    if (statusRefreshTimer) clearInterval(statusRefreshTimer);
+    statusRefreshTimer = setInterval(() => loadStatus().catch(() => {}), 5000);
+  } catch (error) {
+    if (error.message !== "Unauthorized") message("Konfiguration konnte nicht geladen werden.");
+  }
+}
+
+async function login(event) {
+  event.preventDefault();
+  const username = $("loginUsername").value.trim();
+  const password = $("loginPassword").value;
+  const auth = basicAuthValue(username, password);
+  $("loginMessage").textContent = tr("Anmeldung läuft...");
+  try {
+    const res = await fetch("/api/status", {
+      credentials: "same-origin",
+      headers: { Authorization: auth }
+    });
+    if (!res.ok) {
+      $("loginMessage").textContent = tr("Anmeldung fehlgeschlagen.");
+      return;
+    }
+    setAuthHeader(auth);
+    $("loginMessage").textContent = tr("Angemeldet.");
+    $("loginPassword").value = "";
+    await startAuthenticatedApp();
+  } catch (_) {
+    $("loginMessage").textContent = tr("Anmeldung fehlgeschlagen.");
+  }
+}
+
+function logout() {
+  showLogin("Bitte anmelden.");
+}
+
+function initUi() {
+  fillPins();
+  fillWeatherIntervals();
+  initCollapsiblePanels();
+}
+initUi();
 applyNormalPanelStartState();
 resetUpdateInputs();
 applyLanguage();
 updateStaticVersionLines();
-loadConfig().catch(() => message("Konfiguration konnte nicht geladen werden."));
-loadStatus().catch(() => {});
-setInterval(loadStatus, 5000);
+if (authHeaderValue()) {
+  startAuthenticatedApp();
+} else {
+  showLogin();
+}
 
+$("loginForm").addEventListener("submit", login);
+$("logoutBtn").addEventListener("click", logout);
 $("languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
 $("ssid").addEventListener("input", updateWifiSummary);
 $("adminReminderGo").addEventListener("click", openAdminAccess);
@@ -515,7 +635,8 @@ for (const id of ["nightStartDisplay", "nightStartPeriod", "nightEndDisplay", "n
 }
 $("testBtn").addEventListener("click", () => postAction("/api/display/test", "Testmuster gestartet."));
 $("weatherBtn").addEventListener("click", refreshWeather);
-$("restartBtn").addEventListener("click", () => postAction("/api/restart", "Neustart läuft..."));
+$("restartBtn").addEventListener("click", () => postAction("/api/restart", "Neustart läuft...", { restart: true }));
+$("restartRequiredBtn").addEventListener("click", () => postAction("/api/restart", "Neustart läuft...", { restart: true }));
 $("settingsResetBtn").addEventListener("click", resetSettings);
 $("factoryResetBtn").addEventListener("click", factoryReset);
 $("firmwareUpdateBtn").addEventListener("click", uploadFirmware);

@@ -83,7 +83,24 @@
         <path d="m6 9 6 6 6-6"/>
       </symbol>
     </svg>
-    <main>
+    <section id="loginView" class="loginView" hidden>
+      <form id="loginForm" class="loginPanel">
+        <h1><img src="/favicon.svg" alt="" aria-hidden="true">Pixel Clock</h1>
+        <h2>Admin-Login</h2>
+        <label>
+          Admin-Benutzer
+          <input id="loginUsername" name="loginUsername" autocomplete="username" value="admin">
+        </label>
+        <label>
+          Admin-Passwort
+          <input id="loginPassword" name="loginPassword" type="password" autocomplete="current-password">
+        </label>
+        <button id="loginBtn" type="submit">Anmelden</button>
+        <p id="loginMessage" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <main id="appShell" hidden>
       <header>
         <div>
           <h1><img src="/favicon.svg" alt="" aria-hidden="true">Pixel Clock</h1>
@@ -97,6 +114,7 @@
               <option value="en">English</option>
             </select>
           </label>
+          <button id="logoutBtn" type="button">Abmelden</button>
           <button id="restartBtn" type="button"><svg class="buttonIcon" aria-hidden="true"><use href="#icon-restart"></use></svg>Neustart</button>
         </div>
       </header>
@@ -447,6 +465,10 @@
           <button id="factoryResetBtn" class="danger" type="button">Werksreset</button>
           <button id="weatherBtn" type="button">Wetter aktualisieren</button>
         </div>
+        <div id="restartNotice" class="restartNotice" hidden>
+          <strong>Neustart erforderlich</strong>
+          <button id="restartRequiredBtn" type="button">Jetzt neu starten</button>
+        </div>
         <div id="message" class="footerStatus" role="status" aria-live="polite"></div>
       </footer>
     </main>
@@ -458,6 +480,13 @@
           <button id="adminReminderGo" type="button">Jetzt ändern</button>
           <button id="adminReminderDismiss" type="button">Nicht mehr anzeigen</button>
         </div>
+      </section>
+    </div>
+    <div id="restartOverlay" class="restartOverlay" hidden>
+      <section class="restartPanel" role="status" aria-live="assertive">
+        <div class="spinner" aria-hidden="true"></div>
+        <h2>Neustart läuft...</h2>
+        <p>Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
       </section>
     </div>
     <script src="/i18n.js"></script>

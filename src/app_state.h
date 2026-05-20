@@ -32,7 +32,7 @@ constexpr int LEFT_VALUE_W = 18;
 constexpr const char *DEFAULT_ADMIN_USERNAME = "admin";
 constexpr const char *DEFAULT_ADMIN_PASSWORD = "pixelclock";
 constexpr const char *DEFAULT_LANGUAGE = "de";
-#define FIRMWARE_VERSION_TEXT "0.1.10"
+#define FIRMWARE_VERSION_TEXT "0.1.14"
 constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
 extern const char FIRMWARE_VERSION_BINARY_MARKER[];
 constexpr uint8_t AUTH_CONFIG_VERSION = 1;

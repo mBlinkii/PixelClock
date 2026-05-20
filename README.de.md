@@ -4,8 +4,8 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.10`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.9`
+Aktuelle Firmware-Version: `0.1.14`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.10`
 
 ## Funktionen
 
@@ -19,7 +19,7 @@ Aktuelle LittleFS-Weboberflächen-Version: `0.1.9`
 - Standortsuche per Stadtname mit automatischer Zeitzone für viele Regionen
 - zweisprachige Weboberfläche, Deutsch/Englisch, mit passenden Wochentagen auf dem Display
 - integrierte Hilfe/Wiki direkt in der Weboberfläche
-- HTTP-Login vor der Weboberfläche
+- Login-Seite vor dem Laden der Einstellungen
 - Erinnerung zum Ändern des Standard-Admin-Passworts
 
 ## Hardware
@@ -61,7 +61,7 @@ Für neue Entwickler gibt es eine kompakte technische Übersicht in
 
 ## Standardzugang
 
-Beim Zugriff auf die Weboberfläche erscheint ein Browser-Login.
+Beim Zugriff auf die Weboberfläche erscheint eine eigene Login-Seite.
 
 ```text
 Benutzer: admin
@@ -134,11 +134,14 @@ Wenn du die Browser-Adresse geändert hast, verwende entsprechend:
 http://<dein-hostname>.local
 ```
 
+Im Router wird das Gerät normalerweise als `pixelclock-xxxxxx` angezeigt. Dabei
+entsteht `xxxxxx` aus den letzten drei Bytes der ESP32-MAC-Adresse.
+
 ## Bedienung der Weboberfläche
 
 - `Status`: zeigt Wetter, Ort und Adresse.
 - `WLAN-Zugang`: Netzwerk, WLAN-Passwort, Browser-Adresse und WLAN-Scan.
-- `Admin-Zugriff`: Admin-Benutzer und Admin-Passwort für den Browser-Login.
+- `Admin-Zugriff`: Admin-Benutzer und Admin-Passwort für den Web-Login.
 - `Ort, Wetter und Zugriff`: Stadt, Wetteranbieter, API-Key und Zeitzone.
 - `Display-Hardware`: Matrixgröße, Datenpin, Farbreihenfolge und LED-Mapping.
 - `Anzeige und Seiten`: Layout, Zeitformat, Temperaturformat, feste Seite und getrennte Rotationsdauer für Uhrzeit und andere Seiten.
@@ -200,7 +203,7 @@ Die Weboberfläche liegt nicht im Firmware-Binary. Nach Änderungen an `data/` m
 ### Login funktioniert nicht
 
 - Standard ist `admin` / `pixelclock`.
-- Wenn du Login-Daten geändert hast, Browser-Login im Browser löschen oder ein privates Fenster testen.
+- Wenn du Login-Daten geändert hast, melde dich mit Benutzer und Passwort neu an.
 - Starte die Uhr nach geänderten Login-Daten neu, wenn die Oberfläche einen Neustart meldet.
 - Wenn die Admin-Erinnerung trotz geändertem Passwort erneut erscheint, Browser-Cache hart neu laden und prüfen, ob `Speichern` erfolgreich war.
 - Bei komplett verlorenen Daten hilft ein Werksreset über die Weboberfläche, solange du noch eingeloggt bist.

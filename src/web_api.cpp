@@ -94,7 +94,7 @@ bool requireAdminAuth(AsyncWebServerRequest *request) {
   if (request->authenticate(config.adminUsername.c_str(), config.adminPassword.c_str())) {
     return true;
   }
-  request->requestAuthentication("Pixel Clock", false);
+  sendJsonError(request, 401, "Admin-Anmeldung erforderlich.");
   return false;
 }
 
@@ -354,8 +354,7 @@ void setupServer() {
     request->send(200, "application/json", "{\"ok\":true}");
   });
   server.serveStatic("/", LittleFS, "/")
-    .setDefaultFile("index.html")
-    .setAuthentication(config.adminUsername.c_str(), config.adminPassword.c_str(), AsyncAuthType::AUTH_BASIC);
+    .setDefaultFile("index.html");
   server.onNotFound([](AsyncWebServerRequest *request) {
     if (!requireAdminAuth(request)) return;
     request->send(404, "text/plain", "Not found");

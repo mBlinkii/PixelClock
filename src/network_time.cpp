@@ -1,14 +1,29 @@
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <esp_mac.h>
 #include <sys/time.h>
 
 #include "app_state.h"
 
 // Connectivity and clock setup.
+static String routerHostname() {
+  uint8_t mac[6] = {};
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  char hostname[22] = {};
+  snprintf(hostname, sizeof(hostname), "pixelclock-%02X%02X%02X", mac[3], mac[4], mac[5]);
+  return String(hostname);
+}
+
+static void applyRouterHostname() {
+  const String hostname = routerHostname();
+  WiFi.setHostname(hostname.c_str());
+}
+
 bool connectWifi() {
   if (config.ssid.isEmpty()) return false;
+  applyRouterHostname();
   WiFi.mode(WIFI_STA);
-  WiFi.setHostname(config.hostname.c_str());
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
   WiFi.begin(config.ssid.c_str(), config.password.c_str());
   const uint32_t started = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - started < WIFI_CONNECT_TIMEOUT_MS) {
@@ -19,8 +34,9 @@ bool connectWifi() {
 
 void startSetupAp() {
   setupMode = true;
+  applyRouterHostname();
   WiFi.mode(WIFI_AP_STA);
-  WiFi.setHostname(config.hostname.c_str());
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
   WiFi.softAP("PixelClock-Setup", "pixelclock");
 }
 
