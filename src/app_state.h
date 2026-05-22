@@ -32,7 +32,8 @@ constexpr int LEFT_VALUE_W = 18;
 constexpr const char *DEFAULT_ADMIN_USERNAME = "admin";
 constexpr const char *DEFAULT_ADMIN_PASSWORD = "pixelclock";
 constexpr const char *DEFAULT_LANGUAGE = "de";
-#define FIRMWARE_VERSION_TEXT "0.1.14"
+constexpr const char *DEFAULT_WIFI_COUNTRY = "DE";
+#define FIRMWARE_VERSION_TEXT "0.1.15"
 constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
 extern const char FIRMWARE_VERSION_BINARY_MARKER[];
 constexpr uint8_t AUTH_CONFIG_VERSION = 1;
@@ -44,6 +45,7 @@ struct AppConfig {
   String adminUsername = DEFAULT_ADMIN_USERNAME;
   String adminPassword = DEFAULT_ADMIN_PASSWORD;
   String language = DEFAULT_LANGUAGE;
+  String wifiCountry = DEFAULT_WIFI_COUNTRY;
   String hostname = "pixelclock";
   String cityName = "Berlin";
   String locationLabel = "Berlin, Deutschland";
@@ -121,6 +123,7 @@ String colorToHex(uint32_t value);
 uint32_t parseColor(String value, uint32_t fallback);
 String sanitizeHostname(String input);
 String normalizeLanguage(String value);
+String normalizeWifiCountry(String value);
 
 bool connectWifi();
 void startSetupAp();

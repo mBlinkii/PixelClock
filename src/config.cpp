@@ -9,6 +9,21 @@ String normalizeLanguage(String value) {
   return value == "en" ? "en" : DEFAULT_LANGUAGE;
 }
 
+String normalizeWifiCountry(String value) {
+  static const char *supportedCountries[] = {
+    "01", "AT", "AU", "BE", "BG", "BR", "CA", "CH", "CN", "CY", "CZ", "DE",
+    "DK", "EE", "ES", "FI", "FR", "GB", "GR", "HK", "HR", "HU", "IE", "IN",
+    "IS", "IT", "JP", "KR", "LI", "LT", "LU", "LV", "MT", "MX", "NL", "NO",
+    "NZ", "PL", "PT", "RO", "SE", "SI", "SK", "TW", "US"
+  };
+  value.trim();
+  value.toUpperCase();
+  for (const char *country : supportedCountries) {
+    if (value == country) return value;
+  }
+  return DEFAULT_WIFI_COUNTRY;
+}
+
 void loadConfig() {
   prefs.begin("pixel-clock", true);
   const uint8_t authConfigVersion = prefs.getUChar("authVer", 0);
@@ -59,6 +74,7 @@ void loadConfig() {
   config.colorPoint = prefs.getULong("colPoint", config.colorPoint);
   config.colorColon = prefs.getULong("colColon", config.colorColon);
   config.colorGradientMode = prefs.getUChar("colGradM", 255);
+  config.wifiCountry = prefs.getString("wifiCtry", config.wifiCountry);
   if (config.colorGradientMode == 255) config.colorGradientMode = prefs.getBool("colGrad", false) ? 1 : 0;
   prefs.end();
 
@@ -81,6 +97,7 @@ void loadConfig() {
   config.selectedPage = constrain(config.selectedPage, 0, 2);
   config.hostname = sanitizeHostname(config.hostname);
   config.adminUsername = sanitizeHostname(config.adminUsername);
+  config.wifiCountry = normalizeWifiCountry(config.wifiCountry);
   if (config.adminUsername.isEmpty()) config.adminUsername = DEFAULT_ADMIN_USERNAME;
   if (config.adminPassword.length() < MIN_ADMIN_PASSWORD_LENGTH) config.adminPassword = DEFAULT_ADMIN_PASSWORD;
 }
@@ -93,6 +110,7 @@ void saveConfig() {
   prefs.putString("adminUser", config.adminUsername);
   prefs.putString("admin", config.adminPassword);
   prefs.putString("lang", config.language);
+  prefs.putString("wifiCtry", normalizeWifiCountry(config.wifiCountry));
   prefs.putString("host", config.hostname);
   prefs.putString("city", config.cityName);
   prefs.putString("locLabel", config.locationLabel);

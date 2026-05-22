@@ -1,6 +1,7 @@
 #include <ESPmDNS.h>
 #include <WiFi.h>
 #include <esp_mac.h>
+#include <esp_wifi.h>
 #include <sys/time.h>
 
 #include "app_state.h"
@@ -19,10 +20,26 @@ static void applyRouterHostname() {
   WiFi.setHostname(hostname.c_str());
 }
 
+static void applyWifiCountry() {
+  const String country = normalizeWifiCountry(config.wifiCountry);
+  char currentCountry[4] = {};
+  if (esp_wifi_get_country_code(currentCountry) == ESP_OK &&
+      currentCountry[0] == country[0] &&
+      currentCountry[1] == country[1]) {
+    return;
+  }
+
+  const esp_err_t err = esp_wifi_set_country_code(country.c_str(), true);
+  if (err != ESP_OK) {
+    Serial.printf("WiFi country %s failed: %d\n", country.c_str(), err);
+  }
+}
+
 bool connectWifi() {
   if (config.ssid.isEmpty()) return false;
   applyRouterHostname();
   WiFi.mode(WIFI_STA);
+  applyWifiCountry();
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
   WiFi.begin(config.ssid.c_str(), config.password.c_str());
   const uint32_t started = millis();
@@ -36,6 +53,7 @@ void startSetupAp() {
   setupMode = true;
   applyRouterHostname();
   WiFi.mode(WIFI_AP_STA);
+  applyWifiCountry();
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
   WiFi.softAP("PixelClock-Setup", "pixelclock");
 }

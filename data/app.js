@@ -1,7 +1,55 @@
 const pins = [2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
 const safeBrightnessPercent = 40;
+const defaultWifiCountry = "DE";
+const wifiCountries = [
+  ["01", "Weltweit sicherer Modus", "World safe mode"],
+  ["AT", "Österreich", "Austria"],
+  ["AU", "Australien", "Australia"],
+  ["BE", "Belgien", "Belgium"],
+  ["BG", "Bulgarien", "Bulgaria"],
+  ["BR", "Brasilien", "Brazil"],
+  ["CA", "Kanada", "Canada"],
+  ["CH", "Schweiz", "Switzerland"],
+  ["CN", "China", "China"],
+  ["CY", "Zypern", "Cyprus"],
+  ["CZ", "Tschechien", "Czechia"],
+  ["DE", "Deutschland", "Germany"],
+  ["DK", "Dänemark", "Denmark"],
+  ["EE", "Estland", "Estonia"],
+  ["ES", "Spanien", "Spain"],
+  ["FI", "Finnland", "Finland"],
+  ["FR", "Frankreich", "France"],
+  ["GB", "Vereinigtes Königreich", "United Kingdom"],
+  ["GR", "Griechenland", "Greece"],
+  ["HK", "Hong Kong", "Hong Kong"],
+  ["HR", "Kroatien", "Croatia"],
+  ["HU", "Ungarn", "Hungary"],
+  ["IE", "Irland", "Ireland"],
+  ["IN", "Indien", "India"],
+  ["IS", "Island", "Iceland"],
+  ["IT", "Italien", "Italy"],
+  ["JP", "Japan", "Japan"],
+  ["KR", "Südkorea", "South Korea"],
+  ["LI", "Liechtenstein", "Liechtenstein"],
+  ["LT", "Litauen", "Lithuania"],
+  ["LU", "Luxembourg", "Luxembourg"],
+  ["LV", "Lettland", "Latvia"],
+  ["MT", "Malta", "Malta"],
+  ["MX", "Mexico", "Mexico"],
+  ["NL", "Niederlande", "Netherlands"],
+  ["NO", "Norwegen", "Norway"],
+  ["NZ", "Neuseeland", "New Zealand"],
+  ["PL", "Polen", "Poland"],
+  ["PT", "Portugal", "Portugal"],
+  ["RO", "Rumänien", "Romania"],
+  ["SE", "Schweden", "Sweden"],
+  ["SI", "Slowenien", "Slovenia"],
+  ["SK", "Slowakei", "Slovakia"],
+  ["TW", "Taiwan", "Taiwan"],
+  ["US", "Vereinigte Staaten", "United States"]
+];
 const fields = [
-  "ssid", "hostname", "cityName", "timezone", "weatherProvider", "weatherIntervalHalfHours", "width", "height", "dataPin",
+  "ssid", "wifiCountry", "hostname", "cityName", "timezone", "weatherProvider", "weatherIntervalHalfHours", "width", "height", "dataPin",
   "brightness", "fullBrightnessUnlocked", "wiringMode", "origin", "displayMode", "colorOrder",
   "temperatureUnit", "weatherIconEnabled", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "timePageSeconds", "pageSeconds",
   "colorGradientMode", "autoPage", "selectedPage", "nightBrightness", "nightStart", "nightEnd"
@@ -121,6 +169,7 @@ function updateAdminPasswordPlaceholder() {
 function applyLanguage() {
   document.documentElement.lang = currentLanguage;
   $("languageSelect").value = currentLanguage;
+  fillWifiCountries();
   fillWeatherIntervals();
   translateTextNodes($("appShell"));
   translateTextNodes($("loginView"));
@@ -259,8 +308,21 @@ function updateWifiSummary() {
   const summary = document.querySelector(".wifiSummary");
   if (!summary) return;
   const ssid = $("ssid")?.value.trim() || "";
-  summary.textContent = ssid;
+  const country = $("wifiCountry")?.value || "";
+  summary.textContent = country ? `${ssid} - ${country}` : ssid;
   summary.hidden = !ssid;
+}
+
+function fillWifiCountries(selectedValue) {
+  const current = selectedValue || $("wifiCountry").value || defaultWifiCountry;
+  $("wifiCountry").innerHTML = "";
+  for (const [code, deName, enName] of wifiCountries) {
+    const option = document.createElement("option");
+    option.value = code;
+    option.textContent = `${code} - ${currentLanguage === "de" ? deName : enName}`;
+    $("wifiCountry").append(option);
+  }
+  $("wifiCountry").value = wifiCountries.some(([code]) => code === current) ? current : defaultWifiCountry;
 }
 
 function fillPins() {
@@ -408,6 +470,9 @@ function setForm(config) {
   if (config.timePageSeconds === undefined || config.timePageSeconds === null) {
     config.timePageSeconds = config.pageSeconds ?? 8;
   }
+  if (config.wifiCountry === undefined || config.wifiCountry === null) {
+    config.wifiCountry = defaultWifiCountry;
+  }
   if (config.language === "de" || config.language === "en") {
     currentLanguage = config.language;
     localStorage.setItem("pixelClockLanguage", currentLanguage);
@@ -505,7 +570,7 @@ async function saveConfig() {
     data.cityResolutionPending ? "Ort wird im Hintergrund aktualisiert." : "",
     data.weatherRefreshPending ? "Wetter wird aktualisiert." : "",
     data.authChanged ? "Login wurde geändert, bitte mit den neuen Daten anmelden." : "",
-    data.restartRequired ? "Neustart für Pin, Größe, Farbe, WLAN, Adresse oder Login nötig." : "Sofort aktiv."
+    data.restartRequired ? "Neustart für Pin, Größe, Farbe, WLAN, WLAN-Region, Adresse oder Login nötig." : "Sofort aktiv."
   ];
   $("message").textContent = statusParts.filter(Boolean).map(tr).join(" ");
   showRestartNotice(Boolean(data.restartRequired));
@@ -602,6 +667,7 @@ function logout() {
 
 function initUi() {
   fillPins();
+  fillWifiCountries();
   fillWeatherIntervals();
   initCollapsiblePanels();
 }
@@ -620,6 +686,7 @@ $("loginForm").addEventListener("submit", login);
 $("logoutBtn").addEventListener("click", logout);
 $("languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
 $("ssid").addEventListener("input", updateWifiSummary);
+$("wifiCountry").addEventListener("change", updateWifiSummary);
 $("adminReminderGo").addEventListener("click", openAdminAccess);
 $("adminReminderDismiss").addEventListener("click", () => closeAdminReminder(true));
 $("saveBtn").addEventListener("click", saveConfig);

@@ -4,8 +4,8 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.14`
-Current LittleFS web interface version: `0.1.10`
+Current firmware version: `0.1.15`
+Current LittleFS web interface version: `0.1.11`
 
 ## Features
 
@@ -140,7 +140,7 @@ from the last three bytes of the ESP32 MAC address.
 ## Using the Web Interface
 
 - `Status`: shows weather, location, and address.
-- `Wi-Fi access`: network, Wi-Fi password, browser address, and Wi-Fi scan.
+- `Wi-Fi access`: network, Wi-Fi password, Wi-Fi region, browser address, and Wi-Fi scan.
 - `Admin access`: admin user and admin password for the web login.
 - `Location, weather and access`: city, weather provider, API key, and time zone.
 - `Display hardware`: matrix size, data pin, color order, and LED mapping.
@@ -150,6 +150,13 @@ from the last three bytes of the ESP32 MAC address.
 - `Help & Wiki`: short setup guide and troubleshooting directly in the interface.
 
 The language can be switched between German and English in the header. The selection is saved in the browser and on the clock, and the weekday labels on the display follow it.
+
+The Wi-Fi region uses the ESP-IDF country codes supported by the ESP32 package:
+`01`, `AT`, `AU`, `BE`, `BG`, `BR`, `CA`, `CH`, `CN`, `CY`, `CZ`, `DE`, `DK`,
+`EE`, `ES`, `FI`, `FR`, `GB`, `GR`, `HK`, `HR`, `HU`, `IE`, `IN`, `IS`, `IT`,
+`JP`, `KR`, `LI`, `LT`, `LU`, `LV`, `MT`, `MX`, `NL`, `NO`, `NZ`, `PL`, `PT`,
+`RO`, `SE`, `SI`, `SK`, `TW`, and `US`. The default is `DE`; use `01` for
+world safe mode. Changing the Wi-Fi region requires a restart.
 
 ## Weather
 

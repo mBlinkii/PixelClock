@@ -19,6 +19,7 @@ void sendConfigJson(AsyncWebServerRequest *request) {
   doc["adminPasswordIsDefault"] = config.adminPassword == DEFAULT_ADMIN_PASSWORD;
   doc["minAdminPasswordLength"] = MIN_ADMIN_PASSWORD_LENGTH;
   doc["language"] = config.language;
+  doc["wifiCountry"] = config.wifiCountry;
   doc["hostname"] = config.hostname;
   doc["url"] = "http://" + config.hostname + ".local";
   doc["cityName"] = config.cityName;
@@ -118,6 +119,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   const bool oldColorRgb = config.colorRgb;
   const String oldSsid = config.ssid;
   const String oldPassword = config.password;
+  const String oldWifiCountry = config.wifiCountry;
   const String oldAdminUsername = config.adminUsername;
   const String oldAdminPassword = config.adminPassword;
   const String oldHostname = config.hostname;
@@ -134,6 +136,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   config.adminUsername = newAdminUsername;
   if (newAdminPassword.length() > 0) config.adminPassword = newAdminPassword;
   config.language = normalizeLanguage(paramValue(request, "language", config.language));
+  config.wifiCountry = normalizeWifiCountry(paramValue(request, "wifiCountry", config.wifiCountry));
   config.hostname = sanitizeHostname(paramValue(request, "hostname", config.hostname));
   config.cityName = paramValue(request, "cityName", config.cityName);
   config.cityName.trim();
@@ -201,6 +204,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
     oldColorRgb != config.colorRgb ||
     oldSsid != config.ssid ||
     oldPassword != config.password ||
+    oldWifiCountry != config.wifiCountry ||
     oldHostname != config.hostname ||
     authChanged;
 
@@ -307,6 +311,7 @@ void handleSettingsReset(AsyncWebServerRequest *request) {
   if (!requireAdminAuth(request)) return;
   const String keepSsid = config.ssid;
   const String keepPassword = config.password;
+  const String keepWifiCountry = config.wifiCountry;
   const String keepAdminUsername = config.adminUsername;
   const String keepAdminPassword = config.adminPassword;
   prefs.begin("pixel-clock", false);
@@ -315,6 +320,7 @@ void handleSettingsReset(AsyncWebServerRequest *request) {
   config = AppConfig();
   config.ssid = keepSsid;
   config.password = keepPassword;
+  config.wifiCountry = keepWifiCountry;
   config.adminUsername = keepAdminUsername;
   config.adminPassword = keepAdminPassword;
   saveConfig();

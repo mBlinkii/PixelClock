@@ -4,8 +4,8 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.14`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.10`
+Aktuelle Firmware-Version: `0.1.15`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.11`
 
 ## Funktionen
 
@@ -140,7 +140,7 @@ entsteht `xxxxxx` aus den letzten drei Bytes der ESP32-MAC-Adresse.
 ## Bedienung der Weboberfläche
 
 - `Status`: zeigt Wetter, Ort und Adresse.
-- `WLAN-Zugang`: Netzwerk, WLAN-Passwort, Browser-Adresse und WLAN-Scan.
+- `WLAN-Zugang`: Netzwerk, WLAN-Passwort, WLAN-Region, Browser-Adresse und WLAN-Scan.
 - `Admin-Zugriff`: Admin-Benutzer und Admin-Passwort für den Web-Login.
 - `Ort, Wetter und Zugriff`: Stadt, Wetteranbieter, API-Key und Zeitzone.
 - `Display-Hardware`: Matrixgröße, Datenpin, Farbreihenfolge und LED-Mapping.
@@ -150,6 +150,14 @@ entsteht `xxxxxx` aus den letzten drei Bytes der ESP32-MAC-Adresse.
 - `Hilfe & Wiki`: kurze Einrichtungshilfe und Problembehandlung direkt im Interface.
 
 Oben im Header kannst du zwischen Deutsch und Englisch wechseln. Die Auswahl wird im Browser und auf der Uhr gespeichert; die Wochentage auf dem Display folgen dieser Sprache.
+
+Die WLAN-Region nutzt die vom ESP32-Paket unterstützten ESP-IDF-Ländercodes:
+`01`, `AT`, `AU`, `BE`, `BG`, `BR`, `CA`, `CH`, `CN`, `CY`, `CZ`, `DE`, `DK`,
+`EE`, `ES`, `FI`, `FR`, `GB`, `GR`, `HK`, `HR`, `HU`, `IE`, `IN`, `IS`, `IT`,
+`JP`, `KR`, `LI`, `LT`, `LU`, `LV`, `MT`, `MX`, `NL`, `NO`, `NZ`, `PL`, `PT`,
+`RO`, `SE`, `SI`, `SK`, `TW` und `US`. Standard ist `DE`; `01` ist der
+weltweite sichere Modus. Eine geänderte WLAN-Region wird nach einem Neustart
+aktiv.
 
 ## Wetter
 
