@@ -108,6 +108,24 @@ If `pio` is not in your PATH on Windows, PlatformIO may be located here:
 & "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe" run
 ```
 
+### Windows helper scripts
+
+The project root contains small PowerShell launchers:
+
+```powershell
+.\build-pixel-clock.cmd
+.\flash-pixel-clock.cmd
+.\reset-pixel-clock.cmd
+```
+
+`reset-pixel-clock.cmd` erases the complete ESP32 flash with `pio run --target erase`.
+This removes firmware, LittleFS web UI, Wi-Fi, settings, admin credentials, OTA slots,
+and all persisted data. Flash firmware and the web UI again afterwards:
+
+```powershell
+.\flash-pixel-clock.cmd
+```
+
 ## First Setup
 
 1. Start the ESP32.
@@ -264,6 +282,33 @@ pio run --target uploadfs
 ```
 
 - Clear the browser cache or hard reload the page.
+
+### Completely erase the ESP32
+
+- Connect the ESP32 through USB.
+- Optionally list ports:
+
+```powershell
+.\reset-pixel-clock.cmd -ListPorts
+```
+
+- Erase the full flash:
+
+```powershell
+.\reset-pixel-clock.cmd -Port COM5
+```
+
+- Skip the confirmation prompt, for example in automation:
+
+```powershell
+.\reset-pixel-clock.cmd -Port COM5 -Force
+```
+
+- Flash firmware and the web UI again afterwards:
+
+```powershell
+.\flash-pixel-clock.cmd -Port COM5
+```
 
 ## Development
 

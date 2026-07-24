@@ -108,6 +108,24 @@ Falls `pio` nicht im PATH liegt, kann PlatformIO unter Windows zum Beispiel hier
 & "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe" run
 ```
 
+### Windows-Hilfsskripte
+
+Im Projektordner liegen kleine Starter fuer PowerShell:
+
+```powershell
+.\build-pixel-clock.cmd
+.\flash-pixel-clock.cmd
+.\reset-pixel-clock.cmd
+```
+
+`reset-pixel-clock.cmd` loescht den kompletten ESP32-Flash mit `pio run --target erase`.
+Dabei gehen Firmware, LittleFS-Weboberflaeche, WLAN, Einstellungen, Admin-Zugangsdaten,
+OTA-Slots und alle gespeicherten Daten verloren. Danach Firmware und Weboberflaeche wieder flashen:
+
+```powershell
+.\flash-pixel-clock.cmd
+```
+
 ## Erste Einrichtung
 
 1. ESP32 starten.
@@ -265,6 +283,33 @@ pio run --target uploadfs
 ```
 
 - Browser-Cache leeren oder Seite hart neu laden.
+
+### ESP32 komplett loeschen
+
+- ESP32 per USB verbinden.
+- Optional Ports anzeigen:
+
+```powershell
+.\reset-pixel-clock.cmd -ListPorts
+```
+
+- Flash komplett loeschen:
+
+```powershell
+.\reset-pixel-clock.cmd -Port COM5
+```
+
+- Ohne Rueckfrage, zum Beispiel fuer Automatisierung:
+
+```powershell
+.\reset-pixel-clock.cmd -Port COM5 -Force
+```
+
+- Danach Firmware und Weboberflaeche neu flashen:
+
+```powershell
+.\flash-pixel-clock.cmd -Port COM5
+```
 
 ## Entwicklung
 

@@ -10,7 +10,8 @@
 *.bin
 *.elf
 *.map
-tools/
+tools/*
+!tools/reset-pixel-clock.ps1
 build-pixel-clock.cmd
 flash-pixel-clock.cmd
 
