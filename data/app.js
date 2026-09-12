@@ -49,7 +49,7 @@ const wifiCountries = [
   ["US", "Vereinigte Staaten", "United States"]
 ];
 const fields = [
-  "ssid", "wifiCountry", "hostname", "cityName", "timezone", "weatherProvider", "weatherIntervalHalfHours", "width", "height", "dataPin",
+  "ssid", "wifiCountry", "wifiPowerSave", "hostname", "cityName", "timezone", "weatherProvider", "weatherIntervalHalfHours", "width", "height", "dataPin",
   "brightness", "fullBrightnessUnlocked", "wiringMode", "origin", "displayMode", "colorOrder",
   "temperatureUnit", "weatherIconEnabled", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "timePageSeconds", "pageSeconds",
   "colorGradientMode", "autoPage", "selectedPage", "nightBrightness", "nightStart", "nightEnd"
@@ -61,6 +61,14 @@ const panelCollapsedStoragePrefix = "pixelClockPanelCollapsed:";
 const authStorageKey = "pixelClockAuth";
 let currentLanguage = storedLanguage || ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
 let statusRefreshTimer = 0;
+let statusInFlight = null;
+let statusFailures = 0;
+let savedForm = "";
+let savedConfig = null;
+let dirty = false;
+let saving = false;
+let capabilities = {};
+let hasProviderKeys = {};
 
 function authHeaderValue() {
   return sessionStorage.getItem(authStorageKey) || "";
@@ -99,22 +107,39 @@ function showLogin(text = "Bitte anmelden.") {
   $("loginPassword").value = "";
   $("loginUsername").focus();
   if (statusRefreshTimer) {
-    clearInterval(statusRefreshTimer);
+    clearTimeout(statusRefreshTimer);
     statusRefreshTimer = 0;
   }
 }
 
 async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    credentials: "same-origin",
-    headers: authHeaders(options.headers)
-  });
-  if (res.status === 401) {
-    showLogin("Bitte anmelden.");
-    throw new Error("Unauthorized");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: authHeaders(options.headers)
+    });
+    if (res.status === 401) {
+      showLogin("Bitte anmelden.");
+      throw new Error("Unauthorized");
+    }
+    return res;
+  } finally {
+    clearTimeout(timeout);
   }
-  return res;
+}
+
+function scheduleStatusRefresh() {
+  clearTimeout(statusRefreshTimer);
+  if (document.hidden || !authHeaderValue() || !$("restartOverlay").hidden) return;
+  statusRefreshTimer = setTimeout(async () => {
+    try { await loadStatus(); } catch (_) { /* Connection state is shown in the header. */ }
+    scheduleStatusRefresh();
+  }, Math.min(60000, 15000 * 2 ** Math.min(statusFailures, 2)));
 }
 
 function showRestartNotice(visible) {
@@ -122,6 +147,8 @@ function showRestartNotice(visible) {
 }
 
 function showRestartOverlay(text = "Neustart läuft...") {
+  clearTimeout(statusRefreshTimer);
+  dirty = false;
   $("restartOverlay").hidden = false;
   const title = $("restartOverlay").querySelector("h2");
   title.textContent = tr(text);
@@ -133,6 +160,7 @@ function translateTextNodes(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
   while (node) {
+    if (node.parentElement.closest("[data-no-i18n]")) { node = walker.nextNode(); continue; }
     const source = node._i18nSource || node.nodeValue.trim();
     if (source) {
       node._i18nSource = source;
@@ -178,13 +206,22 @@ function applyLanguage() {
   translateAttributes();
   updateAdminPasswordPlaceholder();
   updateWifiSummary();
+  updateProviderFields();
+  updateDirtyState();
 }
 
 function setLanguage(language) {
   currentLanguage = language === "de" ? "de" : "en";
   localStorage.setItem("pixelClockLanguage", currentLanguage);
   applyLanguage();
-  saveLanguagePreference().catch(() => {});
+  if (savedConfig) {
+    savedConfig.language = currentLanguage;
+    const baseline = new URLSearchParams(savedForm);
+    baseline.set("language", currentLanguage);
+    savedForm = baseline.toString();
+    updateDirtyState();
+  }
+  saveLanguagePreference().catch(() => message("Aktion fehlgeschlagen."));
   loadStatus().catch(() => {});
 }
 
@@ -259,7 +296,7 @@ function initCollapsiblePanels() {
     const heading = panel.querySelector(":scope > h2");
     if (!heading || heading.querySelector(".panelToggle")) continue;
     const id = panelId(panel);
-    if (id) panel.dataset.panelId = id;
+    if (id) { panel.dataset.panelId = id; panel.id = id; }
 
     const title = document.createElement("span");
     title.className = "panelTitle";
@@ -280,6 +317,11 @@ function initCollapsiblePanels() {
 
     const body = document.createElement("div");
     body.className = "panelBody";
+    body.id = `${id}Body`;
+    toggle.setAttribute("aria-controls", body.id);
+    heading.addEventListener("click", (event) => {
+      if (!event.target.closest("button")) toggle.click();
+    });
     while (heading.nextSibling) body.append(heading.nextSibling);
     panel.append(body);
     setPanelCollapsed(panel, true);
@@ -288,7 +330,7 @@ function initCollapsiblePanels() {
 
 function applyPanelStartState(config) {
   const setupOpenPanels = new Set(["statusSection", "wifiSection", "accessSection", "weatherSection", "helpSection"]);
-  const normalOpenPanels = new Set(["statusSection", "helpSection"]);
+  const normalOpenPanels = new Set(["statusSection", "weatherSection"]);
   const isFirstSetup = !String(config.ssid || "").trim() || config.adminPasswordIsDefault;
   const openPanels = isFirstSetup ? setupOpenPanels : normalOpenPanels;
 
@@ -467,6 +509,12 @@ function weatherDescription(code) {
 }
 
 function setForm(config) {
+  savedConfig = { ...config };
+  showRestartNotice(Boolean(config.restartRequired));
+  hasProviderKeys = { 1: Boolean(config.hasOpenWeatherApiKey), 4: Boolean(config.hasWeatherApiKey) };
+  for (const option of $("weatherProvider").options) option.disabled = Number(option.value) > (config.weatherProviderMax ?? 2);
+  $("wifiPowerSaveField").hidden = config.wifiPowerSave === undefined;
+  $("wifiPowerSave").disabled = config.wifiPowerSave === undefined;
   if (config.timePageSeconds === undefined || config.timePageSeconds === null) {
     config.timePageSeconds = config.pageSeconds ?? 8;
   }
@@ -493,6 +541,11 @@ function setForm(config) {
   applyPanelStartState(config);
   updateRangeValues();
   updateNightControlsFromStored();
+  for (const id of ["password", "adminPassword", "openWeatherApiKey", "weatherApiKey"]) $(id).value = "";
+  updateProviderFields();
+  updatePageControls();
+  savedForm = formBody().toString();
+  updateDirtyState();
   showAdminReminder(config);
 }
 
@@ -506,25 +559,37 @@ function formBody() {
     if (!el) continue;
     data.set(field, el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value);
   }
-  const password = $("password").value.trim();
+  const password = $("password").value;
   if (password) data.set("password", password);
   const adminUsername = $("adminUsername").value.trim();
   if (adminUsername) data.set("adminUsername", adminUsername);
-  const adminPassword = $("adminPassword").value.trim();
+  const adminPassword = $("adminPassword").value;
   if (adminPassword) data.set("adminPassword", adminPassword);
   const openWeatherApiKey = $("openWeatherApiKey").value.trim();
   if (openWeatherApiKey) data.set("openWeatherApiKey", openWeatherApiKey);
+  const weatherApiKey = $("weatherApiKey").value.trim();
+  if (weatherApiKey) data.set("weatherApiKey", weatherApiKey);
   return data;
 }
 
 async function loadConfig() {
   const res = await apiFetch("/api/config");
+  if (!res.ok) throw new Error("Config unavailable");
   setForm(await res.json());
 }
 
-async function loadStatus() {
+async function fetchStatus() {
   const res = await apiFetch("/api/status");
+  if (!res.ok) throw new Error("Status unavailable");
   const status = await res.json();
+  capabilities = status.capabilities || {};
+  $("connectionState").textContent = tr(status.wifiConnected ? "Verbunden" : status.setupMode ? "Setup-AP" : "WLAN getrennt");
+  $("connectionState").classList.toggle("isWarning", !status.wifiConnected);
+  $("weatherAge").textContent = status.weatherBusy ? tr("Wetter wird aktualisiert.") :
+    status.weatherAgeMs == null ? "" : `${tr("Wetterabruf vor")} ${Math.floor(status.weatherAgeMs / 60000)} min`;
+  $("runtimeStats").hidden = status.freeHeap === undefined;
+  $("systemLine").textContent = status.freeHeap === undefined ? "" :
+    `${Math.round(status.freeHeap / 1024)} KB ${tr("frei")} · ${status.rssi ?? 0} dBm · ${tr(status.wifiPowerSave ? "Energiesparen an" : "Energiesparen aus")}`;
   const mode = status.setupMode ? tr("Setup-AP") : tr("WLAN");
   const unit = status.temperatureUnit || "C";
   const temp = status.temperature === null || status.temperature === undefined
@@ -551,47 +616,135 @@ async function loadStatus() {
   }
 }
 
+function loadStatus() {
+  if (statusInFlight) return statusInFlight;
+  statusInFlight = fetchStatus().then(() => { statusFailures = 0; }).catch((error) => {
+    statusFailures++;
+    $("connectionState").textContent = tr("Uhr nicht erreichbar");
+    $("connectionState").classList.add("isWarning");
+    throw error;
+  }).finally(() => { statusInFlight = null; });
+  return statusInFlight;
+}
+
+function updateProviderFields() {
+  const provider = Number($("weatherProvider").value);
+  $("openWeatherApiKey").closest("label").hidden = provider !== 1;
+  $("weatherApiKeyField").hidden = provider !== 4;
+  $("metAttribution").hidden = provider !== 3;
+  const hints = {
+    0: "Weltweite Vorhersage, ohne API-Key. Tageshöchst- und Tiefsttemperatur verfügbar.",
+    1: "Aktuelle Messwerte mit API-Key. Min/Max beziehen sich auf aktuelle Werte in der Umgebung.",
+    2: "DWD-Messwerte über Bright Sky, vor allem für Deutschland. Ohne API-Key, ohne Tages-Min/Max.",
+    3: "Weltweite Vorhersage von MET Norway. Ohne API-Key, ohne Tages-Min/Max. Die Cache-Zeit des Anbieters wird eingehalten.",
+    4: "Aktuelles Wetter und Tages-Min/Max. Eigenen WeatherAPI-Key hinterlegen."
+  };
+  $("providerHint").textContent = tr(hints[provider] || "");
+  $("providerKeyState").textContent = [1, 4].includes(provider) ?
+    tr(hasProviderKeys[provider] ? "API-Key gespeichert. Leer lassen zum Beibehalten." : "Noch kein API-Key gespeichert.") : "";
+}
+
+function updatePageControls() {
+  const automatic = $("autoPage").checked;
+  $("selectedPage").disabled = automatic;
+  $("timePageSeconds").disabled = !automatic;
+  $("pageSeconds").disabled = !automatic;
+}
+
+function updateDirtyState() {
+  if (!savedForm) return;
+  dirty = formBody().toString() !== savedForm;
+  $("saveState").textContent = tr(dirty ? "Ungespeicherte Änderungen" : "Alles gespeichert");
+  $("saveState").classList.toggle("isDirty", dirty);
+  $("saveBtn").disabled = saving || !dirty;
+  $("discardBtn").disabled = saving || !dirty;
+}
+
+function validateSettings() {
+  for (const el of document.querySelectorAll("section.panel input, section.panel select")) {
+    if (el.disabled || el.type === "file" || el.type === "hidden" || el.closest("label")?.hidden) continue;
+    if (!el.checkValidity()) {
+      setPanelCollapsed(el.closest("section.panel"), false, true);
+      el.reportValidity();
+      return false;
+    }
+  }
+  return true;
+}
+
 async function saveConfig() {
+  if (saving || !savedConfig || !validateSettings()) return;
+  const body = formBody();
+  saving = true;
+  const inputs = [...document.querySelectorAll("section.panel input, section.panel select")];
+  const disabled = inputs.map((el) => el.disabled);
+  inputs.forEach((el) => { el.disabled = true; });
+  $("saveBtn").disabled = true;
+  $("discardBtn").disabled = true;
   message("Speichere...");
-  const res = await apiFetch("/api/config", { method: "POST", body: formBody() });
-  let data = {};
   try {
-    data = await res.json();
-  } catch (_) {
-    data = {};
+    const res = await apiFetch("/api/config", { method: "POST", body });
+    const data = await res.json();
+    if (!res.ok) { message(data.error || "Speichern fehlgeschlagen."); return; }
+    if (body.has("openWeatherApiKey")) hasProviderKeys[1] = true;
+    if (body.has("weatherApiKey")) hasProviderKeys[4] = true;
+    for (const id of ["password", "adminPassword", "openWeatherApiKey", "weatherApiKey"]) $(id).value = "";
+    savedForm = formBody().toString();
+    const numeric = new Set(["latitude", "longitude"]);
+    for (const field of fields) {
+      const el = $(field);
+      savedConfig[field] = el.type === "checkbox" ? el.checked : numeric.has(field) ? Number(el.value) : el.value;
+    }
+    savedConfig.adminUsername = $("adminUsername").value;
+    savedConfig.adminPasswordIsDefault = body.has("adminPassword") ? false : savedConfig.adminPasswordIsDefault;
+    savedConfig.hasOpenWeatherApiKey = hasProviderKeys[1];
+    savedConfig.hasWeatherApiKey = hasProviderKeys[4];
+    savedConfig.restartRequired = Boolean(data.restartRequired);
+    updateProviderFields();
+    messageText(["Gespeichert.", data.cityResolutionPending ? "Ort wird im Hintergrund aktualisiert." : "",
+      data.weatherRefreshPending ? "Wetter wird aktualisiert." : "",
+      data.restartRequired ? "Neustart erforderlich" : "Sofort aktiv."].filter(Boolean).map(tr).join(" "));
+    showRestartNotice(Boolean(data.restartRequired));
+    if (data.authChanged) showLogin("Login wurde geändert, bitte mit den neuen Daten anmelden.");
+  } catch (error) {
+    if (error.message !== "Unauthorized") message("Speichern fehlgeschlagen.");
+  } finally {
+    inputs.forEach((el, i) => { el.disabled = disabled[i]; });
+    saving = false;
+    updateDirtyState();
   }
-  if (!res.ok) {
-    message(data.error || (res.status === 401 ? "Admin-Anmeldung erforderlich." : "Speichern fehlgeschlagen."));
-    return;
-  }
-  $("adminPassword").value = "";
-  const statusParts = [
-    "Gespeichert.",
-    data.cityResolutionPending ? "Ort wird im Hintergrund aktualisiert." : "",
-    data.weatherRefreshPending ? "Wetter wird aktualisiert." : "",
-    data.authChanged ? "Login wurde geändert, bitte mit den neuen Daten anmelden." : "",
-    data.restartRequired ? "Neustart für Pin, Größe, Farbe, WLAN, WLAN-Region, Adresse oder Login nötig." : "Sofort aktiv."
-  ];
-  $("message").textContent = statusParts.filter(Boolean).map(tr).join(" ");
-  showRestartNotice(Boolean(data.restartRequired));
-  if (data.authChanged) showLogin("Login wurde geändert, bitte mit den neuen Daten anmelden.");
 }
 
 async function scanNetworks() {
   $("networks").textContent = tr("Suche...");
-  const res = await apiFetch("/api/networks");
-  const data = await res.json();
-  $("networks").innerHTML = "";
-  for (const network of data.networks || []) {
+  let data;
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const res = await apiFetch("/api/networks");
+    data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Aktion fehlgeschlagen.");
+    if (!data.scanning) break;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  if (data.scanning) {
+    $("networks").textContent = tr("WLAN-Suche fehlgeschlagen. Bitte erneut versuchen.");
+    throw new Error("WLAN-Suche fehlgeschlagen. Bitte erneut versuchen.");
+  }
+  $("networks").replaceChildren();
+  const names = new Set();
+  for (const network of (data.networks || []).sort((a, b) => b.rssi - a.rssi)) {
+    if (!network.ssid || names.has(network.ssid)) continue;
+    names.add(network.ssid);
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = `${network.ssid} ${network.rssi} dBm`;
+    btn.textContent = `${network.ssid} · ${network.rssi} dBm`;
     btn.addEventListener("click", () => {
       $("ssid").value = network.ssid;
       updateWifiSummary();
+      updateDirtyState();
     });
     $("networks").append(btn);
   }
+  if (!names.size) $("networks").textContent = tr("Keine Netzwerke gefunden.");
 }
 
 async function postAction(url, doneText, options = {}) {
@@ -607,7 +760,8 @@ async function postAction(url, doneText, options = {}) {
 async function refreshWeather() {
   const res = await apiFetch("/api/weather/refresh", { method: "POST" });
   if (!res.ok) {
-    message(res.status === 401 ? "Admin-Anmeldung erforderlich." : "Wetter konnte nicht aktualisiert werden.");
+    const data = await res.json();
+    message(data.error || "Wetter konnte nicht aktualisiert werden.");
     return;
   }
   message("Wetteraktualisierung gestartet.");
@@ -630,8 +784,8 @@ async function startAuthenticatedApp() {
   try {
     await loadConfig();
     await loadStatus();
-    if (statusRefreshTimer) clearInterval(statusRefreshTimer);
-    statusRefreshTimer = setInterval(() => loadStatus().catch(() => {}), 5000);
+    if (statusRefreshTimer) clearTimeout(statusRefreshTimer);
+    scheduleStatusRefresh();
   } catch (error) {
     if (error.message !== "Unauthorized") message("Konfiguration konnte nicht geladen werden.");
   }
@@ -639,12 +793,18 @@ async function startAuthenticatedApp() {
 
 async function login(event) {
   event.preventDefault();
+  if ($("loginBtn").disabled) return;
+  $("loginBtn").disabled = true;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   const username = $("loginUsername").value.trim();
   const password = $("loginPassword").value;
   const auth = basicAuthValue(username, password);
   $("loginMessage").textContent = tr("Anmeldung läuft...");
   try {
     const res = await fetch("/api/status", {
+      signal: controller.signal,
+      cache: "no-store",
       credentials: "same-origin",
       headers: { Authorization: auth }
     });
@@ -658,6 +818,9 @@ async function login(event) {
     await startAuthenticatedApp();
   } catch (_) {
     $("loginMessage").textContent = tr("Anmeldung fehlgeschlagen.");
+  } finally {
+    clearTimeout(timeout);
+    $("loginBtn").disabled = false;
   }
 }
 
@@ -670,6 +833,11 @@ function initUi() {
   fillWifiCountries();
   fillWeatherIntervals();
   initCollapsiblePanels();
+  for (const id of ["weatherLine", "locationLine", "urlLine", "firmwareLine", "littleFsLine", "networks", "message", "loginMessage", "firmwareSelectedVersion", "webSelectedVersion"]) $(id).dataset.noI18n = "";
+  document.querySelectorAll(".sectionNav a").forEach((link) => link.addEventListener("click", () => {
+    const section = document.querySelector(link.getAttribute("href"));
+    if (section) setPanelCollapsed(section, false, true);
+  }));
 }
 initUi();
 applyNormalPanelStartState();
@@ -690,7 +858,7 @@ $("wifiCountry").addEventListener("change", updateWifiSummary);
 $("adminReminderGo").addEventListener("click", openAdminAccess);
 $("adminReminderDismiss").addEventListener("click", () => closeAdminReminder(true));
 $("saveBtn").addEventListener("click", saveConfig);
-$("scanBtn").addEventListener("click", scanNetworks);
+bindAction("scanBtn", scanNetworks);
 $("brightnessPercent").addEventListener("input", () => syncBrightnessNumberFromSlider("brightness", "brightnessPercent", "brightnessPercentValue"));
 $("nightBrightnessPercent").addEventListener("input", () => syncBrightnessNumberFromSlider("nightBrightness", "nightBrightnessPercent", "nightBrightnessPercentValue"));
 $("brightnessPercentValue").addEventListener("input", () => syncBrightnessSliderFromNumber("brightness", "brightnessPercent", "brightnessPercentValue"));
@@ -700,14 +868,39 @@ $("hourFormat").addEventListener("change", updateNightControlsFromStored);
 for (const id of ["nightStartDisplay", "nightStartPeriod", "nightEndDisplay", "nightEndPeriod"]) {
   $(id).addEventListener("change", syncNightStoredFromDisplay);
 }
-$("testBtn").addEventListener("click", () => postAction("/api/display/test", "Testmuster gestartet."));
-$("weatherBtn").addEventListener("click", refreshWeather);
-$("restartBtn").addEventListener("click", () => postAction("/api/restart", "Neustart läuft...", { restart: true }));
-$("restartRequiredBtn").addEventListener("click", () => postAction("/api/restart", "Neustart läuft...", { restart: true }));
-$("settingsResetBtn").addEventListener("click", resetSettings);
-$("factoryResetBtn").addEventListener("click", factoryReset);
+bindAction("testBtn", () => postAction("/api/display/test", "Testmuster gestartet."));
+bindAction("weatherBtn", refreshWeather);
+bindAction("restartBtn", () => postAction("/api/restart", "Neustart läuft...", { restart: true }));
+bindAction("restartRequiredBtn", () => postAction("/api/restart", "Neustart läuft...", { restart: true }));
+bindAction("settingsResetBtn", resetSettings);
+bindAction("factoryResetBtn", factoryReset);
 $("firmwareUpdateBtn").addEventListener("click", uploadFirmware);
 $("firmwareFile").addEventListener("change", updateFirmwareSelectionInfo);
 $("webUpdateBtn").addEventListener("click", uploadWebInterface);
 $("webFile").addEventListener("change", updateWebSelectionInfo);
 window.addEventListener("pageshow", resetUpdateInputs);
+
+function bindAction(id, action) {
+  $(id).addEventListener("click", async () => {
+    $(id).disabled = true;
+    try { await action(); } catch (error) {
+      if (error.message !== "Unauthorized") message(error.message === "Failed to fetch" || error.name === "AbortError" ? "Uhr nicht erreichbar" : error.message);
+    } finally { $(id).disabled = false; }
+  });
+}
+
+$("weatherProvider").addEventListener("change", updateProviderFields);
+$("autoPage").addEventListener("change", updatePageControls);
+$("discardBtn").addEventListener("click", () => { if (savedConfig) { setForm({ ...savedConfig }); message(""); } });
+for (const eventName of ["input", "change"]) {
+  $("appShell").addEventListener(eventName, (event) => {
+    if (event.target.matches("input:not([type=file]), select") && event.target.id !== "languageSelect") updateDirtyState();
+  });
+}
+window.addEventListener("beforeunload", (event) => {
+  if (dirty) { event.preventDefault(); event.returnValue = ""; }
+});
+document.addEventListener("visibilitychange", () => {
+  clearTimeout(statusRefreshTimer);
+  if (!document.hidden && authHeaderValue()) loadStatus().catch(() => {}).finally(scheduleStatusRefresh);
+});

@@ -6,12 +6,15 @@
 
 void setup() {
   Serial.begin(115200);
+  stateMutex = xSemaphoreCreateRecursiveMutex();
+  if (!stateMutex) abort();
   keepFirmwareVersionBinaryMarker();
   bootStarted = millis();
   loadConfig();
   seedTimeFromBuild();
   if (authConfigMigrationNeeded) saveConfig();
   setupFastLed();
+  renderDisplay();
 
   if (!LittleFS.begin(true, "/littlefs", 10, "littlefs")) {
     Serial.println("LittleFS mount failed");
@@ -21,53 +24,31 @@ void setup() {
     startSetupAp();
   }
   startMdns();
-  setupServer();
-
-  resolveCity();
-  syncTime();
-  fetchWeather();
+  pendingCityResolve = config.resolvedCityName != config.cityName;
+  pendingTimeSync = true;
+  pendingWeatherFetch = true;
   lastPageSwitch = millis();
+  startNetworkWorker();
+  setupServer();
 }
 
 void loop() {
-  const uint32_t now = millis();
-  if (pendingRestart && now >= restartAt) {
-    ESP.restart();
-  }
-  if (now - lastRender >= 200) {
-    lastRender = now;
-    renderDisplay();
-  }
-  const uint8_t pageDurationSeconds = currentPage == 0 ? config.timePageSeconds : config.pageSeconds;
-  if (config.autoPage && !displayTest && now - lastPageSwitch >= pageDurationSeconds * 1000UL) {
-    lastPageSwitch = now;
-    currentPage = (currentPage + 1) % 3;
-  }
-  if (WiFi.status() == WL_CONNECTED && pendingCityResolve) {
-    pendingCityResolve = false;
-    if (resolveCity()) {
-      pendingTimeSync = true;
-      pendingWeatherFetch = true;
+  {
+    StateLock lock;
+    const uint32_t now = millis();
+    if (displayTest && static_cast<int32_t>(now - displayTestUntil) >= 0) displayTest = false;
+    if (pendingRestart && static_cast<int32_t>(now - restartAt) >= 0) ESP.restart();
+    const uint8_t seconds = currentPage == 0 ? config.timePageSeconds : config.pageSeconds;
+    if (config.autoPage && !displayTest && now - lastPageSwitch >= seconds * 1000UL) {
+      lastPageSwitch = now;
+      currentPage = (currentPage + 1) % 3;
+      lastRender = 0;
+    }
+    if (!lastRender || now - lastRender >= displayRenderInterval()) {
+      lastRender = now;
+      renderDisplay();
     }
   }
-  if (WiFi.status() == WL_CONNECTED && pendingTimeSync) {
-    pendingTimeSync = false;
-    syncTime();
-  }
-  if (WiFi.status() == WL_CONNECTED && pendingWeatherFetch) {
-    pendingWeatherFetch = false;
-    fetchWeather();
-  }
-  const bool weatherDue = weather.lastFetch == 0
-    ? (weather.lastAttempt == 0 || now - weather.lastAttempt >= WEATHER_RETRY_MS)
-    : (now - weather.lastFetch >= config.weatherIntervalHalfHours * WEATHER_INTERVAL_STEP_MS);
-  if (WiFi.status() == WL_CONNECTED && weatherDue) {
-    fetchWeather();
-  }
-  const bool ntpDue = lastNtpSync == 0
-    ? (lastNtpAttempt == 0 || now - lastNtpAttempt >= NTP_RETRY_MS)
-    : (now - lastNtpSync >= NTP_INTERVAL_MS);
-  if (WiFi.status() == WL_CONNECTED && ntpDue) {
-    syncTime();
-  }
+  // Give the idle task and Wi-Fi power management time between display checks.
+  delay(20);
 }

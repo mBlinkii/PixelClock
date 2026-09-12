@@ -3,6 +3,8 @@
 #include <esp_mac.h>
 #include <esp_wifi.h>
 #include <sys/time.h>
+#include <esp_sntp.h>
+#include <atomic>
 
 #include "app_state.h"
 
@@ -39,11 +41,15 @@ bool connectWifi() {
   if (config.ssid.isEmpty()) return false;
   applyRouterHostname();
   WiFi.mode(WIFI_STA);
+  WiFi.persistent(false);
+  WiFi.setAutoReconnect(true);
+  applyWifiPowerSave();
   applyWifiCountry();
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
   WiFi.begin(config.ssid.c_str(), config.password.c_str());
   const uint32_t started = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - started < WIFI_CONNECT_TIMEOUT_MS) {
+    renderDisplay();
     delay(250);
   }
   return WiFi.status() == WL_CONNECTED;
@@ -58,20 +64,31 @@ void startSetupAp() {
   WiFi.softAP("PixelClock-Setup", "pixelclock");
 }
 
+void applyWifiPowerSave() {
+  WiFi.setSleep(config.wifiPowerSave);
+}
+
 void startMdns() {
   if (MDNS.begin(config.hostname.c_str())) {
     MDNS.addService("http", "tcp", 80);
   }
 }
 
+static std::atomic<uint32_t> ntpSyncedAt{0};
+
 void syncTime() {
+  StateLock lock;
   if (WiFi.status() != WL_CONNECTED) return;
   lastNtpAttempt = millis();
+  sntp_set_time_sync_notification_cb([](struct timeval *) {
+    ntpSyncedAt.store(millis());
+  });
+  sntp_set_sync_interval(NTP_INTERVAL_MS);
   configTzTime(config.timezone.c_str(), "pool.ntp.org", "time.nist.gov");
-  struct tm timeinfo;
-  if (getLocalTime(&timeinfo, 5000)) {
-    lastNtpSync = millis();
-  }
+}
+
+uint32_t lastConfirmedNtpSync() {
+  return ntpSyncedAt.load();
 }
 
 bool timeIsReasonable() {
@@ -86,6 +103,8 @@ uint8_t buildMonth(const char *month) {
 }
 
 void seedTimeFromBuild() {
+  setenv("TZ", config.timezone.c_str(), 1);
+  tzset();
   if (timeIsReasonable()) return;
 
   char monthText[4] = {};

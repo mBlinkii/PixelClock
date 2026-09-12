@@ -5,11 +5,13 @@
 !.vscode/extensions.json
 
 # Build and upload artifacts.
+/dist/
 .pioenvs/
 .piolibdeps/
 *.bin
 *.elf
 *.map
+data/*.gz
 tools/*
 !tools/reset-pixel-clock.ps1
 build-pixel-clock.cmd

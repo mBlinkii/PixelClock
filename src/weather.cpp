@@ -4,6 +4,7 @@
 #include <WiFiClientSecure.h>
 
 #include "app_state.h"
+#include "weather_decode.h"
 
 static const char ISRG_ROOT_X1[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
@@ -74,9 +75,43 @@ QqszKbrAKbkTidOIijlBO8n9pu0f9GBj39ItVQGL
 -----END CERTIFICATE-----
 )EOF";
 
+static const char HARICA_ROOT[] PROGMEM = R"EOF(
+-----BEGIN CERTIFICATE-----
+MIIGCzCCA/OgAwIBAgIBADANBgkqhkiG9w0BAQsFADCBpjELMAkGA1UEBhMCR1IxDzANBgNVBAcT
+BkF0aGVuczFEMEIGA1UEChM7SGVsbGVuaWMgQWNhZGVtaWMgYW5kIFJlc2VhcmNoIEluc3RpdHV0
+aW9ucyBDZXJ0LiBBdXRob3JpdHkxQDA+BgNVBAMTN0hlbGxlbmljIEFjYWRlbWljIGFuZCBSZXNl
+YXJjaCBJbnN0aXR1dGlvbnMgUm9vdENBIDIwMTUwHhcNMTUwNzA3MTAxMTIxWhcNNDAwNjMwMTAx
+MTIxWjCBpjELMAkGA1UEBhMCR1IxDzANBgNVBAcTBkF0aGVuczFEMEIGA1UEChM7SGVsbGVuaWMg
+QWNhZGVtaWMgYW5kIFJlc2VhcmNoIEluc3RpdHV0aW9ucyBDZXJ0LiBBdXRob3JpdHkxQDA+BgNV
+BAMTN0hlbGxlbmljIEFjYWRlbWljIGFuZCBSZXNlYXJjaCBJbnN0aXR1dGlvbnMgUm9vdENBIDIw
+MTUwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDC+Kk/G4n8PDwEXT2QNrCROnk8Zlrv
+bTkBSRq0t89/TSNTt5AA4xMqKKYx8ZEA4yjsriFBzh/a/X0SWwGDD7mwX5nh8hKDgE0GPt+sr+eh
+iGsxr/CL0BgzuNtFajT0AoAkKAoCFZVedioNmToUW/bLy1O8E00BiDeUJRtCvCLYjqOWXjrZMts+
+6PAQZe104S+nfK8nNLspfZu2zwnI5dMK/IhlZXQK3HMcXM1AsRzUtoSMTFDPaI6oWa7CJ06CojXd
+FPQf/7J31Ycvqm59JCfnxssm5uX+Zwdj2EUN3TpZZTlYepKZcj2chF6IIbjV9Cz82XBST3i4vTwr
+i5WY9bPRaM8gFH5MXF/ni+X1NYEZN9cRCLdmvtNKzoNXADrDgfgXy5I2XdGj2HUb4Ysn6npIQf1F
+GQatJ5lOwXBH3bWfgVMS5bGMSF0xQxfjjMZ6Y5ZLKTBOhE5iGV48zpeQpX8B653g+IuJ3SWYPZK2
+fu/Z8VFRfS0myGlZYeCsargqNhEEelC9MoS+L9xy1dcdFkfkR2YgP/SWxa+OAXqlD3pk9Q0Yh9mu
+iNX6hME6wGkoLfINaFGq46V3xqSQDqE3izEjR8EJCOtu93ib14L8hCCZSRm2Ekax+0VVFqmjZayc
+Bw/qa9wfLgZy7IaIEuQt218FL+TwA9MmM+eAws1CoRc0CwIDAQABo0IwQDAPBgNVHRMBAf8EBTAD
+AQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQUcRVnyMjJvXVdctA4GGqd83EkVAswDQYJKoZI
+hvcNAQELBQADggIBAHW7bVRLqhBYRjTyYtcWNl0IXtVsyIe9tC5G8jH4fOpCtZMWVdyhDBKg2mF+
+D1hYc2Ryx+hFjtyp8iY/xnmMsVMIM4GwVhO+5lFc2JsKT0ucVlMC6U/2DWDqTUJV6HwbISHTGzrM
+d/K4kPFox/la/vot9L/J9UUbzjgQKjeKeaO04wlshYaT/4mWJ3iBj2fjRnRUjtkNaeJK9E10A/+y
+d+2VZ5fkscWrv2oj6NSU4kQoYsRL4vDY4ilrGnB+JGGTe08DMiUNRSQrlrRGar9KC/eaj8GsGsVn
+82800vpzY4zvFrCopEYq+OsS7HK07/grfoxSwIuEVPkvPuNVqNxmsdnhX9izjFk0WaSrT2y7Hxjb
+davYy5LNlDhhDgcGH0tGEPEVvo2FXDtKK4F5D7Rpn0lQl033DlZdwJVqwjbDG2jJ9SrcR5q+ss7F
+Jej6A7na+RZukYT1HCjI/CbM1xyQVqdfbzoEvM14iQuODy+jqk+iGxI9FghAD/FGTNeqewjBCvVt
+J94Cj8rDtSvK6evIIVM4pcw72Hc3MKJP2W/R8kCtQXoXxdZKNYm3QdV8hn9VTYNKpXMgwDqvkPGa
+JI7ZjnHKe7iG2rKPmT4dEw0SEe7Uq/DpFXYC5ODfqiAeW2GFZECpkJcNrVPSWh2HagCXZWK0vm9q
+p/UsQu0yrbYhnr68
+-----END CERTIFICATE-----
+)EOF";
+
 String urlEncode(const String &input) {
   const char *hex = "0123456789ABCDEF";
   String out;
+  out.reserve(input.length() * 3);
   for (uint16_t i = 0; i < input.length(); i++) {
     const uint8_t c = input[i];
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.') {
@@ -133,158 +168,207 @@ String timezoneFromIana(const String &iana) {
   return "";
 }
 
-int normalizeOpenWeatherCode(int code) {
-  if (code >= 200 && code < 300) return 95;
-  if (code >= 300 && code < 400) return 51;
-  if (code >= 500 && code < 600) return 61;
-  if (code >= 600 && code < 700) return 71;
-  if (code >= 700 && code < 800) return 45;
-  if (code == 800) return 0;
-  if (code == 801) return 1;
-  if (code == 802) return 2;
-  if (code == 803 || code == 804) return 3;
-  return -1;
+void configureWeatherClient(WiFiClientSecure &client, uint8_t provider) {
+  client.setCACert(provider == WEATHER_PROVIDER_MET_NORWAY ? HARICA_ROOT :
+    provider == WEATHER_PROVIDER_OPEN_WEATHER_MAP ? SECTIGO_PUBLIC_SERVER_AUTH_ROOT_R46 : ISRG_ROOT_X1);
+  client.setHandshakeTimeout(8);
+  client.setTimeout(HTTP_TIMEOUT_MS);
 }
 
-int normalizeBrightSkyIcon(const char *icon) {
-  if (icon == nullptr || strlen(icon) == 0) return -1;
-  if (strcmp(icon, "clear-day") == 0 || strcmp(icon, "clear-night") == 0) return 0;
-  if (strcmp(icon, "partly-cloudy-day") == 0 || strcmp(icon, "partly-cloudy-night") == 0) return 2;
-  if (strcmp(icon, "cloudy") == 0) return 3;
-  if (strcmp(icon, "fog") == 0) return 45;
-  if (strcmp(icon, "drizzle") == 0) return 51;
-  if (strcmp(icon, "rain") == 0) return 61;
-  if (strcmp(icon, "sleet") == 0) return 67;
-  if (strcmp(icon, "snow") == 0) return 71;
-  if (strcmp(icon, "hail") == 0) return 77;
-  if (strcmp(icon, "thunderstorm") == 0) return 95;
-  return -1;
-}
-
-void configureWeatherClient(WiFiClientSecure &client, uint8_t weatherProvider) {
-  client.setCACert(weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP ? SECTIGO_PUBLIC_SERVER_AUTH_ROOT_R46 : ISRG_ROOT_X1);
-}
-
-// Weather and geocoding requests run synchronously but are triggered only from
-// setup(), explicit UI actions, or scheduled loop() intervals.
-void fetchWeather() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  weather.lastAttempt = millis();
-  if (config.weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP && config.openWeatherApiKey.isEmpty()) {
-    weather.lastError = "OpenWeatherMap API-Key fehlt";
-    return;
-  }
-  WiFiClientSecure client;
-  configureWeatherClient(client, config.weatherProvider);
-  HTTPClient http;
+static void prepareHttp(HTTPClient &http) {
+  http.setConnectTimeout(HTTP_TIMEOUT_MS);
   http.setTimeout(HTTP_TIMEOUT_MS);
+  http.useHTTP10(true); // Stream JSON without chunk framing or a second body buffer.
+  http.setUserAgent("PixelClock/" FIRMWARE_VERSION_TEXT " https://github.com/mBlinkii/PixelClock");
+}
+
+// Date and Expires use the same GMT clock. Only their difference is needed.
+static uint32_t responseDelayMs(HTTPClient &http, const char *header) {
+  struct tm expires = {}, date = {};
+  if (!strptime(http.header(header).c_str(), "%a, %d %b %Y %H:%M:%S", &expires) ||
+      !strptime(http.header("Date").c_str(), "%a, %d %b %Y %H:%M:%S", &date)) return 0;
+  const double seconds = difftime(mktime(&expires), mktime(&date));
+  return seconds > 0 ? static_cast<uint32_t>(min(seconds, 86400.0)) * 1000UL : 0;
+}
+
+static bool requestWeather(const AppConfig &source, WeatherState &sample) {
+  if (source.weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP && source.openWeatherApiKey.isEmpty()) {
+    sample.lastError = "OpenWeatherMap API-Key fehlt";
+    return false;
+  }
+  if (source.weatherProvider == WEATHER_PROVIDER_WEATHER_API && source.weatherApiKey.isEmpty()) {
+    sample.lastError = "WeatherAPI API-Key fehlt";
+    return false;
+  }
   String url;
-  if (config.weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP) {
-    url = "https://api.openweathermap.org/data/2.5/weather?lat=" + String(config.latitude, 5) +
-      "&lon=" + String(config.longitude, 5) +
-      "&appid=" + config.openWeatherApiKey +
-      "&units=metric&lang=de";
-  } else if (config.weatherProvider == WEATHER_PROVIDER_DWD) {
-    url = "https://api.brightsky.dev/current_weather?lat=" + String(config.latitude, 5) +
-      "&lon=" + String(config.longitude, 5);
+  url.reserve(320);
+  if (source.weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP) {
+    url = "https://api.openweathermap.org/data/2.5/weather?lat=" + String(source.latitude, 4) +
+      "&lon=" + String(source.longitude, 4) + "&appid=" + urlEncode(source.openWeatherApiKey) + "&units=metric";
+  } else if (source.weatherProvider == WEATHER_PROVIDER_DWD) {
+    url = "https://api.brightsky.dev/current_weather?lat=" + String(source.latitude, 4) + "&lon=" + String(source.longitude, 4);
+  } else if (source.weatherProvider == WEATHER_PROVIDER_MET_NORWAY) {
+    url = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=" + String(source.latitude, 4) + "&lon=" + String(source.longitude, 4);
+  } else if (source.weatherProvider == WEATHER_PROVIDER_WEATHER_API) {
+    url = "https://api.weatherapi.com/v1/forecast.json?key=" + urlEncode(source.weatherApiKey) +
+      "&q=" + String(source.latitude, 4) + "," + String(source.longitude, 4) +
+      "&days=1&aqi=no&alerts=no&hour=0";
   } else {
-    url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(config.latitude, 5) +
-      "&longitude=" + String(config.longitude, 5) +
+    url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(source.latitude, 4) +
+      "&longitude=" + String(source.longitude, 4) +
       "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1";
   }
+  WiFiClientSecure client;
+  configureWeatherClient(client, source.weatherProvider);
+  HTTPClient http;
+  prepareHttp(http);
   if (!http.begin(client, url)) {
-    weather.lastError = "HTTP begin failed";
-    return;
+    sample.lastError = "HTTP begin failed";
+    return false;
   }
-  http.useHTTP10(true);
+  const char *headers[] = {"Date", "Expires", "Last-Modified", "Retry-After"};
+  http.collectHeaders(headers, 4);
   http.addHeader("Accept-Encoding", "identity");
+  if (source.weatherProvider == WEATHER_PROVIDER_MET_NORWAY && !sample.lastModified.isEmpty()) {
+    http.addHeader("If-Modified-Since", sample.lastModified);
+  }
   const int code = http.GET();
-  if (code != HTTP_CODE_OK) {
-    weather.lastError = "HTTP " + String(code);
+  if (source.weatherProvider == WEATHER_PROVIDER_MET_NORWAY) {
+    const uint32_t cacheMs = responseDelayMs(http, "Expires");
+    sample.cacheUntil = millis() + max(cacheMs, WEATHER_RETRY_MS);
+  }
+  if (source.weatherProvider == WEATHER_PROVIDER_MET_NORWAY && code == HTTP_CODE_NOT_MODIFIED && isfinite(sample.temperature)) {
     http.end();
-    return;
+    return true;
   }
-  JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, http.getStream());
+  if (code != HTTP_CODE_OK) {
+    sample.lastError = "HTTP " + String(code);
+    const long retrySeconds = http.header("Retry-After").toInt();
+    if (retrySeconds > 0) sample.retryAfterMs = max<uint32_t>(WEATHER_RETRY_MS, static_cast<uint32_t>(min(retrySeconds, 86400L)) * 1000UL);
+    else sample.retryAfterMs = max(sample.retryAfterMs, responseDelayMs(http, "Retry-After"));
+    if (code == 429) sample.retryAfterMs = max<uint32_t>(sample.retryAfterMs, 30UL * 60UL * 1000UL);
+    http.end();
+    return false;
+  }
+  const String modified = http.header("Last-Modified");
+  JsonDocument doc, filter;
+  filterWeather(filter, source.weatherProvider);
+  Stream &stream = http.getStream();
+  stream.setTimeout(HTTP_TIMEOUT_MS);
+  // Only the nearest forecast is displayed. Do not allocate the entire MET timeseries.
+  if (source.weatherProvider == WEATHER_PROVIDER_MET_NORWAY &&
+      (!stream.find("\"timeseries\"") || !stream.find("["))) {
+    sample.lastError = "Ungültige Wetterdaten";
+    http.end();
+    return false;
+  }
+  const DeserializationError error = deserializeJson(doc, stream, DeserializationOption::Filter(filter), DeserializationOption::NestingLimit(16));
   http.end();
-  if (err) {
-    weather.lastError = err.c_str();
-    return;
+  if (error) {
+    sample.lastError = error.c_str();
+    return false;
   }
-  if (config.weatherProvider == WEATHER_PROVIDER_OPEN_WEATHER_MAP) {
-    weather.temperature = doc["main"]["temp"] | NAN;
-    weather.temperatureMax = doc["main"]["temp_max"] | weather.temperature;
-    weather.temperatureMin = doc["main"]["temp_min"] | weather.temperature;
-    const int openWeatherCode = doc["weather"][0]["id"] | -1;
-    weather.weatherCode = normalizeOpenWeatherCode(openWeatherCode);
-    const char *icon = doc["weather"][0]["icon"] | "";
-    weather.isDay = strlen(icon) < 3 || icon[2] != 'n';
-  } else if (config.weatherProvider == WEATHER_PROVIDER_DWD) {
-    weather.temperature = doc["weather"]["temperature"] | NAN;
-    weather.temperatureMax = NAN;
-    weather.temperatureMin = NAN;
-    const char *icon = doc["weather"]["icon"] | "";
-    weather.weatherCode = normalizeBrightSkyIcon(icon);
-    weather.isDay = strstr(icon, "night") == nullptr;
-  } else {
-    weather.temperature = doc["current"]["temperature_2m"] | NAN;
-    weather.temperatureMax = doc["daily"]["temperature_2m_max"][0] | NAN;
-    weather.temperatureMin = doc["daily"]["temperature_2m_min"][0] | NAN;
-    weather.weatherCode = doc["current"]["weather_code"] | -1;
-    weather.isDay = (doc["current"]["is_day"] | 1) == 1;
+  decodeWeather(doc, source.weatherProvider, sample);
+  if (!isfinite(sample.temperature)) {
+    sample.lastError = "Ungültige Wetterdaten";
+    return false;
   }
+  sample.lastModified = modified;
+  return true;
+}
+
+void fetchWeather() {
+  AppConfig source;
+  WeatherState sample;
+  uint32_t revision;
+  const uint32_t started = millis();
+  {
+    StateLock lock;
+    if (WiFi.status() != WL_CONNECTED || pendingCityResolve || pendingRestart) return;
+    source = config;
+    sample = weather;
+    revision = weatherRevision;
+    weather.busy = true;
+    weather.lastAttempt = started;
+    pendingWeatherFetch = false;
+  }
+  sample.retryAfterMs = WEATHER_RETRY_MS;
+  const bool success = requestWeather(source, sample);
+  StateLock lock;
+  weather.busy = false;
+  if (revision != weatherRevision || pendingRestart) return; // Ignore obsolete responses.
+  weather.fetchDurationMs = millis() - started;
+  weather.cacheUntil = sample.cacheUntil;
+  weather.retryAfterMs = sample.retryAfterMs;
+  if (!success) {
+    weather.lastError = sample.lastError;
+    return; // Keep the last valid sample and its age on all errors.
+  }
+  weather.temperature = sample.temperature;
+  weather.temperatureMin = sample.temperatureMin;
+  weather.temperatureMax = sample.temperatureMax;
+  weather.weatherCode = sample.weatherCode;
+  weather.isDay = sample.isDay;
+  weather.lastModified = sample.lastModified;
   weather.lastFetch = millis();
   weather.lastError = "";
+  lastRender = 0;
 }
 
 bool resolveCity() {
-  if (WiFi.status() != WL_CONNECTED || config.cityName.length() < 2) return false;
-
+  AppConfig source;
+  uint32_t revision;
+  {
+    StateLock lock;
+    if (WiFi.status() != WL_CONNECTED || config.cityName.length() < 2) return false;
+    source = config;
+    revision = weatherRevision;
+  }
   WiFiClientSecure client;
   configureWeatherClient(client, WEATHER_PROVIDER_OPEN_METEO);
   HTTPClient http;
-  http.setTimeout(HTTP_TIMEOUT_MS);
-  const String url = "https://geocoding-api.open-meteo.com/v1/search?name=" + urlEncode(config.cityName) +
-    "&count=1&language=de&format=json";
-  if (!http.begin(client, url)) {
-    weather.lastError = "Geocoding begin failed";
-    return false;
-  }
-  http.useHTTP10(true);
-  http.addHeader("Accept-Encoding", "identity");
-  const int code = http.GET();
-  if (code != HTTP_CODE_OK) {
-    weather.lastError = "Geocoding HTTP " + String(code);
+  prepareHttp(http);
+  const String url = "https://geocoding-api.open-meteo.com/v1/search?name=" + urlEncode(source.cityName) +
+    "&count=1&language=" + source.language + "&format=json";
+  String error;
+  JsonDocument doc, filter;
+  for (const char *key : {"latitude", "longitude", "name", "country", "timezone"}) filter["results"][0][key] = true;
+  if (!http.begin(client, url)) error = "Geocoding begin failed";
+  else {
+    http.addHeader("Accept-Encoding", "identity");
+    const int code = http.GET();
+    if (code != HTTP_CODE_OK) error = "Geocoding HTTP " + String(code);
+    else {
+      http.getStream().setTimeout(HTTP_TIMEOUT_MS);
+      const DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
+      if (err) error = String("Geocoding JSON ") + err.c_str();
+    }
     http.end();
+  }
+  JsonObject first = doc["results"][0];
+  const float latitude = first["latitude"] | NAN;
+  const float longitude = first["longitude"] | NAN;
+  if (error.isEmpty() && (!isfinite(latitude) || !isfinite(longitude))) error = "Stadt nicht gefunden";
+  StateLock lock;
+  if (revision != weatherRevision || pendingRestart) return false;
+  if (!error.isEmpty()) {
+    weather.lastError = error;
     return false;
   }
-  JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, http.getStream());
-  http.end();
-  if (err) {
-    weather.lastError = String("Geocoding JSON ") + err.c_str();
-    return false;
-  }
-  JsonArray results = doc["results"].as<JsonArray>();
-  if (results.isNull() || results.size() == 0) {
-    weather.lastError = "Stadt nicht gefunden";
-    return false;
-  }
-  JsonObject first = results[0];
-  config.latitude = first["latitude"] | config.latitude;
-  config.longitude = first["longitude"] | config.longitude;
-  const char *city = first["name"] | config.cityName.c_str();
+  config.latitude = latitude;
+  config.longitude = longitude;
+  config.resolvedCityName = source.cityName;
+  config.locationLabel = first["name"] | source.cityName.c_str();
   const char *country = first["country"] | "";
-  const char *ianaTimezone = first["timezone"] | "";
-  config.locationLabel = String(city);
-  if (strlen(country) > 0) {
-    config.locationLabel += ", ";
-    config.locationLabel += country;
-  }
-  const String resolvedTimezone = timezoneFromIana(String(ianaTimezone));
-  if (!resolvedTimezone.isEmpty()) {
-    config.timezone = resolvedTimezone;
-  }
+  if (*country) config.locationLabel += String(", ") + country;
+  // Preserve a timezone explicitly edited while geocoding was in flight.
+  const String timezone = timezoneFromIana(first["timezone"] | "");
+  if (!timezone.isEmpty() && config.timezone == source.timezone) config.timezone = timezone;
+  weather = WeatherState();
+  ++weatherRevision;
+  pendingCityResolve = false;
+  pendingTimeSync = true;
+  pendingWeatherFetch = true;
   saveConfig();
   return true;
 }

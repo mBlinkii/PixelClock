@@ -6,6 +6,9 @@
 #include <Preferences.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
+#include "weather_data.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 constexpr uint16_t MAX_LEDS = 512;
 constexpr uint8_t DEFAULT_WIDTH = 32;
@@ -20,9 +23,6 @@ constexpr uint32_t NTP_RETRY_MS = 5UL * 60UL * 1000UL;
 constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 20000;
 constexpr uint32_t HTTP_TIMEOUT_MS = 8000;
 constexpr uint32_t BOOT_GREETING_MS = 9000;
-constexpr uint8_t WEATHER_PROVIDER_OPEN_METEO = 0;
-constexpr uint8_t WEATHER_PROVIDER_OPEN_WEATHER_MAP = 1;
-constexpr uint8_t WEATHER_PROVIDER_DWD = 2;
 constexpr int LEFT_SLOT_X = 1;
 constexpr int VALUE_SLOT_X = 13;
 constexpr int VALUE_SLOT_W = 18;
@@ -33,7 +33,7 @@ constexpr const char *DEFAULT_ADMIN_USERNAME = "admin";
 constexpr const char *DEFAULT_ADMIN_PASSWORD = "pixelclock";
 constexpr const char *DEFAULT_LANGUAGE = "de";
 constexpr const char *DEFAULT_WIFI_COUNTRY = "DE";
-#define FIRMWARE_VERSION_TEXT "0.1.15"
+#define FIRMWARE_VERSION_TEXT "0.1.16"
 constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
 extern const char FIRMWARE_VERSION_BINARY_MARKER[];
 constexpr uint8_t AUTH_CONFIG_VERSION = 1;
@@ -55,6 +55,9 @@ struct AppConfig {
   uint8_t weatherProvider = WEATHER_PROVIDER_OPEN_METEO;
   uint8_t weatherIntervalHalfHours = DEFAULT_WEATHER_INTERVAL_HALF_HOURS;
   String openWeatherApiKey;
+  String weatherApiKey;
+  String resolvedCityName;
+  bool wifiPowerSave = true;
   uint8_t width = DEFAULT_WIDTH;
   uint8_t height = DEFAULT_HEIGHT;
   uint8_t dataPin = 18;
@@ -81,14 +84,14 @@ struct AppConfig {
   uint8_t colorGradientMode = 0;
 };
 
-struct WeatherState {
-  float temperature = NAN;
-  float temperatureMax = NAN;
-  float temperatureMin = NAN;
-  int weatherCode = -1;
-  bool isDay = true;
+struct WeatherState : WeatherReading {
   uint32_t lastFetch = 0;
   uint32_t lastAttempt = 0;
+  uint32_t retryAfterMs = WEATHER_RETRY_MS;
+  uint32_t cacheUntil = 0;
+  String lastModified;
+  bool busy = false;
+  uint32_t fetchDurationMs = 0;
   String lastError;
 };
 
@@ -114,6 +117,18 @@ extern bool pendingWeatherFetch;
 extern bool pendingTimeSync;
 extern bool pendingRestart;
 extern uint32_t restartAt;
+extern SemaphoreHandle_t stateMutex;
+extern uint32_t weatherRevision;
+extern bool networkWorkerReady;
+
+// Hold only while copying/publishing shared state, never during HTTPS.
+class StateLock {
+ public:
+  StateLock() { xSemaphoreTakeRecursive(stateMutex, portMAX_DELAY); }
+  ~StateLock() { xSemaphoreGiveRecursive(stateMutex); }
+  StateLock(const StateLock &) = delete;
+  StateLock &operator=(const StateLock &) = delete;
+};
 
 void loadConfig();
 void saveConfig();
@@ -129,11 +144,15 @@ bool connectWifi();
 void startSetupAp();
 void startMdns();
 void syncTime();
+uint32_t lastConfirmedNtpSync();
+void startNetworkWorker();
+void applyWifiPowerSave();
 void seedTimeFromBuild();
 bool timeIsReasonable();
 
 void setupFastLed();
 void renderDisplay();
+uint32_t displayRenderInterval();
 bool isNightTime();
 float displayTemperature(float celsius);
 String temperatureUnitText();

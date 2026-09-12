@@ -4,8 +4,8 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.15`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.11`
+Aktuelle Firmware-Version: `0.1.16`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.12`
 
 ## Funktionen
 
@@ -15,7 +15,7 @@ Aktuelle LittleFS-Weboberflächen-Version: `0.1.11`
 - Start-Ecke, Datenpin und Farbreihenfolge einstellbar
 - Helligkeit und Nacht-Helligkeit in Prozent, standardmäßig auf 40% begrenzt
 - automatische Seitenrotation oder feste Seite
-- Open-Meteo oder DWD ohne API-Key, oder OpenWeatherMap mit eigenem API-Key
+- Open-Meteo, DWD oder MET Norway ohne API-Key; OpenWeatherMap und WeatherAPI mit eigenem API-Key
 - Standortsuche per Stadtname mit automatischer Zeitzone für viele Regionen
 - zweisprachige Weboberfläche, Deutsch/Englisch, mit passenden Wochentagen auf dem Display
 - integrierte Hilfe/Wiki direkt in der Weboberfläche
@@ -133,9 +133,9 @@ OTA-Slots und alle gespeicherten Daten verloren. Danach Firmware und Weboberflae
 3. `http://192.168.4.1` öffnen.
 4. Mit `admin` / `pixelclock` anmelden.
 5. Unter `WLAN-Zugang` Netzwerk, WLAN-Passwort und Browser-Adresse setzen.
-6. Unter `Ort, Wetter und Zugriff` Stadt und Wetteranbieter setzen.
+6. Unter `Ort und Wetter` Stadt und Wetteranbieter setzen.
 7. Unter `Display-Hardware` Matrixgröße, Datenpin, Start-Ecke und Verkabelung setzen.
-8. Unter `Helligkeit` Helligkeit und Nachtzeiten einstellen.
+8. Unter `Helligkeit und Energie` Helligkeit und Nachtzeiten einstellen.
 9. Unter `Admin-Zugriff` das Standard-Admin-Passwort ändern.
 10. `Speichern` drücken.
 11. Wenn die Oberfläche einen Neustart meldet, `Neustart` ausführen.
@@ -160,11 +160,11 @@ entsteht `xxxxxx` aus den letzten drei Bytes der ESP32-MAC-Adresse.
 - `Status`: zeigt Wetter, Ort und Adresse.
 - `WLAN-Zugang`: Netzwerk, WLAN-Passwort, WLAN-Region, Browser-Adresse und WLAN-Scan.
 - `Admin-Zugriff`: Admin-Benutzer und Admin-Passwort für den Web-Login.
-- `Ort, Wetter und Zugriff`: Stadt, Wetteranbieter, API-Key und Zeitzone.
+- `Ort und Wetter`: Stadt, Wetteranbieter, API-Key und Zeitzone.
 - `Display-Hardware`: Matrixgröße, Datenpin, Farbreihenfolge und LED-Mapping.
 - `Anzeige und Seiten`: Layout, Zeitformat, Temperaturformat, feste Seite und getrennte Rotationsdauer für Uhrzeit und andere Seiten.
 - `Farben`: Farben für Wochentag, Text, Punkte und Doppelpunkt.
-- `Helligkeit`: Tages- und Nacht-Helligkeit in Prozent, Sicherheits-Freischalter und Nachtzeitraum.
+- `Helligkeit und Energie`: Tages- und Nacht-Helligkeit in Prozent, Sicherheits-Freischalter und Nachtzeitraum.
 - `Hilfe & Wiki`: kurze Einrichtungshilfe und Problembehandlung direkt im Interface.
 
 Oben im Header kannst du zwischen Deutsch und Englisch wechseln. Die Auswahl wird im Browser und auf der Uhr gespeichert; die Wochentage auf dem Display folgen dieser Sprache.
@@ -177,7 +177,30 @@ Die WLAN-Region nutzt die vom ESP32-Paket unterstützten ESP-IDF-Ländercodes:
 weltweite sichere Modus. Eine geänderte WLAN-Region wird nach einem Neustart
 aktiv.
 
+## Performance und Energie
+
+- Wetter und Standortsuche laufen in einem Hintergrundtask; die Anzeige bleibt bedienbar.
+- Unveränderte LED-Bilder werden nicht erneut übertragen. Bei 0 % wird einmal schwarz gesendet.
+- Statische Seiten werden einmal pro Sekunde geprüft, Animationen weiterhin alle 200 ms.
+- WLAN-Energiesparen ist standardmäßig aktiv und unter `Helligkeit und Energie` abschaltbar.
+- Geocoding-Ergebnisse werden gespeichert; unveränderte Einstellungen lösen keine erneuten NVS-Schreibvorgänge aus.
+- Komprimierte Webdateien, Sprungnavigation, Speichern/Verwerfen und Statusabfragen nur im aktiven Tab.
+
+Die tatsächliche Stromersparnis hängt von Matrix, Helligkeit und Access Point ab und muss am Gerät gemessen werden. Bei 0 % bleiben die LEDs elektrisch versorgt; Deep Sleep wird nicht verwendet, damit Uhr und Weboberfläche verfügbar bleiben.
+
 ## Wetter
+
+| Anbieter | API-Key | Daten |
+| --- | --- | --- |
+| Open-Meteo | Nein | Weltweite Vorhersage, Tages-Min/Max |
+| DWD / Bright Sky | Nein | Stationsdaten, hauptsächlich Deutschland; kein Tages-Min/Max |
+| MET Norway | Nein | Weltweite Vorhersage; kein Tages-Min/Max |
+| OpenWeatherMap | Ja | Aktuelles Wetter; Min/Max der aktuellen Umgebung |
+| WeatherAPI | Ja | Aktuelles Wetter und Tages-Min/Max |
+
+Für WeatherAPI einen eigenen Schlüssel unter `Ort und Wetter` hinterlegen. Gespeicherte Schlüssel werden nicht an den Browser zurückgegeben; leere Felder behalten sie bei.
+
+MET-Norway-Daten stammen vom [Norwegischen Meteorologischen Institut](https://www.met.no/) unter [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); Temperaturen werden gerundet und Symbole zugeordnet. Die Firmware beachtet `Expires` und nutzt `If-Modified-Since`. [API-Nutzungsregeln](https://docs.api.met.no/doc/TermsOfService), [WeatherAPI-Dokumentation](https://www.weatherapi.com/docs/).
 
 Standard ist Open-Meteo. Dafür ist kein API-Key nötig.
 
@@ -192,7 +215,7 @@ Optional kann OpenWeatherMap genutzt werden:
 4. API-Key eintragen.
 5. Speichern.
 
-Wetterdaten werden beim Start und danach im eingestellten Intervall aktualisiert. Standard sind 2 Stunden; in der Weboberfläche kannst du das Intervall in 0,5-Stunden-Schritten ändern. Manuell kannst du `Wetter aktualisieren` drücken.
+Wetterdaten werden beim Start und danach im eingestellten Intervall aktualisiert. Standard sind 2 Stunden; in der Weboberfläche kannst du das Intervall in 0,5-Stunden-Schritten ändern. Manuell kannst du `Wetter aktualisieren` drücken. Fehler werden frühestens nach 5 Minuten erneut versucht; HTTP 429 wartet mindestens 30 Minuten. Gültige Werte bleiben bei Fehlern erhalten. Manuelle Abfragen berücksichtigen Cache- und Wartezeiten ebenfalls.
 
 ## Flash-Layout
 
@@ -368,3 +391,5 @@ Dieses Projekt steht unter der MIT-Lizenz. Details stehen in [LICENSE](LICENSE).
 ## Sicherheit
 
 Hinweise zum Melden von Sicherheitsproblemen stehen in [SECURITY.md](SECURITY.md).
+
+Tests und technische Details: [Performance und Validierung](docs/PERFORMANCE.md). Neue Anbieter benötigen Firmware 0.1.16; die Weboberfläche deaktiviert sie bei älterer Firmware. Für alle Änderungen Firmware und LittleFS aktualisieren.

@@ -60,7 +60,8 @@ void setupFastLed() {
       break;
   }
   FastLED.setCorrection(TypicalLEDStrip);
-  FastLED.setDither(true);
+  // Temporal dithering needs continuous refresh; our static frames are retained.
+  FastLED.setDither(false);
   FastLED.setBrightness(config.brightness);
   FastLED.clear(true);
 }
@@ -73,11 +74,7 @@ constexpr int TEXT_LEFT_ICON_RIGHT_ICON_OFFSET_X = 1;
 constexpr int TEXT_RIGHT_ICON_LEFT_WEEKDAY_OFFSET_X = -1;
 
 void updateBrightnessForTime() {
-  struct tm timeinfo;
-  uint8_t target = config.brightness;
-  if (getLocalTime(&timeinfo, 10)) {
-    if (isNightTime()) target = min(config.brightness, config.nightBrightness);
-  }
+  const uint8_t target = isNightTime() ? min(config.brightness, config.nightBrightness) : config.brightness;
   FastLED.setBrightness(target);
 }
 
@@ -607,14 +604,28 @@ void drawTestPattern() {
   }
 }
 
+uint32_t displayRenderInterval() {
+  if (millis() - bootStarted < BOOT_GREETING_MS ||
+      (setupMode && config.ssid.isEmpty()) || config.colorGradientMode != 0) return 200;
+  return 1000;
+}
+
 void renderDisplay() {
+  StateLock lock;
+  static CRGB previousFrame[MAX_LEDS];
+  static uint8_t previousBrightness = 255;
+  static uint16_t previousCount = 0;
   updateBrightnessForTime();
+  const uint8_t brightness = FastLED.getBrightness();
+  if (brightness == 0 && previousBrightness == 0) return;
   fill_solid(leds, ledCount, CRGB::Black);
-  if (millis() - bootStarted < BOOT_GREETING_MS) {
+  if (brightness == 0) {
+    // Send black once; leave the matrix latched off without further transfers.
+  } else if (millis() - bootStarted < BOOT_GREETING_MS) {
     drawBootGreeting();
   } else if (setupMode && config.ssid.isEmpty()) {
     drawSetupPrompt();
-  } else if (displayTest && millis() < displayTestUntil) {
+  } else if (displayTest && static_cast<int32_t>(millis() - displayTestUntil) < 0) {
     drawTestPattern();
   } else {
     displayTest = false;
@@ -624,5 +635,11 @@ void renderDisplay() {
     else drawWeatherPage();
     if (config.displayMode != 2) drawIndicator(page);
   }
-  FastLED.show();
+  if (previousCount != ledCount || previousBrightness != brightness ||
+      memcmp(previousFrame, leds, ledCount * sizeof(CRGB)) != 0) {
+    FastLED.show();
+    memcpy(previousFrame, leds, ledCount * sizeof(CRGB));
+    previousBrightness = brightness;
+    previousCount = ledCount;
+  }
 }

@@ -93,14 +93,18 @@ partitions.csv
 4. Mount LittleFS.
 5. Connect to Wi-Fi, or start the `PixelClock-Setup` access point.
 6. Start mDNS and the web server.
-7. Resolve the configured city, sync NTP, and fetch weather once.
+7. Start the network worker, resolve the city only when its cached name differs, start asynchronous SNTP, and queue weather.
 
-`loop()` stays non-blocking most of the time:
+`loop()` checks static display pages every second and animations every 200 ms,
+switches pages, then yields for 20 ms. Unchanged frames and repeated black frames
+are not transmitted. Temporal LED dithering is disabled because frames are latched.
 
-- renders the display about every 200 ms,
-- switches display pages when automatic paging is enabled,
-- processes deferred city/time/weather work requested by the web UI,
-- retries weather and NTP on their configured intervals.
+`src/network_worker.cpp` serializes weather/geocoding in one 12 KB FreeRTOS task.
+It copies configuration under `StateLock`, performs HTTPS outside the lock and
+publishes only if the weather revision still matches. UI handlers and rendering
+use the same recursive mutex. SNTP reports successful sync through its callback
+and owns its daily schedule/retries; build time is not reported as an NTP success.
+See [PERFORMANCE.md](PERFORMANCE.md) for validation and known limits.
 
 ## Configuration Contract
 
@@ -140,8 +144,7 @@ POST /api/weather/refresh queue a weather refresh
 POST /api/display/test    show a temporary test pattern
 ```
 
-Every API route requires HTTP Basic Auth. Static UI files are also served with
-the same authentication.
+Every API route requires HTTP Basic Auth. Static UI files serve the login shell publicly; credentials are sent by the browser when calling the protected API.
 
 `GET /api/status` exposes `firmwareVersion`, sourced from `FIRMWARE_VERSION` in
 `src/app_state.h`. Bump that constant for every firmware change and keep README
@@ -200,7 +203,9 @@ If a matrix looks mirrored or scrambled, inspect `xy()`, `wiringMode`, and
   not need an API key.
 - City lookup uses Open-Meteo geocoding and stores latitude, longitude,
   location label, and a POSIX-style timezone string.
-- NTP uses `configTime()` with the configured POSIX timezone.
+- MET Norway uses Locationforecast compact and WeatherAPI uses a one-day forecast.
+- Provider filters and decoders live in `weather_decode.h`; normalized symbols in `weather_codes.h`.
+- NTP uses asynchronous `configTzTime()` with the configured POSIX timezone.
 
 The firmware pins HTTPS requests to root certificates embedded in
 `src/weather.cpp`. If a provider changes its certificate chain, weather or
@@ -236,3 +241,17 @@ serial monitor for firmware changes:
 pio run --target upload
 pio device monitor
 ```
+
+## Web delivery and scanning
+
+`scripts/prepare_web.py` generates deterministic `.gz` companions before the
+PlatformIO build. ESPAsyncWebServer prefers those files and derives ETags from
+their CRC. Static responses revalidate with `Cache-Control: no-cache`; API JSON
+uses `no-store`. Original assets remain in LittleFS for version-marker scanning.
+Do not commit generated `.gz` files.
+
+`GET /api/networks` starts an asynchronous scan and responds with `scanning: true`
+until results are ready. The UI polls only for the duration of an explicit scan
+and also accepts synchronous responses from older firmware. Firmware reports
+capabilities under `/api/status`; `/api/config` includes `weatherProviderMax` and
+the optional `wifiPowerSave` setting so newer controls can be disabled on old firmware.

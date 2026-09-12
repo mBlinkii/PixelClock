@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pixel Clock</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css">
+    <link rel="stylesheet" href="/app.css?v=0.1.12">
   </head>
   <body>
     <svg class="iconSprite" aria-hidden="true" focusable="false">
@@ -104,7 +104,7 @@
       <header>
         <div>
           <h1><img src="/favicon.svg" alt="" aria-hidden="true">Pixel Clock</h1>
-          <p id="statusLine">Lade Status...</p>
+          <p id="statusLine" data-no-i18n>Lade Status...</p>
         </div>
         <div class="headerActions">
           <label class="languageControl">
@@ -119,8 +119,17 @@
         </div>
       </header>
 
+      <nav class="sectionNav" aria-label="Einstellungen">
+        <a href="#statusSection">Übersicht</a>
+        <a href="#weatherSection">Wetter</a>
+        <a href="#pagesSection">Anzeige</a>
+        <a href="#brightnessSection">Energie</a>
+        <a href="#wifiSection">WLAN</a>
+        <a href="#updateSection">Updates</a>
+      </nav>
       <section class="panel statusPanel statusSection">
         <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-status"></use></svg>Status</h2>
+        <div class="statusTop"><span id="connectionState" class="statusBadge" data-no-i18n>Lade Status...</span><span id="weatherAge" data-no-i18n></span></div>
         <div class="statusGrid">
           <div>
             <span>Wetter</span>
@@ -139,6 +148,10 @@
             <strong id="firmwareLine">-</strong>
             <span>Weboberfläche</span>
             <strong id="littleFsLine">-</strong>
+          </div>
+          <div id="runtimeStats" hidden>
+            <span>System</span>
+            <strong id="systemLine" data-no-i18n>-</strong>
           </div>
         </div>
       </section>
@@ -182,11 +195,11 @@
       </section>
 
       <section class="panel weatherSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-weather"></use></svg>Ort, Wetter und Zugriff</h2>
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-weather"></use></svg>Ort und Wetter</h2>
         <div class="grid">
           <label>
             Stadt
-            <input id="cityName" name="cityName" autocomplete="address-level2" placeholder="z. B. Berlin">
+            <input minlength="2" maxlength="100" required id="cityName" name="cityName" autocomplete="address-level2" placeholder="z. B. Berlin">
           </label>
           <label>
             Wetteranbieter
@@ -194,6 +207,8 @@
               <option value="0">Open-Meteo</option>
               <option value="1">OpenWeatherMap</option>
               <option value="2">Deutscher Wetterdienst (DWD)</option>
+              <option value="3" disabled>MET Norway</option>
+              <option value="4" disabled>WeatherAPI</option>
             </select>
           </label>
           <label>
@@ -202,13 +217,21 @@
           </label>
           <label>
             OpenWeatherMap API-Key
-            <input id="openWeatherApiKey" name="openWeatherApiKey" type="password" placeholder="Leer lassen zum Beibehalten">
+            <input autocomplete="off" id="openWeatherApiKey" name="openWeatherApiKey" type="password" placeholder="Leer lassen zum Beibehalten">
+          </label>
+          <label id="weatherApiKeyField" hidden>
+            WeatherAPI API-Key
+            <input id="weatherApiKey" name="weatherApiKey" type="password" autocomplete="off" placeholder="Leer lassen zum Beibehalten">
           </label>
           <label>
             Zeitzone
             <input id="timezone" name="timezone">
           </label>
         </div>
+        <p id="providerHint" class="hint" data-no-i18n></p>
+        <p id="providerKeyState" class="hint" data-no-i18n></p>
+        <p id="metAttribution" class="hint" hidden>Daten: <a href="https://www.met.no/" target="_blank" rel="noopener">MET Norway</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Temperatur gerundet, Symbole zugeordnet.</p>
+        <div class="actionRow"><button id="weatherBtn" type="button">Wetter aktualisieren</button></div>
       </section>
 
       <section class="panel displaySection">
@@ -340,7 +363,7 @@
       </section>
 
       <section class="panel brightnessSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-brightness"></use></svg>Helligkeit</h2>
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-brightness"></use></svg>Helligkeit und Energie</h2>
         <div class="grid">
           <label>
             Helligkeit (%)
@@ -385,6 +408,12 @@
           <input id="fullBrightnessUnlocked" name="fullBrightnessUnlocked" type="checkbox">
           Volle Helligkeit freischalten
         </label>
+        <label id="wifiPowerSaveField" class="check" hidden>
+          <input id="wifiPowerSave" name="wifiPowerSave" type="checkbox">
+          WLAN-Energiesparen
+        </label>
+        <p class="hint">0 % schaltet die Anzeige aus. WLAN-Energiesparen reduziert Funkaktivität; die Weboberfläche bleibt erreichbar.</p>
+        <p class="hint">Gleiche Nachtzeiten deaktivieren die Nachtabsenkung.</p>
         <p id="brightnessWarning" class="warning" hidden>Warnung: Volle Helligkeit kann den ESP32 oder USB-Port überlasten, wenn die Matrix direkt darüber versorgt wird.</p>
       </section>
 
@@ -444,7 +473,7 @@
           </details>
           <details>
             <summary>Wetter einrichten</summary>
-            <p>Open-Meteo und DWD funktionieren ohne API-Key. Für OpenWeatherMap brauchst du einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.</p>
+            <p>Open-Meteo, DWD und MET Norway funktionieren ohne API-Key. OpenWeatherMap und WeatherAPI benötigen einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.</p>
           </details>
           <details>
             <summary>Helligkeit und Nachtmodus</summary>
@@ -462,12 +491,18 @@
         </div>
       </section>
 
-      <footer>
-        <div class="footerActions">
-          <button id="saveBtn" type="button"><svg class="buttonIcon" aria-hidden="true"><use href="#icon-save"></use></svg>Speichern</button>
+      <section class="panel maintenanceSection">
+        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-restart"></use></svg>Zurücksetzen</h2>
+        <div class="actionRow">
           <button id="settingsResetBtn" type="button">Einstellungen resetten</button>
           <button id="factoryResetBtn" class="danger" type="button">Werksreset</button>
-          <button id="weatherBtn" type="button">Wetter aktualisieren</button>
+        </div>
+      </section>
+      <footer>
+        <div class="footerActions">
+          <button id="saveBtn" type="button" disabled><svg class="buttonIcon" aria-hidden="true"><use href="#icon-save"></use></svg>Speichern</button>
+          <button id="discardBtn" type="button" disabled>Änderungen verwerfen</button>
+          <span id="saveState" role="status" data-no-i18n></span>
         </div>
         <div id="restartNotice" class="restartNotice" hidden>
           <strong>Neustart erforderlich</strong>
@@ -493,8 +528,8 @@
         <p>Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
       </section>
     </div>
-    <script src="/i18n.js"></script>
-    <script src="/updates.js"></script>
-    <script src="/app.js"></script>
+    <script src="/i18n.js?v=0.1.12" defer></script>
+    <script src="/updates.js?v=0.1.12" defer></script>
+    <script src="/app.js?v=0.1.12" defer></script>
   </body>
 </html>

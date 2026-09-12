@@ -37,3 +37,14 @@ jobs:
 
       - name: Build firmware
         run: pio run
+
+      - name: Build web filesystem
+        run: pio run --target buildfs
+
+      - name: Firmware regression tests
+        run: |
+          g++ -std=c++17 -I .pio/libdeps/esp32dev/ArduinoJson/src tests/firmware-tests.cpp -o .pio/firmware-tests
+          .pio/firmware-tests
+
+      - name: Web regression tests
+        run: node --test tests/ui.test.cjs

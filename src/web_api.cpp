@@ -6,9 +6,12 @@
 #include "app_state.h"
 #include "web_updates.h"
 
+static bool restartRequiredSinceBoot = false;
+
 // HTTP API used by the LittleFS web UI. Keep routes and response fields aligned
 // with data/app.js.
 void sendConfigJson(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!requireAdminAuth(request)) return;
   JsonDocument doc;
   doc["ssid"] = config.ssid;
@@ -30,6 +33,9 @@ void sendConfigJson(AsyncWebServerRequest *request) {
   doc["weatherProvider"] = config.weatherProvider;
   doc["weatherIntervalHalfHours"] = config.weatherIntervalHalfHours;
   doc["hasOpenWeatherApiKey"] = !config.openWeatherApiKey.isEmpty();
+  doc["hasWeatherApiKey"] = !config.weatherApiKey.isEmpty();
+  doc["weatherProviderMax"] = WEATHER_PROVIDER_MAX;
+  doc["wifiPowerSave"] = config.wifiPowerSave;
   doc["width"] = config.width;
   doc["height"] = config.height;
   doc["dataPin"] = config.dataPin;
@@ -54,9 +60,11 @@ void sendConfigJson(AsyncWebServerRequest *request) {
   doc["colorPoint"] = colorToHex(config.colorPoint);
   doc["colorColon"] = colorToHex(config.colorColon);
   doc["colorGradientMode"] = config.colorGradientMode;
-  String body;
-  serializeJson(doc, body);
-  request->send(200, "application/json", body);
+  doc["restartRequired"] = restartRequiredSinceBoot;
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
 }
 
 String paramValue(AsyncWebServerRequest *request, const char *name, const String &fallback = "") {
@@ -67,6 +75,10 @@ const char *weatherProviderName() {
   switch (config.weatherProvider) {
     case WEATHER_PROVIDER_OPEN_WEATHER_MAP:
       return "OpenWeatherMap";
+    case WEATHER_PROVIDER_MET_NORWAY:
+      return "MET Norway";
+    case WEATHER_PROVIDER_WEATHER_API:
+      return "WeatherAPI";
     case WEATHER_PROVIDER_DWD:
       return "DWD (Bright Sky)";
     default:
@@ -88,6 +100,7 @@ void sendJsonError(AsyncWebServerRequest *request, int code, const String &messa
 }
 
 bool requireAdminAuth(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!hasAdminPassword()) {
     sendJsonError(request, 403, "Admin-Passwort muss zuerst in den Einstellungen gesetzt werden.");
     return false;
@@ -100,11 +113,13 @@ bool requireAdminAuth(AsyncWebServerRequest *request) {
 }
 
 void scheduleRestart(uint32_t delayMs) {
+  StateLock lock;
   pendingRestart = true;
   restartAt = millis() + delayMs;
 }
 
 void handleConfigPost(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!requireAdminAuth(request)) return;
   const String newAdminUsername = sanitizeHostname(paramValue(request, "adminUsername", config.adminUsername));
   const String newAdminPassword = paramValue(request, "adminPassword", "");
@@ -113,6 +128,10 @@ void handleConfigPost(AsyncWebServerRequest *request) {
     return;
   }
 
+  if (request->hasParam("cityName", true) && paramValue(request, "cityName").length() < 2) {
+    sendJsonError(request, 400, "Bitte eine Stadt mit mindestens 2 Zeichen eingeben.");
+    return;
+  }
   const uint8_t oldWidth = config.width;
   const uint8_t oldHeight = config.height;
   const uint8_t oldDataPin = config.dataPin;
@@ -129,6 +148,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   const float oldLongitude = config.longitude;
   const uint8_t oldWeatherProvider = config.weatherProvider;
   const String oldOpenWeatherApiKey = config.openWeatherApiKey;
+  const String oldWeatherApiKey = config.weatherApiKey;
 
   config.ssid = paramValue(request, "ssid", config.ssid);
   const String newPassword = paramValue(request, "password", "");
@@ -140,10 +160,14 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   config.hostname = sanitizeHostname(paramValue(request, "hostname", config.hostname));
   config.cityName = paramValue(request, "cityName", config.cityName);
   config.cityName.trim();
-  config.weatherProvider = constrain(paramValue(request, "weatherProvider", String(config.weatherProvider)).toInt(), 0, WEATHER_PROVIDER_DWD);
+  config.weatherProvider = constrain(paramValue(request, "weatherProvider", String(config.weatherProvider)).toInt(), 0, WEATHER_PROVIDER_MAX);
   config.weatherIntervalHalfHours = constrain(paramValue(request, "weatherIntervalHalfHours", String(config.weatherIntervalHalfHours)).toInt(), 1, 48);
   const String newOpenWeatherApiKey = paramValue(request, "openWeatherApiKey", "");
   if (newOpenWeatherApiKey.length() > 0) config.openWeatherApiKey = newOpenWeatherApiKey;
+  const String newWeatherApiKey = paramValue(request, "weatherApiKey", "");
+  if (!newWeatherApiKey.isEmpty()) config.weatherApiKey = newWeatherApiKey;
+  config.wifiPowerSave = paramValue(request, "wifiPowerSave", config.wifiPowerSave ? "1" : "0") == "1";
+  applyWifiPowerSave();
   config.timezone = paramValue(request, "timezone", config.timezone);
   config.latitude = paramValue(request, "latitude", String(config.latitude, 5)).toFloat();
   config.longitude = paramValue(request, "longitude", String(config.longitude, 5)).toFloat();
@@ -181,21 +205,24 @@ void handleConfigPost(AsyncWebServerRequest *request) {
     oldCityName != config.cityName ||
     oldWeatherProvider != config.weatherProvider ||
     oldOpenWeatherApiKey != config.openWeatherApiKey ||
+    oldWeatherApiKey != config.weatherApiKey ||
     fabs(oldLatitude - config.latitude) > 0.0001f ||
     fabs(oldLongitude - config.longitude) > 0.0001f;
-  if (WiFi.status() == WL_CONNECTED) {
-    pendingCityResolve = pendingCityResolve || cityResolveQueued;
-    pendingTimeSync = pendingTimeSync || oldTimezone != config.timezone;
+  pendingCityResolve = pendingCityResolve || cityResolveQueued;
+  pendingTimeSync = pendingTimeSync || oldTimezone != config.timezone;
+  if (oldTimezone != config.timezone) {
+    setenv("TZ", config.timezone.c_str(), 1);
+    tzset();
   }
-  if (weatherSourceChanged && WiFi.status() == WL_CONNECTED) {
-    weather.lastFetch = 0;
+  if (weatherSourceChanged) {
+    ++weatherRevision;
+    weather = WeatherState();
     pendingWeatherFetch = true;
   }
-  ledCount = min<uint16_t>(MAX_LEDS, config.width * config.height);
-  FastLED.setBrightness(config.brightness);
+  // FastLED's controller length/pin remains unchanged until the requested restart.
   lastPageSwitch = millis();
   currentPage = config.selectedPage;
-  renderDisplay();
+  lastRender = 0;
   const bool authChanged = oldAdminUsername != config.adminUsername || oldAdminPassword != config.adminPassword;
   const bool restartRequired =
     oldWidth != config.width ||
@@ -210,34 +237,39 @@ void handleConfigPost(AsyncWebServerRequest *request) {
 
   JsonDocument doc;
   doc["ok"] = true;
-  doc["restartRequired"] = restartRequired;
-  doc["cityResolutionPending"] = cityResolveQueued && WiFi.status() == WL_CONNECTED;
-  doc["weatherRefreshPending"] = weatherSourceChanged && WiFi.status() == WL_CONNECTED;
+  restartRequiredSinceBoot = restartRequiredSinceBoot || restartRequired;
+  doc["restartRequired"] = restartRequiredSinceBoot;
+  doc["cityResolutionPending"] = cityResolveQueued;
+  doc["weatherRefreshPending"] = weatherSourceChanged;
   doc["adminPasswordSet"] = hasAdminPassword();
   doc["authChanged"] = authChanged;
   doc["hostname"] = config.hostname;
   doc["url"] = "http://" + config.hostname + ".local";
   doc["locationLabel"] = config.locationLabel;
-  String body;
-  serializeJson(doc, body);
-  request->send(200, "application/json", body);
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
 }
 
 void handleLanguagePost(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!requireAdminAuth(request)) return;
   config.language = normalizeLanguage(paramValue(request, "language", config.language));
   saveConfig();
-  renderDisplay();
+  lastRender = 0;
 
   JsonDocument doc;
   doc["ok"] = true;
   doc["language"] = config.language;
-  String body;
-  serializeJson(doc, body);
-  request->send(200, "application/json", body);
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
 }
 
 void sendStatusJson(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!requireAdminAuth(request)) return;
   JsonDocument doc;
   doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
@@ -254,6 +286,18 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   doc["lastWeatherMs"] = weather.lastFetch;
   doc["lastWeatherAttemptMs"] = weather.lastAttempt;
   doc["weatherError"] = weather.lastError;
+  doc["weatherBusy"] = weather.busy || ((pendingWeatherFetch || pendingCityResolve) && weather.lastError.isEmpty());
+  if (weather.lastFetch) doc["weatherAgeMs"] = millis() - weather.lastFetch;
+  else doc["weatherAgeMs"] = nullptr;
+  doc["weatherFetchDurationMs"] = weather.fetchDurationMs;
+  doc["uptimeMs"] = millis();
+  doc["freeHeap"] = ESP.getFreeHeap();
+  doc["minFreeHeap"] = ESP.getMinFreeHeap();
+  doc["wifiPowerSave"] = config.wifiPowerSave;
+  doc["networkWorkerReady"] = networkWorkerReady;
+  doc["capabilities"]["asyncWifiScan"] = true;
+  doc["capabilities"]["weatherProviderMax"] = WEATHER_PROVIDER_MAX;
+  doc["capabilities"]["wifiPowerSave"] = true;
   if (isnan(weather.temperature)) {
     doc["temperature"] = nullptr;
   } else {
@@ -279,35 +323,55 @@ void sendStatusJson(AsyncWebServerRequest *request) {
     strftime(now, sizeof(now), "%Y-%m-%d %H:%M:%S", &timeinfo);
     doc["localTime"] = now;
   }
-  String body;
-  serializeJson(doc, body);
-  request->send(200, "application/json", body);
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
 }
 
 void handleNetworks(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!requireAdminAuth(request)) return;
   JsonDocument doc;
   JsonArray arr = doc["networks"].to<JsonArray>();
-  const int n = WiFi.scanNetworks();
-  for (int i = 0; i < n; i++) {
+  static uint32_t scanStarted = 0;
+  int n = WiFi.scanComplete();
+  if (n == WIFI_SCAN_RUNNING) {
+    doc["scanning"] = true;
+  } else if (n == WIFI_SCAN_FAILED) {
+    if (scanStarted && millis() - scanStarted < 15000) {
+      sendJsonError(request, 503, "WLAN-Suche fehlgeschlagen. Bitte erneut versuchen.");
+      return;
+    }
+    scanStarted = millis();
+    n = WiFi.scanNetworks(true);
+    doc["scanning"] = n == WIFI_SCAN_RUNNING;
+  }
+  for (int i = 0; i < min(n, 32); i++) {
     JsonObject item = arr.add<JsonObject>();
     item["ssid"] = WiFi.SSID(i);
     item["rssi"] = WiFi.RSSI(i);
     item["secure"] = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
   }
-  WiFi.scanDelete();
-  String body;
-  serializeJson(doc, body);
-  request->send(200, "application/json", body);
+  if (n >= 0) {
+    WiFi.scanDelete();
+    scanStarted = 0;
+  }
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
 }
 
 void restartSoon(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!requireAdminAuth(request)) return;
   request->send(200, "application/json", "{\"ok\":true}");
   scheduleRestart();
 }
 
 void handleSettingsReset(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!requireAdminAuth(request)) return;
   const String keepSsid = config.ssid;
   const String keepPassword = config.password;
@@ -329,6 +393,7 @@ void handleSettingsReset(AsyncWebServerRequest *request) {
 }
 
 void handleFactoryReset(AsyncWebServerRequest *request) {
+  StateLock lock;
   if (!requireAdminAuth(request)) return;
   prefs.begin("pixel-clock", false);
   prefs.clear();
@@ -350,17 +415,28 @@ void setupServer() {
   server.on("/api/update/web", HTTP_POST, handleWebUpdateDone, handleWebUpdateUpload);
   server.on("/api/weather/refresh", HTTP_POST, [](AsyncWebServerRequest *request) {
     if (!requireAdminAuth(request)) return;
+    StateLock lock;
+    const uint32_t now = millis();
+    if (weather.busy || (weather.lastAttempt && now - weather.lastAttempt < 30000) ||
+        (weather.cacheUntil && static_cast<int32_t>(now - weather.cacheUntil) < 0) ||
+        (!weather.lastError.isEmpty() && weather.lastAttempt && now - weather.lastAttempt < weather.retryAfterMs)) {
+      sendJsonError(request, 429, "Bitte vor der nächsten Wetterabfrage kurz warten.");
+      return;
+    }
     pendingWeatherFetch = true;
     request->send(200, "application/json", "{\"ok\":true}");
   });
   server.on("/api/display/test", HTTP_POST, [](AsyncWebServerRequest *request) {
     if (!requireAdminAuth(request)) return;
+    StateLock lock;
     displayTest = true;
+    lastRender = 0;
     displayTestUntil = millis() + 10000;
     request->send(200, "application/json", "{\"ok\":true}");
   });
   server.serveStatic("/", LittleFS, "/")
-    .setDefaultFile("index.html");
+    .setDefaultFile("index.html")
+    .setCacheControl("no-cache");
   server.onNotFound([](AsyncWebServerRequest *request) {
     if (!requireAdminAuth(request)) return;
     request->send(404, "text/plain", "Not found");

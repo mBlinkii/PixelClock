@@ -31,3 +31,6 @@ bool pendingWeatherFetch = false;
 bool pendingTimeSync = false;
 bool pendingRestart = false;
 uint32_t restartAt = 0;
+SemaphoreHandle_t stateMutex = nullptr;
+uint32_t weatherRevision = 0;
+bool networkWorkerReady = false;

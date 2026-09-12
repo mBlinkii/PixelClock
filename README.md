@@ -4,8 +4,8 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.15`
-Current LittleFS web interface version: `0.1.11`
+Current firmware version: `0.1.16`
+Current LittleFS web interface version: `0.1.12`
 
 ## Features
 
@@ -15,7 +15,7 @@ Current LittleFS web interface version: `0.1.11`
 - configurable start corner, data pin, and color order
 - day and night brightness in percent, limited to 40% by default
 - automatic page rotation or fixed page
-- Open-Meteo or DWD without an API key, or OpenWeatherMap with your own API key
+- Open-Meteo, DWD or MET Norway without an API key; OpenWeatherMap and WeatherAPI with your own API key
 - city-based location lookup with automatic time zone for many regions
 - bilingual web interface, German/English, with matching weekdays on the display
 - integrated help/wiki directly inside the web interface
@@ -133,9 +133,9 @@ and all persisted data. Flash firmware and the web UI again afterwards:
 3. Open `http://192.168.4.1`.
 4. Log in with `admin` / `pixelclock`.
 5. Under `Wi-Fi access`, set network, Wi-Fi password, and browser address.
-6. Under `Location, weather and access`, set city and weather provider.
+6. Under `Location and weather`, set city and weather provider.
 7. Under `Display hardware`, set matrix size, data pin, start corner, and wiring.
-8. Under `Brightness`, set brightness and night hours.
+8. Under `Brightness and energy`, set brightness and night hours.
 9. Under `Admin access`, change the default admin password.
 10. Press `Save`.
 11. If the interface reports that a restart is required, press `Restart`.
@@ -160,11 +160,11 @@ from the last three bytes of the ESP32 MAC address.
 - `Status`: shows weather, location, and address.
 - `Wi-Fi access`: network, Wi-Fi password, Wi-Fi region, browser address, and Wi-Fi scan.
 - `Admin access`: admin user and admin password for the web login.
-- `Location, weather and access`: city, weather provider, API key, and time zone.
+- `Location and weather`: city, weather provider, API key, and time zone.
 - `Display hardware`: matrix size, data pin, color order, and LED mapping.
 - `Display and pages`: layout, time format, temperature format, fixed page, and separate rotation durations for the time page and other pages.
 - `Colors`: colors for weekday, text, dots, and colon.
-- `Brightness`: day and night brightness in percent, safety unlock, and night period.
+- `Brightness and energy`: day and night brightness in percent, safety unlock, and night period.
 - `Help & Wiki`: short setup guide and troubleshooting directly in the interface.
 
 The language can be switched between German and English in the header. The selection is saved in the browser and on the clock, and the weekday labels on the display follow it.
@@ -176,7 +176,30 @@ The Wi-Fi region uses the ESP-IDF country codes supported by the ESP32 package:
 `RO`, `SE`, `SI`, `SK`, `TW`, and `US`. The default is `DE`; use `01` for
 world safe mode. Changing the Wi-Fi region requires a restart.
 
+## Performance and power
+
+- Weather and geocoding run in a background task so the display keeps updating.
+- Unchanged LED frames are not retransmitted. At 0% the matrix receives black once.
+- Static pages are checked once per second; animations retain their 200 ms cadence.
+- Wi-Fi power saving defaults to on and can be disabled under `Brightness and energy`.
+- Cached geocoding and changed-value-only NVS writes avoid unnecessary requests and flash writes.
+- Compressed web assets, section navigation, save/discard controls and status polling only in visible tabs.
+
+Actual power savings depend on the matrix, brightness and access point and require measurement on hardware. At 0% the LEDs remain electrically powered. Deep sleep is not used so the clock and web interface stay available.
+
 ## Weather
+
+| Provider | API key | Data |
+| --- | --- | --- |
+| Open-Meteo | No | Worldwide forecast, daily min/max |
+| DWD / Bright Sky | No | Station observations, mainly Germany; no daily min/max |
+| MET Norway | No | Worldwide forecast; no daily min/max |
+| OpenWeatherMap | Yes | Current weather; min/max of current surrounding observations |
+| WeatherAPI | Yes | Current weather and daily min/max |
+
+Enter your own WeatherAPI key under `Location and weather`. Saved keys are never returned to the browser; blank fields preserve them.
+
+MET Norway data is provided by the [Norwegian Meteorological Institute](https://www.met.no/) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); temperatures are rounded and symbols mapped. Firmware respects `Expires` and uses `If-Modified-Since`. [API terms](https://docs.api.met.no/doc/TermsOfService), [WeatherAPI documentation](https://www.weatherapi.com/docs/).
 
 The default provider is Open-Meteo. It does not require an API key.
 
@@ -191,7 +214,7 @@ OpenWeatherMap can be used optionally:
 4. Enter the API key.
 5. Save.
 
-Weather data is fetched on startup and then on the configured interval. The default is 2 hours; you can change it in the web UI in 0.5-hour steps. You can trigger an update manually with `Refresh weather`.
+Weather data is fetched on startup and then on the configured interval. The default is 2 hours; you can change it in the web UI in 0.5-hour steps. You can trigger an update manually with `Refresh weather`. Failures wait at least 5 minutes before retrying; HTTP 429 waits at least 30 minutes. Valid readings are retained on errors. Manual requests also respect cache and retry delays.
 
 ## Flash Layout
 
@@ -366,3 +389,5 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 ## Security
 
 See [SECURITY.md](SECURITY.md) for vulnerability reporting guidance.
+
+Tests and implementation details: [Performance and validation](docs/PERFORMANCE.md). New providers require firmware 0.1.16; the web UI disables them on older firmware. Update both firmware and LittleFS to receive all improvements.
