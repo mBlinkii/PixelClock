@@ -7,6 +7,7 @@
 #include <WiFiClientSecure.h>
 #include <time.h>
 #include "weather_data.h"
+#include "admin_auth.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
@@ -33,17 +34,31 @@ constexpr const char *DEFAULT_ADMIN_USERNAME = "admin";
 constexpr const char *DEFAULT_ADMIN_PASSWORD = "pixelclock";
 constexpr const char *DEFAULT_LANGUAGE = "de";
 constexpr const char *DEFAULT_WIFI_COUNTRY = "DE";
-#define FIRMWARE_VERSION_TEXT "0.1.17"
+constexpr const char *DEFAULT_SETUP_AP_PASSWORD = "pixelclock";
+constexpr const char *SETUP_AP_SSID_PREFIX = "PixelClock-Setup-";
+#define FIRMWARE_VERSION_TEXT "0.1.18"
 constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
 extern const char FIRMWARE_VERSION_BINARY_MARKER[];
-constexpr uint8_t AUTH_CONFIG_VERSION = 1;
+// 1: plain admin password in NVS. 2: salted PBKDF2-HMAC-SHA256 hash.
+constexpr uint8_t AUTH_CONFIG_VERSION = 2;
 constexpr uint8_t MIN_ADMIN_PASSWORD_LENGTH = 8;
+constexpr uint8_t MIN_SETUP_AP_PASSWORD_LENGTH = 8;
+constexpr uint8_t MAX_SETUP_AP_PASSWORD_LENGTH = 63;
+constexpr uint32_t ADMIN_HASH_ITERATIONS = 1000;
+constexpr uint32_t DISPLAY_PREVIEW_MS = 120000;
+// The ESP32 DevKit BOOT button; holding it resets the clock to factory state.
+constexpr uint8_t RESET_BUTTON_PIN = 0;
+constexpr uint32_t RESET_BUTTON_NOTICE_MS = 3000;
+constexpr uint32_t RESET_BUTTON_HOLD_MS = 10000;
 
 struct AppConfig {
   String ssid;
   String password;
   String adminUsername = DEFAULT_ADMIN_USERNAME;
-  String adminPassword = DEFAULT_ADMIN_PASSWORD;
+  // Empty hash means the factory default password is active.
+  String adminPasswordSalt;
+  String adminPasswordHash;
+  String setupApPassword = DEFAULT_SETUP_AP_PASSWORD;
   String language = DEFAULT_LANGUAGE;
   String wifiCountry = DEFAULT_WIFI_COUNTRY;
   String hostname = "pixelclock";
@@ -84,6 +99,26 @@ struct AppConfig {
   uint8_t colorGradientMode = 0;
 };
 
+// Visual settings that /api/display/preview may change temporarily.
+struct DisplayPreviewFields {
+  uint8_t brightness;
+  uint8_t nightBrightness;
+  bool fullBrightnessUnlocked;
+  uint8_t displayMode;
+  uint8_t temperatureUnit;
+  bool weatherIconEnabled;
+  uint8_t hourFormat;
+  uint32_t colorWeekday;
+  uint32_t colorText;
+  uint32_t colorPoint;
+  uint32_t colorColon;
+  uint8_t colorGradientMode;
+  bool autoPage;
+  uint8_t selectedPage;
+  uint8_t pageSeconds;
+  uint8_t timePageSeconds;
+};
+
 struct WeatherState : WeatherReading {
   uint32_t lastFetch = 0;
   uint32_t lastAttempt = 0;
@@ -100,6 +135,7 @@ extern AsyncWebServer server;
 extern AppConfig config;
 extern WeatherState weather;
 extern CRGB leds[MAX_LEDS];
+extern CRGB displayFrame[MAX_LEDS];
 extern uint16_t ledCount;
 extern uint8_t currentPage;
 extern uint32_t lastPageSwitch;
@@ -120,6 +156,11 @@ extern uint32_t restartAt;
 extern SemaphoreHandle_t stateMutex;
 extern uint32_t weatherRevision;
 extern bool networkWorkerReady;
+extern bool displayPreviewActive;
+extern uint32_t displayPreviewUntil;
+extern DisplayPreviewFields displayPreviewBackup;
+extern bool pendingFactoryWipe;
+extern uint8_t resetCountdownSeconds;
 
 // Hold only while copying/publishing shared state, never during HTTPS.
 class StateLock {
@@ -132,6 +173,9 @@ class StateLock {
 
 void loadConfig();
 void saveConfig();
+DisplayPreviewFields captureDisplayPreviewFields(const AppConfig &source);
+void applyDisplayPreviewFields(AppConfig &target, const DisplayPreviewFields &fields);
+void endDisplayPreview(bool restore);
 void keepFirmwareVersionBinaryMarker();
 CRGB packedColor(uint32_t value);
 String colorToHex(uint32_t value);
@@ -142,6 +186,10 @@ String normalizeWifiCountry(String value);
 
 bool connectWifi();
 void startSetupAp();
+void serviceSetupAp();
+String deviceSuffix();
+String routerHostname();
+String setupApSsid();
 void startMdns();
 void syncTime();
 uint32_t lastConfirmedNtpSync();
@@ -168,8 +216,16 @@ int normalizeOpenWeatherCode(int code);
 int normalizeBrightSkyIcon(const char *icon);
 void configureWeatherClient(WiFiClientSecure &client, uint8_t weatherProvider);
 
-bool hasAdminPassword();
+bool adminPasswordIsDefault();
+bool adminCredentialsValid();
+bool setAdminPassword(const String &password);
+void resetAdminCredentials();
+bool migratePlainAdminPassword(const String &password);
+void invalidateAdminAuthCache();
+bool isAdminAuthorized(AsyncWebServerRequest *request);
 bool requireAdminAuth(AsyncWebServerRequest *request);
+void serviceResetButton();
+void performFactoryWipe();
 void sendJsonError(AsyncWebServerRequest *request, int code, const String &message);
 void scheduleRestart(uint32_t delayMs = 800);
 void setupServer();

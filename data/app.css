@@ -755,6 +755,21 @@ progress {
 .stat strong a { color: inherit; text-decoration-color: var(--accent-line); }
 .stat strong + span { margin-top: 6px; }
 
+.liveHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.liveBadges { display: inline-flex; gap: 6px; }
+.chip.previewChip { background: var(--accent-soft); color: var(--accent); }
+
+.liveMatrix {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: #050607;
+  cursor: pointer;
+}
+
+.liveHint:empty { display: none; }
+
 /* ---------- Hardware ---------- */
 
 .wiringLayout {
@@ -907,6 +922,45 @@ details ol, details ul { padding-left: 20px; color: var(--muted); }
 details li + li { margin-top: 5px; }
 details > label + .hint { margin-top: -6px; }
 .advanced { background: transparent; }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+label.button { display: inline-flex; color: var(--text); font-size: 15px; }
+label.button:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.bulletList { display: grid; gap: 4px; margin: 10px 0; padding-left: 20px; color: var(--text); }
+.modal p + p, .modal .bulletList + p { margin-top: 8px; }
+
+.confirmCheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmCheck input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--danger);
+}
 
 .dangerZone { border-color: var(--danger-line); }
 

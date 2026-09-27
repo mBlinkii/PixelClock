@@ -164,3 +164,48 @@ test('a changed admin login keeps the session with the new credentials', () => {
   assert.deepEqual({ ...h.run('decodeBasicAuth(authHeaderValue())') }, { username: 'kitchen', password: 'test-new-pw' });
   assert.equal(h.element('adminUsername').value, 'kitchen');
 });
+
+test('live frames map physical LED order back to rows and columns', () => {
+  const h = harness();
+  // 4x2 matrix, column serpentine from the top left.
+  const pixels = ['aa0000', 'bb0000', 'cc0000', 'dd0000', 'ee0000', 'ff0000', '110000', '220000'].join('');
+  const grid = h.run(`frameToGrid({ width: 4, height: 2, count: 8, origin: 0, wiring: 3, pixels: "${pixels}" })`);
+  assert.deepEqual([...grid.colors], ['aa0000', 'dd0000', 'ee0000', '220000', 'bb0000', 'cc0000', 'ff0000', '110000']);
+  const partial = h.run(`frameToGrid({ width: 4, height: 2, count: 3, origin: 0, wiring: 3, pixels: "${pixels.slice(0, 18)}" })`);
+  assert.deepEqual([...partial.colors], ['aa0000', '000000', '000000', '000000', 'bb0000', 'cc0000', '000000', '000000']);
+});
+
+test('settings export leaves out secrets and import accepts only known fields', () => {
+  const h = harness();
+  h.run('savedForm = "ssid=Home&brightness=64&password=test-secret&setupApPassword=test-ap&language=de"; currentLanguage = "en"');
+  const exported = JSON.parse(h.run('JSON.stringify(buildSettingsExport())'));
+  assert.equal(exported.format, 'pixel-clock-settings');
+  assert.deepEqual(exported.settings, { ssid: 'Home', brightness: '64', language: 'en' });
+  const file = JSON.stringify({ format: 'pixel-clock-settings', settings: {
+    brightness: 80, autoPage: true, password: 'x', adminPassword: 'y', unknown: 1, colorText: { nested: true }, language: 'en' } });
+  const parsed = JSON.parse(h.run(`JSON.stringify(parseSettingsImport(${JSON.stringify(file)}))`));
+  assert.deepEqual(parsed, { values: { brightness: '80', autoPage: 'true' }, language: 'en' });
+  assert.throws(() => h.run('parseSettingsImport("{}")'), /gültige/);
+  assert.throws(() => h.run('parseSettingsImport("not json")'), /gültige/);
+});
+
+test('setup network password is only sent when entered; preview detects visual changes', () => {
+  const h = harness();
+  assert.equal(h.run('formBody()').has('setupApPassword'), false);
+  h.element('setupApPassword').value = 'test-ap-pass';
+  assert.equal(h.run('formBody()').get('setupApPassword'), 'test-ap-pass');
+  h.run('savedForm = formBody().toString()');
+  assert.equal(h.run('previewDiffersFromSaved(formBody())'), false);
+  h.element('ssid').value = 'Other';
+  assert.equal(h.run('previewDiffersFromSaved(formBody())'), false);
+  h.element('colorText').value = '#ff0000';
+  assert.equal(h.run('previewDiffersFromSaved(formBody())'), true);
+});
+
+test('a locked login shows the remaining wait time', async () => {
+  const h = harness(async () => ({ ok: false, status: 429, json: async () => ({ retryAfterSeconds: 42 }) }));
+  h.element('loginUsername').value = 'admin';
+  h.element('loginPassword').value = 'x';
+  await h.run('login({ preventDefault() {} })');
+  assert.equal(h.element('loginMessage').textContent, 'Zu viele Fehlversuche. Bitte in 42 Sekunden erneut versuchen.');
+});

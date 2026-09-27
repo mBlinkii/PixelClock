@@ -5,6 +5,7 @@
 #include "../src/runtime_policy.h"
 #include "../src/weather_decode.h"
 #include "../src/cooperative_reader.h"
+#include "../src/admin_auth.h"
 
 struct TestClock {
   static inline uint32_t time = 0, pauses = 0;
@@ -107,8 +108,86 @@ static WeatherReading parse(const char *json, uint8_t provider) {
   return result;
 }
 
+static void testBasicAuthorization() {
+  uint8_t out[8];
+  size_t written = 0;
+  assert(decodeBase64("YWJj", 4, out, sizeof(out), written) && written == 3 && memcmp(out, "abc", 3) == 0);
+  assert(decodeBase64("YQ==", 4, out, sizeof(out), written) && written == 1 && out[0] == 'a');
+  assert(decodeBase64("YWI=", 4, out, sizeof(out), written) && written == 2);
+  assert(!decodeBase64("YWJ", 3, out, sizeof(out), written));
+  assert(!decodeBase64("Y=Jj", 4, out, sizeof(out), written));
+  assert(!decodeBase64("YQ==YWJj", 8, out, sizeof(out), written));
+  assert(!decodeBase64("YW*j", 4, out, sizeof(out), written));
+  assert(!decodeBase64("YWJjYWJjYWJj", 12, out, 8, written));
+
+  BasicCredentials credentials;
+  // admin:test-pass:with:colons
+  assert(parseBasicAuthorization("Basic YWRtaW46dGVzdC1wYXNzOndpdGg6Y29sb25z", credentials));
+  assert(std::string(credentials.username) == "admin");
+  assert(std::string(credentials.password) == "test-pass:with:colons");
+  assert(parseBasicAuthorization("  bAsIc   YWRtaW46eA==  ", credentials) && std::string(credentials.password) == "x");
+  assert(!parseBasicAuthorization("Bearer YWRtaW46eA==", credentials));
+  assert(!parseBasicAuthorization("Basic YWRtaW4=", credentials));      // no colon
+  assert(!parseBasicAuthorization("Basic YWQAbWluOng=", credentials));  // NUL byte
+  assert(!parseBasicAuthorization(nullptr, credentials));
+  const std::string longUser(MAX_ADMIN_USERNAME_LENGTH + 1, 'u');
+  const std::string raw = longUser + ":x";
+  static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::string encoded;
+  for (size_t i = 0; i < raw.size(); i += 3) {
+    uint32_t chunk = static_cast<uint8_t>(raw[i]) << 16;
+    if (i + 1 < raw.size()) chunk |= static_cast<uint8_t>(raw[i + 1]) << 8;
+    if (i + 2 < raw.size()) chunk |= static_cast<uint8_t>(raw[i + 2]);
+    encoded += alphabet[(chunk >> 18) & 63];
+    encoded += alphabet[(chunk >> 12) & 63];
+    encoded += i + 1 < raw.size() ? alphabet[(chunk >> 6) & 63] : '=';
+    encoded += i + 2 < raw.size() ? alphabet[chunk & 63] : '=';
+  }
+  assert(!parseBasicAuthorization(("Basic " + encoded).c_str(), credentials));
+
+  assert(constantTimeEquals("same", "same", 4));
+  assert(!constantTimeEquals("same", "sane", 4));
+
+  char suffix[7];
+  const uint8_t mac[6] = {0x24, 0x6f, 0x28, 0xa1, 0x0b, 0xc3};
+  formatDeviceSuffix(mac, suffix);
+  assert(std::string(suffix) == "A10BC3");
+}
+
+static void testLoginThrottle() {
+  LoginThrottle throttle;
+  const uint32_t client = 0x0a00002a, other = 0x0a00002b;
+  for (int i = 0; i < 4; ++i) throttle.recordFailure(client, 1000 + i);
+  assert(throttle.retryAfterMs(client, 1010) == 0);
+  throttle.recordFailure(client, 2000);  // fifth failure locks for 30 s
+  assert(throttle.retryAfterMs(client, 2000) == 30000);
+  assert(throttle.retryAfterMs(client, 31999) == 1);
+  assert(throttle.retryAfterMs(client, 32000) == 0);
+  assert(throttle.retryAfterMs(other, 2000) == 0);
+  throttle.recordFailure(client, 40000);  // sixth doubles the lock
+  assert(throttle.retryAfterMs(client, 40000) == 60000);
+  for (int i = 0; i < 10; ++i) throttle.recordFailure(client, 50000);
+  assert(throttle.retryAfterMs(client, 50000) == LoginThrottle::MAX_LOCK_MS);
+  throttle.recordSuccess(client);
+  assert(throttle.retryAfterMs(client, 50001) == 0);
+
+  // Counters are forgotten 15 minutes after the last failure.
+  for (int i = 0; i < 5; ++i) throttle.recordFailure(client, 100000);
+  throttle.recordFailure(client, 100000 + LoginThrottle::FORGET_MS);
+  assert(throttle.retryAfterMs(client, 100000 + LoginThrottle::FORGET_MS) == 0);
+
+  // Wrapping millis() and slot reuse when more clients fail than slots exist.
+  LoginThrottle wrapped;
+  for (int i = 0; i < 5; ++i) wrapped.recordFailure(client, UINT32_MAX - 5000);
+  assert(wrapped.retryAfterMs(client, 10000) == 30000 - 15001);
+  for (uint32_t i = 0; i < LoginThrottle::SLOTS + 3; ++i) wrapped.recordFailure(0x0b000000 + i, 20000 + i);
+  assert(wrapped.retryAfterMs(0x0b000000 + LoginThrottle::SLOTS + 2, 20100) == 0);
+}
+
 int main() {
   testNetworkReader();
+  testBasicAuthorization();
+  testLoginThrottle();
   const uint32_t interval = 7200000, retry = 300000;
   assert(weatherFetchDue(1000, 0, 0, interval, retry, false));
   assert(!weatherFetchDue(9000, 5000, 5000, interval, retry, false));
@@ -146,5 +225,5 @@ int main() {
   assert(normalizeWeatherApiCode(1000) == 0);
   assert(normalizeWeatherApiCode(1168) == 57);
   assert(normalizeWeatherApiCode(1258) == 85);
-  std::cout << "Firmware regression tests passed (cooperative network reads, deadlines, scheduling, rollover, five providers, missing/null data, condition mapping).\n";
+  std::cout << "Firmware regression tests passed (cooperative network reads, deadlines, scheduling, rollover, five providers, missing/null data, condition mapping, Basic auth parsing, login throttling).\n";
 }

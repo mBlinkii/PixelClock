@@ -1,3 +1,4 @@
+#include <DNSServer.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
 #include <esp_mac.h>
@@ -9,12 +10,31 @@
 #include "app_state.h"
 
 // Connectivity and clock setup.
-static String routerHostname() {
-  uint8_t mac[6] = {};
-  esp_read_mac(mac, ESP_MAC_WIFI_STA);
-  char hostname[22] = {};
-  snprintf(hostname, sizeof(hostname), "pixelclock-%02X%02X%02X", mac[3], mac[4], mac[5]);
-  return String(hostname);
+static DNSServer dnsServer;
+static uint32_t lastSetupApCheck = 0;
+static uint32_t lastStationRetry = 0;
+static uint32_t stationConnectedSince = 0;
+static bool stationRetryPaused = false;
+constexpr uint32_t SETUP_AP_CHECK_MS = 1000;
+constexpr uint32_t SETUP_AP_CLOSE_DELAY_MS = 5000;
+constexpr uint32_t STATION_RETRY_MS = 60000;
+
+String deviceSuffix() {
+  static char suffix[7] = {};
+  if (!suffix[0]) {
+    uint8_t mac[6] = {};
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    formatDeviceSuffix(mac, suffix);
+  }
+  return String(suffix);
+}
+
+String routerHostname() {
+  return "pixelclock-" + deviceSuffix();
+}
+
+String setupApSsid() {
+  return SETUP_AP_SSID_PREFIX + deviceSuffix();
 }
 
 static void applyRouterHostname() {
@@ -55,13 +75,82 @@ bool connectWifi() {
   return WiFi.status() == WL_CONNECTED;
 }
 
+// The setup access point answers every DNS name with its own address, so
+// phones and laptops open the web UI through their captive-portal check.
 void startSetupAp() {
   setupMode = true;
   applyRouterHostname();
+  WiFi.persistent(false);
   WiFi.mode(WIFI_AP_STA);
   applyWifiCountry();
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
-  WiFi.softAP("PixelClock-Setup", "pixelclock");
+  WiFi.softAP(setupApSsid().c_str(), config.setupApPassword.c_str());
+  dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+  dnsServer.start(53, "*", WiFi.softAPIP());
+  lastStationRetry = millis();
+  stationRetryPaused = false;
+  Serial.printf("Setup AP %s on %s\n", setupApSsid().c_str(), WiFi.softAPIP().toString().c_str());
+}
+
+static void closeSetupAp() {
+  dnsServer.stop();
+  WiFi.softAPdisconnect(true);
+  WiFi.setAutoReconnect(true);
+  applyWifiPowerSave();
+  MDNS.end();
+  startMdns();
+  StateLock lock;
+  setupMode = false;
+  pendingTimeSync = true;
+  pendingWeatherFetch = true;
+  pendingCityResolve = config.resolvedCityName != config.cityName;
+  lastRender = 0;
+  Serial.printf("Wi-Fi connected as %s, setup AP closed\n", WiFi.localIP().toString().c_str());
+}
+
+// Runs from loop() while the setup AP is up. Station retries pause while a
+// device uses the AP: ESP-IDF cannot scan while the station is connecting and
+// channel hopping would disturb the configuring phone. Once the saved Wi-Fi
+// works and nobody is connected to the AP, the AP closes without a restart.
+void serviceSetupAp() {
+  if (!setupMode) return;
+  dnsServer.processNextRequest();
+  const uint32_t now = millis();
+  if (now - lastSetupApCheck < SETUP_AP_CHECK_MS) return;
+  lastSetupApCheck = now;
+  String ssid;
+  String password;
+  {
+    StateLock lock;
+    ssid = config.ssid;
+    password = config.password;
+  }
+  if (ssid.isEmpty()) return;
+  const uint8_t stations = WiFi.softAPgetStationNum();
+  if (WiFi.status() == WL_CONNECTED) {
+    if (stations) {
+      stationConnectedSince = 0;
+      return;
+    }
+    if (!stationConnectedSince) stationConnectedSince = now ? now : 1;
+    if (now - stationConnectedSince >= SETUP_AP_CLOSE_DELAY_MS) closeSetupAp();
+    return;
+  }
+  stationConnectedSince = 0;
+  if (stations) {
+    if (!stationRetryPaused) {
+      WiFi.setAutoReconnect(false);
+      WiFi.disconnect(false, false);
+      stationRetryPaused = true;
+    }
+    return;
+  }
+  if (stationRetryPaused || now - lastStationRetry >= STATION_RETRY_MS) {
+    stationRetryPaused = false;
+    lastStationRetry = now;
+    WiFi.setAutoReconnect(true);
+    WiFi.begin(ssid.c_str(), password.c_str());
+  }
 }
 
 void applyWifiPowerSave() {

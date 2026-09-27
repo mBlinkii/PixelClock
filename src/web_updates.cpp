@@ -19,7 +19,7 @@ void handleFirmwareUpdateUpload(
   uint8_t *data,
   size_t len,
   bool final) {
-  if (!request->authenticate(config.adminUsername.c_str(), config.adminPassword.c_str())) {
+  if (!isAdminAuthorized(request)) {
     return;
   }
 
@@ -90,7 +90,7 @@ void handleWebUpdateUpload(
   uint8_t *data,
   size_t len,
   bool final) {
-  if (!request->authenticate(config.adminUsername.c_str(), config.adminPassword.c_str())) {
+  if (!isAdminAuthorized(request)) {
     return;
   }
 

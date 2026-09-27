@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark light">
     <title>Pixel Clock</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css?v=0.1.14">
+    <link rel="stylesheet" href="/app.css?v=0.1.15">
   </head>
   <body>
     <svg class="iconSprite" aria-hidden="true" focusable="false">
@@ -33,6 +33,9 @@
       <symbol id="icon-wand" viewBox="0 0 24 24"><path d="m4 20 10-10"/><path d="m15 3 .9 2.1L18 6l-2.1.9L15 9l-.9-2.1L12 6l2.1-.9Z"/><path d="m19.5 11 .6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6Z"/></symbol>
       <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
       <symbol id="icon-rainbow" viewBox="0 0 24 24"><path d="M3 17a9 9 0 0 1 18 0"/><path d="M7 17a5 5 0 0 1 10 0"/><path d="M11 17a1 1 0 0 1 2 0"/></symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></symbol>
+      <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/></symbol>
       <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
       <symbol id="wx-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></symbol>
       <symbol id="wx-partly" viewBox="0 0 24 24"><path d="M8.5 3.5V5M3.5 8.5H5M5 5l1 1M12 5l-1 1"/><path d="M5.3 11.6a3.5 3.5 0 1 1 6.4-3.4"/><path d="M9 19.5h8.5a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.4A2.8 2.8 0 0 0 9 19.5Z"/></symbol>
@@ -66,6 +69,7 @@
         <details class="loginHelp">
           <summary>Erste Einrichtung?</summary>
           <p>Der Standardzugang lautet admin / pixelclock. Nach der Anmeldung führt dich ein Assistent durch die Einrichtung.</p>
+          <p>Neue Uhren öffnen das WLAN „PixelClock-Setup-…“ (Passwort pixelclock). Nach dem Verbinden erscheint diese Seite meist automatisch.</p>
         </details>
       </form>
     </section>
@@ -141,6 +145,15 @@
               </section>
             </div>
 
+            <section id="liveCard" class="panel liveCard" hidden>
+              <div class="liveHeader">
+                <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-matrix"></use></svg>Live-Anzeige</h2>
+                <span class="liveBadges"><span class="chip previewChip" hidden>Vorschau</span><span class="chip pausedChip" hidden>Pausiert</span></span>
+              </div>
+              <canvas id="liveMatrix" class="liveMatrix" role="img" aria-label="Aktuelles Bild der LED-Matrix"></canvas>
+              <p class="hint liveHint" data-no-i18n></p>
+            </section>
+
             <div class="statGrid">
               <div class="stat"><span>Verbindung</span><strong id="networkLine" data-no-i18n>-</strong></div>
               <div class="stat"><span>IP-Adresse</span><strong id="ipLine" data-no-i18n>-</strong></div>
@@ -151,6 +164,14 @@
 
           <!-- Display -->
           <section class="page" data-page="display" aria-label="Anzeige" hidden>
+            <section id="liveCardDisplay" class="panel liveCard" hidden>
+              <div class="liveHeader">
+                <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-matrix"></use></svg>Live-Vorschau</h2>
+                <span class="liveBadges"><span class="chip previewChip" hidden>Vorschau</span><span class="chip pausedChip" hidden>Pausiert</span></span>
+              </div>
+              <canvas id="liveMatrixDisplay" class="liveMatrix" role="img" aria-label="Aktuelles Bild der LED-Matrix"></canvas>
+              <p class="hint">Änderungen auf dieser Seite erscheinen sofort auf der Uhr. Ohne Speichern werden sie nach 2 Minuten zurückgesetzt.</p>
+            </section>
             <section class="panel">
               <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-pages"></use></svg>Seiten und Format</h2>
               <div class="grid">
@@ -460,10 +481,26 @@
                 </label>
                 <label>
                   Admin-Passwort
-                  <input id="adminPassword" name="adminPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Leer lassen zum Beibehalten" data-reveal>
+                  <input id="adminPassword" name="adminPassword" type="password" minlength="8" maxlength="64" autocomplete="new-password" placeholder="Leer lassen zum Beibehalten" data-reveal>
                 </label>
               </div>
-              <p class="hint">Mindestens 8 Zeichen. Nach dem Speichern bleibst du mit den neuen Daten angemeldet.</p>
+              <p class="hint">8 bis 64 Zeichen. Nach dem Speichern bleibst du mit den neuen Daten angemeldet.</p>
+            </section>
+
+            <section id="setupApSection" class="panel" hidden>
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wifi"></use></svg>Setup-WLAN</h2>
+              <p>Dieses WLAN öffnet die Uhr, wenn sie sich nicht mit deinem WLAN verbinden kann.</p>
+              <div class="statGrid">
+                <div class="stat"><span>Name</span><strong id="setupApSsidLine" data-no-i18n>-</strong></div>
+                <div class="stat"><span>Passwort</span><strong id="setupApPasswordState" data-no-i18n>-</strong></div>
+              </div>
+              <div class="grid">
+                <label>
+                  Neues Setup-WLAN-Passwort
+                  <input id="setupApPassword" name="setupApPassword" type="password" minlength="8" maxlength="63" autocomplete="new-password" placeholder="Leer lassen zum Beibehalten" data-reveal>
+                </label>
+              </div>
+              <p class="hint">8 bis 63 Zeichen. Notiere es dir: Ohne WLAN-Verbindung erreichst du die Uhr nur über dieses Netz. Im Notfall setzt die BOOT-Taste alles zurück.</p>
             </section>
           </section>
 
@@ -489,6 +526,17 @@
                 <p>Führt dich Schritt für Schritt durch WLAN, Display, Standort und Admin-Passwort.</p>
               </div>
               <button id="wizardStartBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-wand"></use></svg>Assistent starten</button>
+            </section>
+
+            <section class="panel backupSection">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-save"></use></svg>Einstellungen sichern</h2>
+              <p>Speichert alle Einstellungen als Datei, z. B. vor einem Werksreset. Passwörter und API-Keys sind aus Sicherheitsgründen nicht enthalten.</p>
+              <div class="actionRow">
+                <button id="exportBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>Exportieren</button>
+                <label class="button" for="importFile"><svg class="icon" aria-hidden="true"><use href="#icon-upload"></use></svg>Importieren</label>
+                <input id="importFile" class="visuallyHidden" type="file" accept=".json,application/json">
+              </div>
+              <p class="hint">Importierte Werte erscheinen als ungespeicherte Änderungen. Prüfe sie und drücke dann Speichern.</p>
             </section>
 
             <section class="panel updateSection">
@@ -527,8 +575,8 @@
                 <details open>
                   <summary>Schnellstart</summary>
                   <ol>
-                    <li>Mit PixelClock-Setup verbinden (Passwort pixelclock), wenn noch kein WLAN eingerichtet ist.</li>
-                    <li>http://192.168.4.1 öffnen und mit admin / pixelclock anmelden.</li>
+                    <li>Mit dem WLAN PixelClock-Setup-… verbinden (Passwort pixelclock), wenn noch kein WLAN eingerichtet ist. Die Endung steht auch auf der Matrix.</li>
+                    <li>Die Einrichtungsseite öffnet sich meist automatisch, sonst http://192.168.4.1 öffnen. Mit admin / pixelclock anmelden.</li>
                     <li>Der Einrichtungsassistent führt durch WLAN, Display, Standort und Admin-Passwort.</li>
                     <li>Nach dem Neustart die Uhr im eigenen WLAN unter http://pixelclock.local öffnen.</li>
                   </ol>
@@ -576,11 +624,12 @@
               </div>
               <div class="dangerRow">
                 <div>
-                  <strong>Werksreset</strong>
-                  <p>Löscht alle Daten inklusive WLAN. Danach startet die Uhr im Setup-Modus.</p>
+                  <strong>Werksreset – Uhr weitergeben</strong>
+                  <p>Löscht alle Daten inklusive WLAN, Passwörtern und API-Keys. Danach ist die Uhr wie neu.</p>
                 </div>
-                <button id="factoryResetBtn" class="danger" type="button">Werksreset</button>
+                <button id="factoryResetBtn" class="danger" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg>Werksreset</button>
               </div>
+              <p id="resetButtonHint" class="hint" hidden>Ohne Zugang zur Weboberfläche: die BOOT-Taste am ESP32 10 Sekunden gedrückt halten, bis RESET auf der Matrix erscheint.</p>
             </section>
           </section>
         </main>
@@ -809,16 +858,37 @@
         </div>
       </section>
     </div>
+    <div id="factoryResetModal" class="modalOverlay" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="factoryResetTitle">
+        <h2 id="factoryResetTitle">Uhr auf Werkszustand zurücksetzen</h2>
+        <p>Danach ist die Uhr wie neu und kann weitergegeben werden. Gelöscht werden:</p>
+        <ul class="bulletList">
+          <li>WLAN-Zugangsdaten und WLAN-Region</li>
+          <li>Admin-Benutzer und Admin-Passwort</li>
+          <li>Setup-WLAN-Passwort</li>
+          <li>Standort, API-Keys und alle Anzeige-Einstellungen</li>
+        </ul>
+        <p>Firmware und Weboberfläche bleiben erhalten. Die Uhr startet danach im Setup-Modus. Tipp: Vorher unter „Einstellungen sichern“ exportieren.</p>
+        <label class="confirmCheck">
+          <input id="factoryResetConfirm" type="checkbox">
+          Ich möchte alle Daten unwiderruflich löschen.
+        </label>
+        <div class="modalActions">
+          <button id="factoryResetGo" class="danger" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg>Alles löschen</button>
+          <button id="factoryResetCancel" class="ghost" type="button">Abbrechen</button>
+        </div>
+      </section>
+    </div>
     <div id="restartOverlay" class="modalOverlay" hidden>
       <section class="modal restartPanel" role="status" aria-live="assertive">
         <div class="spinner" aria-hidden="true"></div>
         <h2>Neustart läuft...</h2>
-        <p>Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
+        <p id="restartOverlayText">Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
       </section>
     </div>
-    <script src="/i18n.js?v=0.1.14" defer></script>
-    <script src="/updates.js?v=0.1.14" defer></script>
-    <script src="/setup.js?v=0.1.14" defer></script>
-    <script src="/app.js?v=0.1.14" defer></script>
+    <script src="/i18n.js?v=0.1.15" defer></script>
+    <script src="/updates.js?v=0.1.15" defer></script>
+    <script src="/setup.js?v=0.1.15" defer></script>
+    <script src="/app.js?v=0.1.15" defer></script>
   </body>
 </html>

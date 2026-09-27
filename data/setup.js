@@ -89,9 +89,10 @@ function updateWizardProviderFields() {
   setPlaceholder($("wizardWaKey"), hasProviderKeys[4] ? "Leer lassen zum Beibehalten" : "API-Key eingeben");
 }
 
-// The firmware shows its WIFI/AP prompt instead of the test pattern while no SSID is saved.
+// Firmware before 0.1.18 shows its WIFI/AP prompt instead of the test pattern while no SSID is saved.
 function updateWizardTestHint() {
-  $("wizardTestApHint").hidden = !(lastStatus?.setupMode && !String(savedConfig?.ssid || "").trim() && !$("ssid").value.trim());
+  $("wizardTestApHint").hidden = Boolean(capabilities.setupTestPattern) ||
+    !(lastStatus?.setupMode && !String(savedConfig?.ssid || "").trim() && !$("ssid").value.trim());
 }
 
 function renderWizardNetworks() {
@@ -302,11 +303,15 @@ function showWizardHandoff(ssid, url, reconnectDevice) {
   const link = textElement("a", url.replace(/\/$/, ""));
   link.href = url;
   open.append(`${tr("Öffne danach")} `, link);
-  steps.append(open, textElement("li", tr("Klappt die .local-Adresse nicht, findest du die IP-Adresse im Router. Der Gerätename beginnt mit „pixelclock-“.")));
+  steps.append(open, textElement("li", trFormat(
+    "Klappt die .local-Adresse nicht, findest du die IP-Adresse im Router unter „{name}“.",
+    { name: lastStatus?.routerHostname || "pixelclock-…" })));
   $("wizardDoneText").replaceChildren(
     textElement("p", trFormat("Die Uhr verbindet sich jetzt mit dem WLAN „{ssid}“.", { ssid })),
     steps,
-    textElement("p", tr("Kann sich die Uhr nicht verbinden, öffnet sie nach etwa 20 Sekunden wieder das WLAN „PixelClock-Setup“. Prüfe dann das WLAN-Passwort."))
+    textElement("p", trFormat(
+      "Kann sich die Uhr nicht verbinden, öffnet sie nach etwa 20 Sekunden wieder das WLAN „{ap}“. Prüfe dann das WLAN-Passwort.",
+      { ap: lastStatus?.setupApSsid || "PixelClock-Setup" }))
   );
   startWizardProbe(url);
 }

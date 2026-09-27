@@ -27,16 +27,23 @@ String normalizeWifiCountry(String value) {
 void loadConfig() {
   prefs.begin("pixel-clock", true);
   const uint8_t authConfigVersion = prefs.getUChar("authVer", 0);
+  String plainAdminPassword;
   config.ssid = prefs.getString("ssid", "");
   config.password = prefs.getString("pass", "");
   if (authConfigVersion == AUTH_CONFIG_VERSION) {
     config.adminUsername = sanitizeHostname(prefs.getString("adminUser", config.adminUsername));
-    config.adminPassword = prefs.getString("admin", config.adminPassword);
+    config.adminPasswordSalt = prefs.getString("adminSalt", "");
+    config.adminPasswordHash = prefs.getString("adminHash", "");
+  } else if (authConfigVersion == 1) {
+    // Firmware up to 0.1.17 stored the admin password in plain text.
+    config.adminUsername = sanitizeHostname(prefs.getString("adminUser", config.adminUsername));
+    plainAdminPassword = prefs.getString("admin", "");
+    authConfigMigrationNeeded = true;
   } else {
     config.adminUsername = DEFAULT_ADMIN_USERNAME;
-    config.adminPassword = DEFAULT_ADMIN_PASSWORD;
     authConfigMigrationNeeded = true;
   }
+  config.setupApPassword = prefs.getString("apPass", config.setupApPassword);
   config.language = prefs.getString("lang", config.language);
   config.hostname = prefs.getString("host", config.hostname);
   config.cityName = prefs.getString("city", config.cityName);
@@ -81,6 +88,12 @@ void loadConfig() {
   if (config.colorGradientMode == 255) config.colorGradientMode = prefs.getBool("colGrad", false) ? 1 : 0;
   prefs.end();
 
+  if (authConfigVersion == 1 && !migratePlainAdminPassword(plainAdminPassword)) {
+    config.adminPasswordSalt = "";
+    config.adminPasswordHash = "";
+  }
+  plainAdminPassword = "";
+
   config.width = constrain(config.width, 8, 64);
   config.height = constrain(config.height, 8, 16);
   const uint8_t maxBrightness = config.fullBrightnessUnlocked ? 255 : SAFE_BRIGHTNESS_MAX;
@@ -102,56 +115,119 @@ void loadConfig() {
   config.adminUsername = sanitizeHostname(config.adminUsername);
   config.wifiCountry = normalizeWifiCountry(config.wifiCountry);
   if (config.adminUsername.isEmpty()) config.adminUsername = DEFAULT_ADMIN_USERNAME;
-  if (config.adminPassword.length() < MIN_ADMIN_PASSWORD_LENGTH) config.adminPassword = DEFAULT_ADMIN_PASSWORD;
+  if (!adminCredentialsValid()) {
+    config.adminPasswordSalt = "";
+    config.adminPasswordHash = "";
+  }
+  if (config.setupApPassword.length() < MIN_SETUP_AP_PASSWORD_LENGTH ||
+      config.setupApPassword.length() > MAX_SETUP_AP_PASSWORD_LENGTH) {
+    config.setupApPassword = DEFAULT_SETUP_AP_PASSWORD;
+  }
+}
+
+DisplayPreviewFields captureDisplayPreviewFields(const AppConfig &source) {
+  DisplayPreviewFields fields;
+  fields.brightness = source.brightness;
+  fields.nightBrightness = source.nightBrightness;
+  fields.fullBrightnessUnlocked = source.fullBrightnessUnlocked;
+  fields.displayMode = source.displayMode;
+  fields.temperatureUnit = source.temperatureUnit;
+  fields.weatherIconEnabled = source.weatherIconEnabled;
+  fields.hourFormat = source.hourFormat;
+  fields.colorWeekday = source.colorWeekday;
+  fields.colorText = source.colorText;
+  fields.colorPoint = source.colorPoint;
+  fields.colorColon = source.colorColon;
+  fields.colorGradientMode = source.colorGradientMode;
+  fields.autoPage = source.autoPage;
+  fields.selectedPage = source.selectedPage;
+  fields.pageSeconds = source.pageSeconds;
+  fields.timePageSeconds = source.timePageSeconds;
+  return fields;
+}
+
+void applyDisplayPreviewFields(AppConfig &target, const DisplayPreviewFields &fields) {
+  target.brightness = fields.brightness;
+  target.nightBrightness = fields.nightBrightness;
+  target.fullBrightnessUnlocked = fields.fullBrightnessUnlocked;
+  target.displayMode = fields.displayMode;
+  target.temperatureUnit = fields.temperatureUnit;
+  target.weatherIconEnabled = fields.weatherIconEnabled;
+  target.hourFormat = fields.hourFormat;
+  target.colorWeekday = fields.colorWeekday;
+  target.colorText = fields.colorText;
+  target.colorPoint = fields.colorPoint;
+  target.colorColon = fields.colorColon;
+  target.colorGradientMode = fields.colorGradientMode;
+  target.autoPage = fields.autoPage;
+  target.selectedPage = fields.selectedPage;
+  target.pageSeconds = fields.pageSeconds;
+  target.timePageSeconds = fields.timePageSeconds;
+}
+
+// Ends a temporary display preview, optionally restoring the saved values.
+void endDisplayPreview(bool restore) {
+  StateLock lock;
+  if (!displayPreviewActive) return;
+  if (restore) applyDisplayPreviewFields(config, displayPreviewBackup);
+  displayPreviewActive = false;
+  lastRender = 0;
 }
 
 void saveConfig() {
   StateLock lock;
+  // A running display preview is temporary; persist the values it replaced.
+  AppConfig stored = config;
+  if (displayPreviewActive) applyDisplayPreviewFields(stored, displayPreviewBackup);
+  const AppConfig &c = stored;
   prefs.begin("pixel-clock", false);
-  if (!prefs.isKey("ssid") || prefs.getString("ssid") != config.ssid) prefs.putString("ssid", config.ssid);
-  if (!prefs.isKey("pass") || prefs.getString("pass") != config.password) prefs.putString("pass", config.password);
+  if (!prefs.isKey("ssid") || prefs.getString("ssid") != c.ssid) prefs.putString("ssid", c.ssid);
+  if (!prefs.isKey("pass") || prefs.getString("pass") != c.password) prefs.putString("pass", c.password);
   if (!prefs.isKey("authVer") || prefs.getUChar("authVer") != AUTH_CONFIG_VERSION) prefs.putUChar("authVer", AUTH_CONFIG_VERSION);
-  if (!prefs.isKey("adminUser") || prefs.getString("adminUser") != config.adminUsername) prefs.putString("adminUser", config.adminUsername);
-  if (!prefs.isKey("admin") || prefs.getString("admin") != config.adminPassword) prefs.putString("admin", config.adminPassword);
-  if (!prefs.isKey("lang") || prefs.getString("lang") != config.language) prefs.putString("lang", config.language);
-  if (!prefs.isKey("wifiCtry") || prefs.getString("wifiCtry") != normalizeWifiCountry(config.wifiCountry)) prefs.putString("wifiCtry", normalizeWifiCountry(config.wifiCountry));
-  if (!prefs.isKey("host") || prefs.getString("host") != config.hostname) prefs.putString("host", config.hostname);
-  if (!prefs.isKey("city") || prefs.getString("city") != config.cityName) prefs.putString("city", config.cityName);
-  if (!prefs.isKey("locLabel") || prefs.getString("locLabel") != config.locationLabel) prefs.putString("locLabel", config.locationLabel);
-  if (!prefs.isKey("tz") || prefs.getString("tz") != config.timezone) prefs.putString("tz", config.timezone);
-  if (!prefs.isKey("lat") || prefs.getFloat("lat") != config.latitude) prefs.putFloat("lat", config.latitude);
-  if (!prefs.isKey("lon") || prefs.getFloat("lon") != config.longitude) prefs.putFloat("lon", config.longitude);
-  if (!prefs.isKey("wProv") || prefs.getUChar("wProv") != config.weatherProvider) prefs.putUChar("wProv", config.weatherProvider);
-  if (!prefs.isKey("wIntHalf") || prefs.getUChar("wIntHalf") != config.weatherIntervalHalfHours) prefs.putUChar("wIntHalf", config.weatherIntervalHalfHours);
-  if (!prefs.isKey("owmKey") || prefs.getString("owmKey") != config.openWeatherApiKey) prefs.putString("owmKey", config.openWeatherApiKey);
-  if (!prefs.isKey("waKey") || prefs.getString("waKey") != config.weatherApiKey) prefs.putString("waKey", config.weatherApiKey);
-  if (!prefs.isKey("resolvedCity") || prefs.getString("resolvedCity") != config.resolvedCityName) prefs.putString("resolvedCity", config.resolvedCityName);
-  if (!prefs.isKey("wifiPS") || prefs.getBool("wifiPS") != config.wifiPowerSave) prefs.putBool("wifiPS", config.wifiPowerSave);
-  if (!prefs.isKey("width") || prefs.getUChar("width") != config.width) prefs.putUChar("width", config.width);
-  if (!prefs.isKey("height") || prefs.getUChar("height") != config.height) prefs.putUChar("height", config.height);
-  if (!prefs.isKey("pin") || prefs.getUChar("pin") != config.dataPin) prefs.putUChar("pin", config.dataPin);
-  if (!prefs.isKey("bright") || prefs.getUChar("bright") != config.brightness) prefs.putUChar("bright", config.brightness);
-  if (!prefs.isKey("fullBright") || prefs.getBool("fullBright") != config.fullBrightnessUnlocked) prefs.putBool("fullBright", config.fullBrightnessUnlocked);
-  if (!prefs.isKey("wiring") || prefs.getUChar("wiring") != config.wiringMode) prefs.putUChar("wiring", config.wiringMode);
-  if (!prefs.isKey("origin") || prefs.getUChar("origin") != config.origin) prefs.putUChar("origin", config.origin);
-  if (!prefs.isKey("dispMode") || prefs.getUChar("dispMode") != config.displayMode) prefs.putUChar("dispMode", config.displayMode);
-  if (!prefs.isKey("tempUnit") || prefs.getUChar("tempUnit") != config.temperatureUnit) prefs.putUChar("tempUnit", config.temperatureUnit);
-  if (!prefs.isKey("tempIcon") || prefs.getBool("tempIcon") != config.weatherIconEnabled) prefs.putBool("tempIcon", config.weatherIconEnabled);
-  if (!prefs.isKey("hourFmt") || prefs.getUChar("hourFmt") != config.hourFormat) prefs.putUChar("hourFmt", config.hourFormat);
-  if (!prefs.isKey("rgb") || prefs.getBool("rgb") != config.colorRgb) prefs.putBool("rgb", config.colorRgb);
-  if (!prefs.isKey("pageSec") || prefs.getUChar("pageSec") != config.pageSeconds) prefs.putUChar("pageSec", config.pageSeconds);
-  if (!prefs.isKey("timePageSec") || prefs.getUChar("timePageSec") != config.timePageSeconds) prefs.putUChar("timePageSec", config.timePageSeconds);
-  if (!prefs.isKey("autoPage") || prefs.getBool("autoPage") != config.autoPage) prefs.putBool("autoPage", config.autoPage);
-  if (!prefs.isKey("selPage") || prefs.getUChar("selPage") != config.selectedPage) prefs.putUChar("selPage", config.selectedPage);
-  if (!prefs.isKey("nightB") || prefs.getUChar("nightB") != config.nightBrightness) prefs.putUChar("nightB", config.nightBrightness);
-  if (!prefs.isKey("nightS") || prefs.getUChar("nightS") != config.nightStart) prefs.putUChar("nightS", config.nightStart);
-  if (!prefs.isKey("nightE") || prefs.getUChar("nightE") != config.nightEnd) prefs.putUChar("nightE", config.nightEnd);
-  if (!prefs.isKey("colWeek") || prefs.getULong("colWeek") != config.colorWeekday) prefs.putULong("colWeek", config.colorWeekday);
-  if (!prefs.isKey("colText") || prefs.getULong("colText") != config.colorText) prefs.putULong("colText", config.colorText);
-  if (!prefs.isKey("colPoint") || prefs.getULong("colPoint") != config.colorPoint) prefs.putULong("colPoint", config.colorPoint);
-  if (!prefs.isKey("colColon") || prefs.getULong("colColon") != config.colorColon) prefs.putULong("colColon", config.colorColon);
-  if (!prefs.isKey("colGradM") || prefs.getUChar("colGradM") != config.colorGradientMode) prefs.putUChar("colGradM", config.colorGradientMode);
-  if (!prefs.isKey("colGrad") || prefs.getBool("colGrad") != (config.colorGradientMode != 0)) prefs.putBool("colGrad", config.colorGradientMode != 0);
+  if (!prefs.isKey("adminUser") || prefs.getString("adminUser") != c.adminUsername) prefs.putString("adminUser", c.adminUsername);
+  if (!prefs.isKey("adminSalt") || prefs.getString("adminSalt") != c.adminPasswordSalt) prefs.putString("adminSalt", c.adminPasswordSalt);
+  if (!prefs.isKey("adminHash") || prefs.getString("adminHash") != c.adminPasswordHash) prefs.putString("adminHash", c.adminPasswordHash);
+  if (prefs.isKey("admin")) prefs.remove("admin");
+  if (!prefs.isKey("apPass") || prefs.getString("apPass") != c.setupApPassword) prefs.putString("apPass", c.setupApPassword);
+  if (!prefs.isKey("lang") || prefs.getString("lang") != c.language) prefs.putString("lang", c.language);
+  if (!prefs.isKey("wifiCtry") || prefs.getString("wifiCtry") != normalizeWifiCountry(c.wifiCountry)) prefs.putString("wifiCtry", normalizeWifiCountry(c.wifiCountry));
+  if (!prefs.isKey("host") || prefs.getString("host") != c.hostname) prefs.putString("host", c.hostname);
+  if (!prefs.isKey("city") || prefs.getString("city") != c.cityName) prefs.putString("city", c.cityName);
+  if (!prefs.isKey("locLabel") || prefs.getString("locLabel") != c.locationLabel) prefs.putString("locLabel", c.locationLabel);
+  if (!prefs.isKey("tz") || prefs.getString("tz") != c.timezone) prefs.putString("tz", c.timezone);
+  if (!prefs.isKey("lat") || prefs.getFloat("lat") != c.latitude) prefs.putFloat("lat", c.latitude);
+  if (!prefs.isKey("lon") || prefs.getFloat("lon") != c.longitude) prefs.putFloat("lon", c.longitude);
+  if (!prefs.isKey("wProv") || prefs.getUChar("wProv") != c.weatherProvider) prefs.putUChar("wProv", c.weatherProvider);
+  if (!prefs.isKey("wIntHalf") || prefs.getUChar("wIntHalf") != c.weatherIntervalHalfHours) prefs.putUChar("wIntHalf", c.weatherIntervalHalfHours);
+  if (!prefs.isKey("owmKey") || prefs.getString("owmKey") != c.openWeatherApiKey) prefs.putString("owmKey", c.openWeatherApiKey);
+  if (!prefs.isKey("waKey") || prefs.getString("waKey") != c.weatherApiKey) prefs.putString("waKey", c.weatherApiKey);
+  if (!prefs.isKey("resolvedCity") || prefs.getString("resolvedCity") != c.resolvedCityName) prefs.putString("resolvedCity", c.resolvedCityName);
+  if (!prefs.isKey("wifiPS") || prefs.getBool("wifiPS") != c.wifiPowerSave) prefs.putBool("wifiPS", c.wifiPowerSave);
+  if (!prefs.isKey("width") || prefs.getUChar("width") != c.width) prefs.putUChar("width", c.width);
+  if (!prefs.isKey("height") || prefs.getUChar("height") != c.height) prefs.putUChar("height", c.height);
+  if (!prefs.isKey("pin") || prefs.getUChar("pin") != c.dataPin) prefs.putUChar("pin", c.dataPin);
+  if (!prefs.isKey("bright") || prefs.getUChar("bright") != c.brightness) prefs.putUChar("bright", c.brightness);
+  if (!prefs.isKey("fullBright") || prefs.getBool("fullBright") != c.fullBrightnessUnlocked) prefs.putBool("fullBright", c.fullBrightnessUnlocked);
+  if (!prefs.isKey("wiring") || prefs.getUChar("wiring") != c.wiringMode) prefs.putUChar("wiring", c.wiringMode);
+  if (!prefs.isKey("origin") || prefs.getUChar("origin") != c.origin) prefs.putUChar("origin", c.origin);
+  if (!prefs.isKey("dispMode") || prefs.getUChar("dispMode") != c.displayMode) prefs.putUChar("dispMode", c.displayMode);
+  if (!prefs.isKey("tempUnit") || prefs.getUChar("tempUnit") != c.temperatureUnit) prefs.putUChar("tempUnit", c.temperatureUnit);
+  if (!prefs.isKey("tempIcon") || prefs.getBool("tempIcon") != c.weatherIconEnabled) prefs.putBool("tempIcon", c.weatherIconEnabled);
+  if (!prefs.isKey("hourFmt") || prefs.getUChar("hourFmt") != c.hourFormat) prefs.putUChar("hourFmt", c.hourFormat);
+  if (!prefs.isKey("rgb") || prefs.getBool("rgb") != c.colorRgb) prefs.putBool("rgb", c.colorRgb);
+  if (!prefs.isKey("pageSec") || prefs.getUChar("pageSec") != c.pageSeconds) prefs.putUChar("pageSec", c.pageSeconds);
+  if (!prefs.isKey("timePageSec") || prefs.getUChar("timePageSec") != c.timePageSeconds) prefs.putUChar("timePageSec", c.timePageSeconds);
+  if (!prefs.isKey("autoPage") || prefs.getBool("autoPage") != c.autoPage) prefs.putBool("autoPage", c.autoPage);
+  if (!prefs.isKey("selPage") || prefs.getUChar("selPage") != c.selectedPage) prefs.putUChar("selPage", c.selectedPage);
+  if (!prefs.isKey("nightB") || prefs.getUChar("nightB") != c.nightBrightness) prefs.putUChar("nightB", c.nightBrightness);
+  if (!prefs.isKey("nightS") || prefs.getUChar("nightS") != c.nightStart) prefs.putUChar("nightS", c.nightStart);
+  if (!prefs.isKey("nightE") || prefs.getUChar("nightE") != c.nightEnd) prefs.putUChar("nightE", c.nightEnd);
+  if (!prefs.isKey("colWeek") || prefs.getULong("colWeek") != c.colorWeekday) prefs.putULong("colWeek", c.colorWeekday);
+  if (!prefs.isKey("colText") || prefs.getULong("colText") != c.colorText) prefs.putULong("colText", c.colorText);
+  if (!prefs.isKey("colPoint") || prefs.getULong("colPoint") != c.colorPoint) prefs.putULong("colPoint", c.colorPoint);
+  if (!prefs.isKey("colColon") || prefs.getULong("colColon") != c.colorColon) prefs.putULong("colColon", c.colorColon);
+  if (!prefs.isKey("colGradM") || prefs.getUChar("colGradM") != c.colorGradientMode) prefs.putUChar("colGradM", c.colorGradientMode);
+  if (!prefs.isKey("colGrad") || prefs.getBool("colGrad") != (c.colorGradientMode != 0)) prefs.putBool("colGrad", c.colorGradientMode != 0);
   prefs.end();
 }
 

@@ -56,6 +56,15 @@ const fields = [
   "colorGradientMode", "autoPage", "selectedPage", "nightBrightness", "nightStart", "nightEnd"
 ];
 const pageNames = ["overview", "display", "weather", "hardware", "network", "system"];
+// Visual settings the firmware can preview without saving (/api/display/preview).
+const previewFields = [
+  "brightness", "nightBrightness", "fullBrightnessUnlocked", "displayMode", "temperatureUnit", "weatherIconEnabled",
+  "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "colorGradientMode", "autoPage", "selectedPage",
+  "pageSeconds", "timePageSeconds"
+];
+const secretFields = ["password", "adminPassword", "openWeatherApiKey", "weatherApiKey", "setupApPassword"];
+const settingsExportFormat = "pixel-clock-settings";
+const liveIdleMs = 5 * 60 * 1000;
 
 const $ = (id) => document.getElementById(id);
 const adminReminderStorageKey = "pixelClockAdminReminderDismissed";
@@ -77,7 +86,15 @@ let deviceClock = null;
 let clockTimer = 0;
 let toastTimer = 0;
 let languageChosenBeforeLogin = "";
-let loginMessageSource = "";
+let loginMessage = null;
+let previewTimer = 0;
+let previewKeepAlive = 0;
+let previewActive = false;
+let liveTimer = 0;
+let liveInFlight = false;
+let livePaused = false;
+let lastFrame = null;
+let lastInteraction = Date.now();
 
 // Browser storage can be unavailable (private windows, blocked site data).
 function readStorage(key) {
@@ -140,9 +157,9 @@ function setAuthenticatedView(isAuthenticated) {
   $("appShell").hidden = !isAuthenticated;
 }
 
-function setLoginMessage(text) {
-  loginMessageSource = text;
-  $("loginMessage").textContent = tr(text);
+function setLoginMessage(text, values = {}) {
+  loginMessage = { text, values };
+  $("loginMessage").textContent = trFormat(text, values);
 }
 
 function showLogin(text = "Bitte anmelden.") {
@@ -155,6 +172,10 @@ function showLogin(text = "Bitte anmelden.") {
   $("loginUsername").focus();
   clearTimeout(clockTimer);
   clockTimer = 0;
+  clearTimeout(liveTimer);
+  liveTimer = 0;
+  clearTimeout(previewTimer);
+  clearTimeout(previewKeepAlive);
   if (statusRefreshTimer) {
     clearTimeout(statusRefreshTimer);
     statusRefreshTimer = 0;
@@ -250,12 +271,14 @@ function applyLanguage() {
   fillWeatherIntervals();
   translateTextNodes(document.body);
   translateAttributes();
-  if (loginMessageSource) $("loginMessage").textContent = tr(loginMessageSource);
+  if (loginMessage) $("loginMessage").textContent = trFormat(loginMessage.text, loginMessage.values);
   updateAdminPasswordPlaceholder();
   updateProviderFields();
   updateHardwareInfo();
   updateOverviewFromConfig();
   updateSetupCard();
+  updateSetupApSection();
+  if (lastFrame) drawLiveMatrix(lastFrame);
   if (lastStatus) {
     renderConnection(lastStatus);
     renderWeather(lastStatus);
@@ -356,6 +379,7 @@ function showPage(name) {
   if (location.hash.slice(1) !== name) history.replaceState(null, "", `#${name}`);
   if (changed) window.scrollTo(0, 0);
   scheduleClockTick();
+  scheduleLiveMatrix();
 }
 
 function markDirtyTabs(body) {
@@ -645,7 +669,18 @@ function updateOverviewFromConfig() {
   setLink($("urlLine"), savedConfig.url);
   $("brightnessLine").textContent =
     `${byteToPercent(savedConfig.brightness)} % · ${tr("Nacht")} ${byteToPercent(savedConfig.nightBrightness)} %`;
+  for (const canvas of [$("liveMatrix"), $("liveMatrixDisplay")]) {
+    if (!lastFrame && savedConfig.width && savedConfig.height) canvas.style.aspectRatio = `${savedConfig.width} / ${savedConfig.height}`;
+  }
   updateSetupCard();
+}
+
+function updateSetupApSection() {
+  const supported = savedConfig?.setupApPasswordIsDefault !== undefined;
+  $("setupApSection").hidden = !supported;
+  if (!supported) return;
+  $("setupApSsidLine").textContent = savedConfig.setupApSsid || "PixelClock-Setup";
+  $("setupApPasswordState").textContent = tr(savedConfig.setupApPasswordIsDefault ? "Standard (pixelclock)" : "Eigenes Passwort");
 }
 
 function setForm(config) {
@@ -677,12 +712,14 @@ function setForm(config) {
   updateAdminPasswordPlaceholder();
   updateRangeValues();
   updateNightControlsFromStored();
-  for (const id of ["password", "adminPassword", "openWeatherApiKey", "weatherApiKey"]) $(id).value = "";
+  for (const id of secretFields) $(id).value = "";
+  if (config.maxAdminPasswordLength) $("adminPassword").maxLength = config.maxAdminPasswordLength;
   hideRevealedPasswords();
   updateProviderFields();
   updatePageControls();
   updateHardwareInfo();
   updateOverviewFromConfig();
+  updateSetupApSection();
   savedForm = formBody().toString();
   updateDirtyState();
 }
@@ -703,6 +740,8 @@ function formBody() {
   if (adminUsername) data.set("adminUsername", adminUsername);
   const adminPassword = $("adminPassword").value;
   if (adminPassword) data.set("adminPassword", adminPassword);
+  const setupApPassword = $("setupApPassword").value;
+  if (setupApPassword) data.set("setupApPassword", setupApPassword);
   const openWeatherApiKey = $("openWeatherApiKey").value.trim();
   if (openWeatherApiKey) data.set("openWeatherApiKey", openWeatherApiKey);
   const weatherApiKey = $("weatherApiKey").value.trim();
@@ -772,6 +811,152 @@ function scheduleClockTick() {
   }, 1000 - (elapsed % 1000) + 25);
 }
 
+// Converts /api/display/frame (physical LED order, RRGGBB hex) into row-major colors.
+function frameToGrid(frame) {
+  const width = Number(frame.width) || 0;
+  const height = Number(frame.height) || 0;
+  const count = Math.min(Number(frame.count) || 0, width * height);
+  const pixels = String(frame.pixels || "");
+  const colors = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = ledIndex(x, y, width, height, Number(frame.origin), Number(frame.wiring));
+      colors.push(index < count ? pixels.slice(index * 6, index * 6 + 6) || "000000" : "000000");
+    }
+  }
+  return { width, height, colors };
+}
+
+function paintMatrix(canvas, grid, brightness) {
+  if (!canvas || canvas.closest("[hidden]") || !grid.width || !grid.height) return;
+  const cssWidth = canvas.clientWidth;
+  if (!cssWidth) return;
+  const ratio = window.devicePixelRatio || 1;
+  const cell = cssWidth / grid.width;
+  canvas.width = Math.round(cssWidth * ratio);
+  canvas.height = Math.round(cell * grid.height * ratio);
+  canvas.style.height = `${cell * grid.height}px`;
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.fillStyle = "#050607";
+  context.fillRect(0, 0, cssWidth, cell * grid.height);
+  grid.colors.forEach((hex, i) => {
+    const lit = brightness > 0 && hex !== "000000";
+    context.beginPath();
+    context.fillStyle = lit ? `#${hex}` : "#16191e";
+    context.arc((i % grid.width + 0.5) * cell, (Math.floor(i / grid.width) + 0.5) * cell, cell * 0.38, 0, Math.PI * 2);
+    context.fill();
+  });
+}
+
+function drawLiveMatrix(frame) {
+  lastFrame = frame;
+  const grid = frameToGrid(frame);
+  paintMatrix($("liveMatrix"), grid, frame.brightness);
+  paintMatrix($("liveMatrixDisplay"), grid, frame.brightness);
+  for (const chip of document.querySelectorAll(".previewChip")) chip.hidden = !frame.preview;
+  $("liveCard").querySelector(".liveHint").textContent = frame.brightness === 0 ? tr("Die Anzeige ist ausgeschaltet (Helligkeit 0 %).") : "";
+}
+
+function liveMatrixActive() {
+  return Boolean(capabilities.displayFrame) && !document.hidden && !$("appShell").hidden &&
+    $("restartOverlay").hidden && (currentPage === "overview" || currentPage === "display");
+}
+
+function setLivePaused(paused) {
+  livePaused = paused;
+  for (const chip of document.querySelectorAll(".pausedChip")) chip.hidden = !paused;
+}
+
+// Polls the frame only while a live view is visible: 1 s while editing the
+// display page, 3 s on the overview, paused after 5 minutes without input.
+function scheduleLiveMatrix(delay = 0) {
+  clearTimeout(liveTimer);
+  liveTimer = 0;
+  if (liveInFlight || !liveMatrixActive()) return;
+  if (Date.now() - lastInteraction > liveIdleMs) {
+    setLivePaused(true);
+    return;
+  }
+  setLivePaused(false);
+  liveTimer = setTimeout(refreshLiveMatrix, delay);
+}
+
+async function refreshLiveMatrix() {
+  liveTimer = 0;
+  if (!liveMatrixActive()) return;
+  liveInFlight = true;
+  try {
+    const res = await apiFetch("/api/display/frame");
+    if (res.ok) drawLiveMatrix(await res.json());
+  } catch (_) {
+    /* The next poll retries. */
+  } finally {
+    liveInFlight = false;
+  }
+  scheduleLiveMatrix(currentPage === "display" ? 1000 : 3000);
+}
+
+function noteInteraction() {
+  lastInteraction = Date.now();
+  if (livePaused) scheduleLiveMatrix();
+}
+
+function updateCapabilityUi() {
+  const live = Boolean(capabilities.displayFrame);
+  $("liveCard").hidden = !live;
+  $("liveCardDisplay").hidden = !live;
+  $("resetButtonHint").hidden = !capabilities.resetButton;
+  if (live && !liveTimer && !liveInFlight && !livePaused) scheduleLiveMatrix();
+}
+
+// Visual changes are shown on the clock right away and revert on the device
+// unless saved (DISPLAY_PREVIEW_MS in the firmware).
+function previewDiffersFromSaved(body) {
+  const saved = new URLSearchParams(savedForm);
+  return previewFields.some((key) => body.get(key) !== saved.get(key));
+}
+
+function schedulePreview() {
+  if (!capabilities.displayPreview || !savedForm) return;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(sendPreview, 250);
+}
+
+async function sendPreview() {
+  previewTimer = 0;
+  clearTimeout(previewKeepAlive);
+  const body = formBody();
+  if (!previewDiffersFromSaved(body)) {
+    await cancelPreview();
+    return;
+  }
+  const data = new URLSearchParams();
+  for (const key of previewFields) data.set(key, body.get(key) ?? "");
+  try {
+    const res = await apiFetch("/api/display/preview", { method: "POST", body: data });
+    previewActive = res.ok;
+  } catch (_) {
+    return;
+  }
+  if (!previewActive) return;
+  scheduleLiveMatrix(150);
+  previewKeepAlive = setTimeout(() => { if (!document.hidden && dirty) sendPreview(); }, 90000);
+}
+
+async function cancelPreview() {
+  clearTimeout(previewTimer);
+  clearTimeout(previewKeepAlive);
+  if (!previewActive) return;
+  previewActive = false;
+  try {
+    await apiFetch("/api/display/preview/cancel", { method: "POST" });
+  } catch (_) {
+    /* The device reverts after its timeout. */
+  }
+  scheduleLiveMatrix(150);
+}
+
 function renderConnection(status) {
   const connected = Boolean(status.wifiConnected);
   $("connectionState").textContent = tr(connected ? "Verbunden" : status.setupMode ? "Setup-AP" : "WLAN getrennt");
@@ -811,6 +996,7 @@ async function fetchStatus() {
   lastStatus = status;
   updateRestartDiagnostics(status);
   capabilities = status.capabilities || {};
+  updateCapabilityUi();
   renderConnection(status);
   renderWeather(status);
   setDeviceClock(status);
@@ -927,29 +1113,36 @@ async function saveConfig() {
     if (body.has("openWeatherApiKey")) hasProviderKeys[1] = true;
     if (body.has("weatherApiKey")) hasProviderKeys[4] = true;
     if (data.authChanged) adoptChangedLogin(body);
-    for (const id of ["password", "adminPassword", "openWeatherApiKey", "weatherApiKey"]) $(id).value = "";
+    for (const id of secretFields) $(id).value = "";
     hideRevealedPasswords();
     const numeric = new Set(["latitude", "longitude"]);
     for (const field of fields) {
       const el = $(field);
       savedConfig[field] = el.type === "checkbox" ? el.checked : numeric.has(field) ? Number(el.value) : el.value;
     }
+    previewActive = false;
+    clearTimeout(previewTimer);
+    clearTimeout(previewKeepAlive);
     if (data.hostname) {
       $("hostname").value = data.hostname;
       savedConfig.hostname = data.hostname;
     }
+    if (data.setupApPasswordIsDefault !== undefined) savedConfig.setupApPasswordIsDefault = data.setupApPasswordIsDefault;
     if (data.url) savedConfig.url = data.url;
     if (data.locationLabel) savedConfig.locationLabel = data.locationLabel;
     if (body.has("password")) savedConfig.hasPassword = true;
     savedForm = formBody().toString();
     savedConfig.adminUsername = $("adminUsername").value;
-    savedConfig.adminPasswordIsDefault = body.has("adminPassword") ? false : savedConfig.adminPasswordIsDefault;
+    savedConfig.adminPasswordIsDefault = data.adminPasswordIsDefault ??
+      (body.has("adminPassword") ? false : savedConfig.adminPasswordIsDefault);
     savedConfig.hasOpenWeatherApiKey = hasProviderKeys[1];
     savedConfig.hasWeatherApiKey = hasProviderKeys[4];
     savedConfig.restartRequired = Boolean(data.restartRequired);
     updateProviderFields();
     updateOverviewFromConfig();
+    updateSetupApSection();
     renderDeviceClock();
+    scheduleLiveMatrix(200);
     messageText(["Gespeichert.", data.cityResolutionPending ? "Ort wird im Hintergrund aktualisiert." : "",
       data.weatherRefreshPending ? "Wetter wird aktualisiert." : "",
       data.restartRequired ? "Neustart erforderlich" : "Sofort aktiv."].filter(Boolean).map(tr).join(" "));
@@ -1066,12 +1259,121 @@ async function resetSettings() {
   await postAction("/api/reset/settings", "Einstellungen werden zurückgesetzt...", { restart: true });
 }
 
+function openFactoryReset() {
+  $("factoryResetConfirm").checked = false;
+  $("factoryResetGo").disabled = true;
+  $("factoryResetModal").hidden = false;
+  $("factoryResetCancel").focus();
+}
+
+function closeFactoryReset() {
+  $("factoryResetModal").hidden = true;
+}
+
+// The clock leaves this network after a factory reset, so the page shows the
+// next steps instead of reloading.
+function showFinalOverlay(title, text) {
+  clearTimeout(statusRefreshTimer);
+  clearTimeout(liveTimer);
+  dirty = false;
+  $("restartOverlay").hidden = false;
+  $("restartOverlay").querySelector(".spinner").hidden = true;
+  $("restartOverlay").querySelector("h2").textContent = tr(title);
+  $("restartOverlayText").textContent = text;
+}
+
 async function factoryReset() {
-  if (!confirm(tr("Werksreset ausführen? Dabei werden auch WLAN-Daten gelöscht."))) return;
-  if (!confirm(tr("Wirklich alles löschen? Der ESP startet danach im Setup-Modus."))) return;
+  const res = await apiFetch("/api/reset/factory", { method: "POST" });
+  if (!res.ok) {
+    message("Aktion fehlgeschlagen.");
+    return;
+  }
+  const data = await res.json().catch(() => ({}));
+  const ssid = data.setupApSsid || lastStatus?.setupApSsid || "PixelClock-Setup";
+  closeFactoryReset();
   writeStorage(setupDismissedStorageKey, null);
   writeStorage(adminReminderStorageKey, null);
-  await postAction("/api/reset/factory", "Werksreset läuft...", { restart: true });
+  setAuthHeader("");
+  showFinalOverlay("Werksreset läuft...", trFormat(
+    "Die Uhr löscht alle Daten und startet im Setup-Modus. Zum Einrichten mit dem WLAN „{ssid}“ verbinden (Passwort pixelclock).",
+    { ssid }));
+}
+
+// Exports saved, non-secret settings; secrets never leave the device.
+function buildSettingsExport() {
+  const saved = new URLSearchParams(savedForm);
+  const settings = {};
+  for (const field of fields) {
+    if (!secretFields.includes(field) && saved.has(field)) settings[field] = saved.get(field);
+  }
+  settings.language = currentLanguage;
+  return {
+    format: settingsExportFormat,
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    firmwareVersion: typeof currentFirmwareVersion === "string" ? currentFirmwareVersion : "",
+    webVersion: typeof littleFsVersion === "string" ? littleFsVersion : "",
+    settings
+  };
+}
+
+function exportSettings() {
+  const blob = new Blob([JSON.stringify(buildSettingsExport(), null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `pixel-clock-${sanitizeName(savedConfig?.hostname)}-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  message("Einstellungen exportiert.");
+}
+
+// Accepts only known form fields with primitive values from an export file.
+function parseSettingsImport(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (_) {
+    data = null;
+  }
+  if (!data || data.format !== settingsExportFormat || typeof data.settings !== "object" || data.settings === null) {
+    throw new Error("Die Datei ist keine gültige Pixel-Clock-Sicherung.");
+  }
+  const values = {};
+  for (const field of fields) {
+    const value = data.settings[field];
+    if (["string", "number", "boolean"].includes(typeof value)) values[field] = String(value);
+  }
+  const language = data.settings.language === "de" || data.settings.language === "en" ? data.settings.language : "";
+  return { values, language };
+}
+
+function applySettingsImport({ values, language }) {
+  let applied = 0;
+  for (const [field, raw] of Object.entries(values)) {
+    const el = $(field);
+    if (!el) continue;
+    if (el.type === "checkbox") el.checked = raw === "1" || raw === "true";
+    else if (el.tagName === "SELECT" && !Array.from(el.options).some((option) => option.value === raw)) continue;
+    else el.value = raw;
+    applied++;
+  }
+  updateRangeValues();
+  updateNightControlsFromStored();
+  updateProviderFields();
+  updatePageControls();
+  updateHardwareInfo();
+  if (language && language !== currentLanguage) setLanguage(language);
+  updateDirtyState();
+  schedulePreview();
+  return applied;
+}
+
+async function importSettings(file) {
+  if (!file) return;
+  const applied = applySettingsImport(parseSettingsImport(await file.text()));
+  messageText(trFormat("{count} Einstellungen übernommen. Prüfen und speichern.", { count: applied }));
 }
 
 async function startAuthenticatedApp() {
@@ -1087,6 +1389,11 @@ async function startAuthenticatedApp() {
   await loadStatus().catch(() => {});
   scheduleStatusRefresh();
   if (!authHeaderValue()) return;
+  // A preview left over from a closed tab would otherwise run until it times out.
+  if (lastStatus?.displayPreviewActive && capabilities.displayPreview) {
+    previewActive = true;
+    cancelPreview();
+  }
   const wizardOpened = typeof maybeOpenSetupWizard === "function" && maybeOpenSetupWizard();
   if (!wizardOpened) showAdminReminder(savedConfig);
 }
@@ -1109,7 +1416,12 @@ async function login(event) {
       headers: { Authorization: auth }
     });
     if (!res.ok) {
-      setLoginMessage("Anmeldung fehlgeschlagen.");
+      const data = res.status === 429 ? await res.json().catch(() => ({})) : {};
+      if (res.status === 429 && data.retryAfterSeconds) {
+        setLoginMessage("Zu viele Fehlversuche. Bitte in {seconds} Sekunden erneut versuchen.", { seconds: data.retryAfterSeconds });
+      } else {
+        setLoginMessage("Anmeldung fehlgeschlagen.");
+      }
       return;
     }
     setAuthHeader(auth);
@@ -1124,7 +1436,8 @@ async function login(event) {
   }
 }
 
-function logout() {
+async function logout() {
+  await cancelPreview();
   showLogin("Bitte anmelden.");
 }
 
@@ -1167,6 +1480,10 @@ for (const id of ["nightStartDisplay", "nightStartPeriod", "nightEndDisplay", "n
 for (const id of ["width", "height", "origin", "wiringMode"]) {
   for (const eventName of ["input", "change"]) $(id).addEventListener(eventName, updateHardwareInfo);
 }
+$("setupApPassword").addEventListener("input", () => {
+  const length = $("setupApPassword").value.length;
+  $("setupApPassword").setCustomValidity(length && (length < 8 || length > 63) ? tr("Das Setup-WLAN-Passwort muss 8 bis 63 Zeichen lang sein.") : "");
+});
 $("hostname").addEventListener("change", () => { $("hostname").value = sanitizeName($("hostname").value); });
 $("adminUsername").addEventListener("change", () => { $("adminUsername").value = sanitizeName($("adminUsername").value, ""); });
 bindAction("testBtn", runTestPattern);
@@ -1174,7 +1491,24 @@ bindAction("weatherBtn", refreshWeather);
 bindAction("restartBtn", () => postAction("/api/restart", "Neustart läuft...", { restart: true }));
 bindAction("restartRequiredBtn", () => postAction("/api/restart", "Neustart läuft...", { restart: true }));
 bindAction("settingsResetBtn", resetSettings);
-bindAction("factoryResetBtn", factoryReset);
+$("factoryResetBtn").addEventListener("click", openFactoryReset);
+$("factoryResetCancel").addEventListener("click", closeFactoryReset);
+$("factoryResetConfirm").addEventListener("change", () => { $("factoryResetGo").disabled = !$("factoryResetConfirm").checked; });
+bindAction("factoryResetGo", factoryReset);
+$("factoryResetModal").addEventListener("keydown", (event) => { if (event.key === "Escape") closeFactoryReset(); });
+$("exportBtn").addEventListener("click", exportSettings);
+$("importFile").addEventListener("change", async (event) => {
+  try {
+    await importSettings(event.target.files[0]);
+  } catch (error) {
+    message(error.message);
+  } finally {
+    event.target.value = "";
+  }
+});
+for (const canvas of [$("liveMatrix"), $("liveMatrixDisplay")]) canvas.addEventListener("click", noteInteraction);
+for (const eventName of ["pointerdown", "keydown", "touchstart"]) document.addEventListener(eventName, noteInteraction, { passive: true });
+window.addEventListener("resize", () => { if (lastFrame) drawLiveMatrix(lastFrame); });
 $("firmwareUpdateBtn").addEventListener("click", uploadFirmware);
 $("firmwareFile").addEventListener("change", updateFirmwareSelectionInfo);
 $("webUpdateBtn").addEventListener("click", uploadWebInterface);
@@ -1193,10 +1527,17 @@ function bindAction(id, action) {
 
 $("weatherProvider").addEventListener("change", updateProviderFields);
 $("autoPage").addEventListener("change", updatePageControls);
-$("discardBtn").addEventListener("click", () => { if (savedConfig) { setForm({ ...savedConfig }); message(""); } });
+$("discardBtn").addEventListener("click", () => {
+  if (!savedConfig) return;
+  setForm({ ...savedConfig });
+  message("");
+  cancelPreview();
+});
 for (const eventName of ["input", "change"]) {
   $("appShell").addEventListener(eventName, (event) => {
-    if (event.target.matches("input:not([type=file]), select") && event.target.id !== "languageSelect") updateDirtyState();
+    if (!event.target.matches("input:not([type=file]), select") || event.target.id === "languageSelect") return;
+    updateDirtyState();
+    if (event.target.closest('.page[data-page="display"]')) schedulePreview();
   });
 }
 window.addEventListener("beforeunload", (event) => {
@@ -1205,5 +1546,7 @@ window.addEventListener("beforeunload", (event) => {
 document.addEventListener("visibilitychange", () => {
   clearTimeout(statusRefreshTimer);
   scheduleClockTick();
+  if (!document.hidden) lastInteraction = Date.now();
+  scheduleLiveMatrix();
   if (!document.hidden && authHeaderValue()) loadStatus().catch(() => {}).finally(scheduleStatusRefresh);
 });
