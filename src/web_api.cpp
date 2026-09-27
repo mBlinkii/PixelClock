@@ -13,53 +13,61 @@ static bool restartRequiredSinceBoot = false;
 void sendConfigJson(AsyncWebServerRequest *request) {
   StateLock lock;
   if (!requireAdminAuth(request)) return;
+  AppConfig c = config;
+  if (displayPreviewActive) applyDisplayPreviewFields(c, displayPreviewBackup);
   JsonDocument doc;
-  doc["ssid"] = config.ssid;
-  doc["hasPassword"] = !config.password.isEmpty();
-  doc["adminUsername"] = config.adminUsername;
+  doc["ssid"] = c.ssid;
+  doc["hasPassword"] = !c.password.isEmpty();
+  doc["adminUsername"] = c.adminUsername;
   doc["defaultAdminUsername"] = DEFAULT_ADMIN_USERNAME;
-  doc["adminPasswordSet"] = hasAdminPassword();
-  doc["adminPasswordIsDefault"] = config.adminPassword == DEFAULT_ADMIN_PASSWORD;
+  doc["adminPasswordSet"] = true;
+  doc["adminPasswordIsDefault"] = adminPasswordIsDefault();
   doc["minAdminPasswordLength"] = MIN_ADMIN_PASSWORD_LENGTH;
-  doc["language"] = config.language;
-  doc["wifiCountry"] = config.wifiCountry;
-  doc["hostname"] = config.hostname;
-  doc["url"] = "http://" + config.hostname + ".local";
-  doc["cityName"] = config.cityName;
-  doc["locationLabel"] = config.locationLabel;
-  doc["timezone"] = config.timezone;
-  doc["latitude"] = config.latitude;
-  doc["longitude"] = config.longitude;
-  doc["weatherProvider"] = config.weatherProvider;
-  doc["weatherIntervalHalfHours"] = config.weatherIntervalHalfHours;
-  doc["hasOpenWeatherApiKey"] = !config.openWeatherApiKey.isEmpty();
-  doc["hasWeatherApiKey"] = !config.weatherApiKey.isEmpty();
+  doc["maxAdminPasswordLength"] = MAX_ADMIN_PASSWORD_LENGTH;
+  doc["setupApSsid"] = setupApSsid();
+  doc["setupApPasswordIsDefault"] = c.setupApPassword == DEFAULT_SETUP_AP_PASSWORD;
+  doc["minSetupApPasswordLength"] = MIN_SETUP_AP_PASSWORD_LENGTH;
+  doc["maxSetupApPasswordLength"] = MAX_SETUP_AP_PASSWORD_LENGTH;
+  doc["routerHostname"] = routerHostname();
+  doc["language"] = c.language;
+  doc["wifiCountry"] = c.wifiCountry;
+  doc["hostname"] = c.hostname;
+  doc["url"] = "http://" + c.hostname + ".local";
+  doc["cityName"] = c.cityName;
+  doc["locationLabel"] = c.locationLabel;
+  doc["timezone"] = c.timezone;
+  doc["latitude"] = c.latitude;
+  doc["longitude"] = c.longitude;
+  doc["weatherProvider"] = c.weatherProvider;
+  doc["weatherIntervalHalfHours"] = c.weatherIntervalHalfHours;
+  doc["hasOpenWeatherApiKey"] = !c.openWeatherApiKey.isEmpty();
+  doc["hasWeatherApiKey"] = !c.weatherApiKey.isEmpty();
   doc["weatherProviderMax"] = WEATHER_PROVIDER_MAX;
-  doc["wifiPowerSave"] = config.wifiPowerSave;
-  doc["width"] = config.width;
-  doc["height"] = config.height;
-  doc["dataPin"] = config.dataPin;
-  doc["brightness"] = config.brightness;
-  doc["fullBrightnessUnlocked"] = config.fullBrightnessUnlocked;
-  doc["wiringMode"] = config.wiringMode;
-  doc["origin"] = config.origin;
-  doc["displayMode"] = config.displayMode;
-  doc["temperatureUnit"] = config.temperatureUnit;
-  doc["weatherIconEnabled"] = config.weatherIconEnabled;
-  doc["hourFormat"] = config.hourFormat;
-  doc["colorOrder"] = config.colorRgb ? "RGB" : "GRB";
-  doc["pageSeconds"] = config.pageSeconds;
-  doc["timePageSeconds"] = config.timePageSeconds;
-  doc["autoPage"] = config.autoPage;
-  doc["selectedPage"] = config.selectedPage;
-  doc["nightBrightness"] = config.nightBrightness;
-  doc["nightStart"] = config.nightStart;
-  doc["nightEnd"] = config.nightEnd;
-  doc["colorWeekday"] = colorToHex(config.colorWeekday);
-  doc["colorText"] = colorToHex(config.colorText);
-  doc["colorPoint"] = colorToHex(config.colorPoint);
-  doc["colorColon"] = colorToHex(config.colorColon);
-  doc["colorGradientMode"] = config.colorGradientMode;
+  doc["wifiPowerSave"] = c.wifiPowerSave;
+  doc["width"] = c.width;
+  doc["height"] = c.height;
+  doc["dataPin"] = c.dataPin;
+  doc["brightness"] = c.brightness;
+  doc["fullBrightnessUnlocked"] = c.fullBrightnessUnlocked;
+  doc["wiringMode"] = c.wiringMode;
+  doc["origin"] = c.origin;
+  doc["displayMode"] = c.displayMode;
+  doc["temperatureUnit"] = c.temperatureUnit;
+  doc["weatherIconEnabled"] = c.weatherIconEnabled;
+  doc["hourFormat"] = c.hourFormat;
+  doc["colorOrder"] = c.colorRgb ? "RGB" : "GRB";
+  doc["pageSeconds"] = c.pageSeconds;
+  doc["timePageSeconds"] = c.timePageSeconds;
+  doc["autoPage"] = c.autoPage;
+  doc["selectedPage"] = c.selectedPage;
+  doc["nightBrightness"] = c.nightBrightness;
+  doc["nightStart"] = c.nightStart;
+  doc["nightEnd"] = c.nightEnd;
+  doc["colorWeekday"] = colorToHex(c.colorWeekday);
+  doc["colorText"] = colorToHex(c.colorText);
+  doc["colorPoint"] = colorToHex(c.colorPoint);
+  doc["colorColon"] = colorToHex(c.colorColon);
+  doc["colorGradientMode"] = c.colorGradientMode;
   doc["restartRequired"] = restartRequiredSinceBoot;
   AsyncResponseStream *response = request->beginResponseStream("application/json");
   response->addHeader("Cache-Control", "no-store");
@@ -86,10 +94,6 @@ const char *weatherProviderName() {
   }
 }
 
-bool hasAdminPassword() {
-  return config.adminPassword.length() >= MIN_ADMIN_PASSWORD_LENGTH;
-}
-
 void sendJsonError(AsyncWebServerRequest *request, int code, const String &message) {
   JsonDocument doc;
   doc["ok"] = false;
@@ -99,17 +103,29 @@ void sendJsonError(AsyncWebServerRequest *request, int code, const String &messa
   request->send(code, "application/json", body);
 }
 
-bool requireAdminAuth(AsyncWebServerRequest *request) {
-  StateLock lock;
-  if (!hasAdminPassword()) {
-    sendJsonError(request, 403, "Admin-Passwort muss zuerst in den Einstellungen gesetzt werden.");
-    return false;
-  }
-  if (request->authenticate(config.adminUsername.c_str(), config.adminPassword.c_str())) {
-    return true;
-  }
-  sendJsonError(request, 401, "Admin-Anmeldung erforderlich.");
-  return false;
+// Visual settings shared by POST /api/config and POST /api/display/preview.
+// Missing checkboxes mean "off", matching the full form the web UI sends.
+static void readDisplayParams(AsyncWebServerRequest *request) {
+  config.fullBrightnessUnlocked = paramValue(request, "fullBrightnessUnlocked", "0") == "1";
+  const uint8_t maxBrightness = config.fullBrightnessUnlocked ? 255 : SAFE_BRIGHTNESS_MAX;
+  config.brightness = constrain(paramValue(request, "brightness", String(config.brightness)).toInt(), 0, maxBrightness);
+  config.nightBrightness = constrain(paramValue(request, "nightBrightness", String(config.nightBrightness)).toInt(), 0, maxBrightness);
+  config.displayMode = constrain(paramValue(request, "displayMode", String(config.displayMode)).toInt(), 0, 2);
+  config.temperatureUnit = constrain(paramValue(request, "temperatureUnit", String(config.temperatureUnit)).toInt(), 0, 1);
+  config.weatherIconEnabled = paramValue(
+    request,
+    "weatherIconEnabled",
+    config.weatherIconEnabled ? "1" : "0") == "1";
+  config.hourFormat = paramValue(request, "hourFormat", String(config.hourFormat)).toInt() == 12 ? 12 : 24;
+  config.pageSeconds = constrain(paramValue(request, "pageSeconds", String(config.pageSeconds)).toInt(), 3, 60);
+  config.timePageSeconds = constrain(paramValue(request, "timePageSeconds", String(config.timePageSeconds)).toInt(), 3, 60);
+  config.autoPage = paramValue(request, "autoPage", "0") == "1";
+  config.selectedPage = constrain(paramValue(request, "selectedPage", String(config.selectedPage)).toInt(), 0, 2);
+  config.colorWeekday = parseColor(paramValue(request, "colorWeekday", colorToHex(config.colorWeekday)), config.colorWeekday);
+  config.colorText = parseColor(paramValue(request, "colorText", colorToHex(config.colorText)), config.colorText);
+  config.colorPoint = parseColor(paramValue(request, "colorPoint", colorToHex(config.colorPoint)), config.colorPoint);
+  config.colorColon = parseColor(paramValue(request, "colorColon", colorToHex(config.colorColon)), config.colorColon);
+  config.colorGradientMode = constrain(paramValue(request, "colorGradientMode", String(config.colorGradientMode)).toInt(), 0, 2);
 }
 
 void scheduleRestart(uint32_t delayMs) {
@@ -127,6 +143,16 @@ void handleConfigPost(AsyncWebServerRequest *request) {
     sendJsonError(request, 400, "Das Admin-Passwort muss mindestens 8 Zeichen lang sein.");
     return;
   }
+  if (newAdminPassword.length() > MAX_ADMIN_PASSWORD_LENGTH) {
+    sendJsonError(request, 400, "Das Admin-Passwort darf höchstens 64 Zeichen lang sein.");
+    return;
+  }
+  const String newSetupApPassword = paramValue(request, "setupApPassword", "");
+  if (newSetupApPassword.length() > 0 && (newSetupApPassword.length() < MIN_SETUP_AP_PASSWORD_LENGTH ||
+                                          newSetupApPassword.length() > MAX_SETUP_AP_PASSWORD_LENGTH)) {
+    sendJsonError(request, 400, "Das Setup-WLAN-Passwort muss 8 bis 63 Zeichen lang sein.");
+    return;
+  }
 
   if (request->hasParam("cityName", true) && paramValue(request, "cityName").length() < 2) {
     sendJsonError(request, 400, "Bitte eine Stadt mit mindestens 2 Zeichen eingeben.");
@@ -140,7 +166,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   const String oldPassword = config.password;
   const String oldWifiCountry = config.wifiCountry;
   const String oldAdminUsername = config.adminUsername;
-  const String oldAdminPassword = config.adminPassword;
+  const String oldSetupApPassword = config.setupApPassword;
   const String oldHostname = config.hostname;
   const String oldCityName = config.cityName;
   const String oldTimezone = config.timezone;
@@ -150,11 +176,17 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   const String oldOpenWeatherApiKey = config.openWeatherApiKey;
   const String oldWeatherApiKey = config.weatherApiKey;
 
+  // Hashing is the only step that can fail, so it runs before other changes.
+  if (newAdminPassword.length() > 0 && !setAdminPassword(newAdminPassword)) {
+    sendJsonError(request, 500, "Admin-Passwort konnte nicht gespeichert werden.");
+    return;
+  }
   config.ssid = paramValue(request, "ssid", config.ssid);
   const String newPassword = paramValue(request, "password", "");
   if (newPassword.length() > 0) config.password = newPassword;
   config.adminUsername = newAdminUsername;
-  if (newAdminPassword.length() > 0) config.adminPassword = newAdminPassword;
+  if (oldAdminUsername != config.adminUsername) invalidateAdminAuthCache();
+  if (newSetupApPassword.length() > 0) config.setupApPassword = newSetupApPassword;
   config.language = normalizeLanguage(paramValue(request, "language", config.language));
   config.wifiCountry = normalizeWifiCountry(paramValue(request, "wifiCountry", config.wifiCountry));
   config.hostname = sanitizeHostname(paramValue(request, "hostname", config.hostname));
@@ -174,31 +206,14 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   config.width = constrain(paramValue(request, "width", String(config.width)).toInt(), 8, 64);
   config.height = constrain(paramValue(request, "height", String(config.height)).toInt(), 8, 16);
   config.dataPin = paramValue(request, "dataPin", String(config.dataPin)).toInt();
-  config.fullBrightnessUnlocked = paramValue(request, "fullBrightnessUnlocked", "0") == "1";
-  const uint8_t maxBrightness = config.fullBrightnessUnlocked ? 255 : SAFE_BRIGHTNESS_MAX;
-  config.brightness = constrain(paramValue(request, "brightness", String(config.brightness)).toInt(), 0, maxBrightness);
   config.wiringMode = constrain(paramValue(request, "wiringMode", String(config.wiringMode)).toInt(), 0, 3);
   config.origin = constrain(paramValue(request, "origin", String(config.origin)).toInt(), 0, 3);
-  config.displayMode = constrain(paramValue(request, "displayMode", String(config.displayMode)).toInt(), 0, 2);
-  config.temperatureUnit = constrain(paramValue(request, "temperatureUnit", String(config.temperatureUnit)).toInt(), 0, 1);
-  config.weatherIconEnabled = paramValue(
-    request,
-    "weatherIconEnabled",
-    config.weatherIconEnabled ? "1" : "0") == "1";
-  config.hourFormat = paramValue(request, "hourFormat", String(config.hourFormat)).toInt() == 12 ? 12 : 24;
   config.colorRgb = paramValue(request, "colorOrder", "GRB") == "RGB";
-  config.pageSeconds = constrain(paramValue(request, "pageSeconds", String(config.pageSeconds)).toInt(), 3, 60);
-  config.timePageSeconds = constrain(paramValue(request, "timePageSeconds", String(config.timePageSeconds)).toInt(), 3, 60);
-  config.autoPage = paramValue(request, "autoPage", "0") == "1";
-  config.selectedPage = constrain(paramValue(request, "selectedPage", String(config.selectedPage)).toInt(), 0, 2);
-  config.nightBrightness = constrain(paramValue(request, "nightBrightness", String(config.nightBrightness)).toInt(), 0, maxBrightness);
   config.nightStart = constrain(paramValue(request, "nightStart", String(config.nightStart)).toInt(), 0, 23);
   config.nightEnd = constrain(paramValue(request, "nightEnd", String(config.nightEnd)).toInt(), 0, 23);
-  config.colorWeekday = parseColor(paramValue(request, "colorWeekday", colorToHex(config.colorWeekday)), config.colorWeekday);
-  config.colorText = parseColor(paramValue(request, "colorText", colorToHex(config.colorText)), config.colorText);
-  config.colorPoint = parseColor(paramValue(request, "colorPoint", colorToHex(config.colorPoint)), config.colorPoint);
-  config.colorColon = parseColor(paramValue(request, "colorColon", colorToHex(config.colorColon)), config.colorColon);
-  config.colorGradientMode = constrain(paramValue(request, "colorGradientMode", String(config.colorGradientMode)).toInt(), 0, 2);
+  readDisplayParams(request);
+  // The submitted values replace any running preview.
+  endDisplayPreview(false);
   saveConfig();
   const bool cityResolveQueued = oldCityName != config.cityName;
   const bool weatherSourceChanged =
@@ -223,7 +238,8 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   lastPageSwitch = millis();
   currentPage = config.selectedPage;
   lastRender = 0;
-  const bool authChanged = oldAdminUsername != config.adminUsername || oldAdminPassword != config.adminPassword;
+  // Credentials are checked live, so a login change needs no restart.
+  const bool authChanged = oldAdminUsername != config.adminUsername || newAdminPassword.length() > 0;
   const bool restartRequired =
     oldWidth != config.width ||
     oldHeight != config.height ||
@@ -233,7 +249,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
     oldPassword != config.password ||
     oldWifiCountry != config.wifiCountry ||
     oldHostname != config.hostname ||
-    authChanged;
+    (setupMode && oldSetupApPassword != config.setupApPassword);
 
   JsonDocument doc;
   doc["ok"] = true;
@@ -241,7 +257,9 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   doc["restartRequired"] = restartRequiredSinceBoot;
   doc["cityResolutionPending"] = cityResolveQueued;
   doc["weatherRefreshPending"] = weatherSourceChanged;
-  doc["adminPasswordSet"] = hasAdminPassword();
+  doc["adminPasswordSet"] = true;
+  doc["adminPasswordIsDefault"] = adminPasswordIsDefault();
+  doc["setupApPasswordIsDefault"] = config.setupApPassword == DEFAULT_SETUP_AP_PASSWORD;
   doc["authChanged"] = authChanged;
   doc["hostname"] = config.hostname;
   doc["url"] = "http://" + config.hostname + ".local";
@@ -293,11 +311,25 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   doc["uptimeMs"] = millis();
   doc["freeHeap"] = ESP.getFreeHeap();
   doc["minFreeHeap"] = ESP.getMinFreeHeap();
+  doc["resetReason"] = resetReasonText();
+  doc["networkStackFreeBytes"] = networkWorkerStackFree();
   doc["wifiPowerSave"] = config.wifiPowerSave;
   doc["networkWorkerReady"] = networkWorkerReady;
-  doc["capabilities"]["asyncWifiScan"] = true;
-  doc["capabilities"]["weatherProviderMax"] = WEATHER_PROVIDER_MAX;
-  doc["capabilities"]["wifiPowerSave"] = true;
+  doc["setupApSsid"] = setupApSsid();
+  doc["routerHostname"] = routerHostname();
+  doc["displayPreviewActive"] = displayPreviewActive;
+  JsonObject capabilities = doc["capabilities"].to<JsonObject>();
+  capabilities["asyncWifiScan"] = true;
+  capabilities["weatherProviderMax"] = WEATHER_PROVIDER_MAX;
+  capabilities["wifiPowerSave"] = true;
+  capabilities["captivePortal"] = true;
+  capabilities["setupApPassword"] = true;
+  capabilities["setupTestPattern"] = true;
+  capabilities["displayFrame"] = true;
+  capabilities["displayPreview"] = true;
+  capabilities["fullFactoryReset"] = true;
+  capabilities["resetButton"] = true;
+  capabilities["loginThrottle"] = true;
   if (isnan(weather.temperature)) {
     doc["temperature"] = nullptr;
   } else {
@@ -377,7 +409,10 @@ void handleSettingsReset(AsyncWebServerRequest *request) {
   const String keepPassword = config.password;
   const String keepWifiCountry = config.wifiCountry;
   const String keepAdminUsername = config.adminUsername;
-  const String keepAdminPassword = config.adminPassword;
+  const String keepAdminSalt = config.adminPasswordSalt;
+  const String keepAdminHash = config.adminPasswordHash;
+  const String keepSetupApPassword = config.setupApPassword;
+  endDisplayPreview(false);
   prefs.begin("pixel-clock", false);
   prefs.clear();
   prefs.end();
@@ -386,23 +421,124 @@ void handleSettingsReset(AsyncWebServerRequest *request) {
   config.password = keepPassword;
   config.wifiCountry = keepWifiCountry;
   config.adminUsername = keepAdminUsername;
-  config.adminPassword = keepAdminPassword;
+  config.adminPasswordSalt = keepAdminSalt;
+  config.adminPasswordHash = keepAdminHash;
+  config.setupApPassword = keepSetupApPassword;
   saveConfig();
   request->send(200, "application/json", "{\"ok\":true}");
   scheduleRestart();
 }
 
+// Full factory reset for handing the clock on; the NVS erase itself runs in
+// loop() right before the restart so no handle is open (performFactoryWipe()).
 void handleFactoryReset(AsyncWebServerRequest *request) {
   StateLock lock;
   if (!requireAdminAuth(request)) return;
-  prefs.begin("pixel-clock", false);
-  prefs.clear();
-  prefs.end();
-  request->send(200, "application/json", "{\"ok\":true}");
-  scheduleRestart();
+  endDisplayPreview(false);
+  pendingFactoryWipe = true;
+  lastRender = 0;
+  JsonDocument doc;
+  doc["ok"] = true;
+  doc["fullWipe"] = true;
+  doc["setupApSsid"] = setupApSsid();
+  String body;
+  serializeJson(doc, body);
+  request->send(200, "application/json", body);
+  scheduleRestart(1500);
 }
 
+// Mirrors the LEDs for the browser: pixels are the last frame sent to the
+// matrix in physical LED order as RRGGBB hex, before brightness scaling.
+void sendDisplayFrame(AsyncWebServerRequest *request) {
+  StateLock lock;
+  if (!requireAdminAuth(request)) return;
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  response->printf(
+    "{\"width\":%u,\"height\":%u,\"count\":%u,\"origin\":%u,\"wiring\":%u,\"brightness\":%u,\"preview\":%s,\"pixels\":\"",
+    config.width, config.height, ledCount, config.origin, config.wiringMode, FastLED.getBrightness(),
+    displayPreviewActive ? "true" : "false");
+  char hex[7];
+  for (uint16_t i = 0; i < ledCount; i++) {
+    snprintf(hex, sizeof(hex), "%02x%02x%02x", displayFrame[i].r, displayFrame[i].g, displayFrame[i].b);
+    response->print(hex);
+  }
+  response->print("\"}");
+  request->send(response);
+}
+
+// Applies visual settings immediately without saving them. They revert after
+// DISPLAY_PREVIEW_MS unless the full form is saved; saveConfig() keeps
+// persisting the previous values meanwhile.
+void handleDisplayPreview(AsyncWebServerRequest *request) {
+  StateLock lock;
+  if (!requireAdminAuth(request)) return;
+  if (!displayPreviewActive) {
+    displayPreviewBackup = captureDisplayPreviewFields(config);
+    displayPreviewActive = true;
+  }
+  readDisplayParams(request);
+  displayPreviewUntil = millis() + DISPLAY_PREVIEW_MS;
+  if (!config.autoPage) currentPage = config.selectedPage;
+  lastRender = 0;
+  JsonDocument doc;
+  doc["ok"] = true;
+  doc["previewSeconds"] = DISPLAY_PREVIEW_MS / 1000;
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
+}
+
+void handleDisplayPreviewCancel(AsyncWebServerRequest *request) {
+  StateLock lock;
+  if (!requireAdminAuth(request)) return;
+  endDisplayPreview(true);
+  request->send(200, "application/json", "{\"ok\":true}");
+}
+
+// Captive portal: while the setup AP runs, requests for foreign host names
+// (connectivity checks of phones and laptops) are redirected to the web UI.
+static bool isIpAddressHost(const String &host) {
+  if (host.isEmpty()) return false;
+  for (size_t i = 0; i < host.length(); i++) {
+    const char c = host[i];
+    if (!((c >= '0' && c <= '9') || c == '.' || c == ':' || c == '[' || c == ']')) return false;
+  }
+  return true;
+}
+
+static String setupPortalUrl() {
+  return "http://" + WiFi.softAPIP().toString() + "/";
+}
+
+// Only clients of the setup AP are redirected, never requests from the home
+// network while the station is already connected.
+static bool arrivedOnSetupAp(AsyncWebServerRequest *request) {
+  AsyncClient *client = request->client();
+  return setupMode && client && client->localIP() == WiFi.softAPIP();
+}
+
+class CaptivePortalRedirect : public AsyncWebHandler {
+ public:
+  bool canHandle(AsyncWebServerRequest *request) const override {
+    StateLock lock;
+    if (!arrivedOnSetupAp(request)) return false;
+    String host = request->host();
+    const int port = host.lastIndexOf(':');
+    if (port > 0 && host.indexOf(']') < 0) host = host.substring(0, port);
+    host.toLowerCase();
+    return !host.isEmpty() && !isIpAddressHost(host) && host != config.hostname + ".local";
+  }
+
+  void handleRequest(AsyncWebServerRequest *request) override {
+    request->redirect(setupPortalUrl());
+  }
+};
+
 void setupServer() {
+  // Must stay the first handler so it sees captive-portal checks before the file server.
+  server.addHandler(new CaptivePortalRedirect());
   server.on("/api/config", HTTP_GET, sendConfigJson);
   server.on("/api/config", HTTP_POST, handleConfigPost);
   server.on("/api/language", HTTP_POST, handleLanguagePost);
@@ -411,6 +547,9 @@ void setupServer() {
   server.on("/api/restart", HTTP_POST, restartSoon);
   server.on("/api/reset/settings", HTTP_POST, handleSettingsReset);
   server.on("/api/reset/factory", HTTP_POST, handleFactoryReset);
+  server.on("/api/display/frame", HTTP_GET, sendDisplayFrame);
+  server.on("/api/display/preview/cancel", HTTP_POST, handleDisplayPreviewCancel);
+  server.on("/api/display/preview", HTTP_POST, handleDisplayPreview);
   server.on("/api/update/firmware", HTTP_POST, handleFirmwareUpdateDone, handleFirmwareUpdateUpload);
   server.on("/api/update/web", HTTP_POST, handleWebUpdateDone, handleWebUpdateUpload);
   server.on("/api/weather/refresh", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -438,6 +577,15 @@ void setupServer() {
     .setDefaultFile("index.html")
     .setCacheControl("no-cache");
   server.onNotFound([](AsyncWebServerRequest *request) {
+    bool redirectToSetup;
+    {
+      StateLock lock;
+      redirectToSetup = arrivedOnSetupAp(request);
+    }
+    if (redirectToSetup) {
+      request->redirect(setupPortalUrl());
+      return;
+    }
     if (!requireAdminAuth(request)) return;
     request->send(404, "text/plain", "Not found");
   });

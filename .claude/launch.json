@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mock-ui",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tests/mock-server.mjs"],
+      "port": 8765
+    },
+    {
+      "name": "mock-ui-first-run",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tests/mock-server.mjs", "--first-run", "--port=8766"],
+      "port": 8766
+    }
+  ]
+}

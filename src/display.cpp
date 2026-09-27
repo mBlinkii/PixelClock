@@ -113,6 +113,7 @@ const char *glyphFor(char c) {
     case '.': return "000000000000010";
     case '-': return "000000111000000";
     case 'A': return "010101111101101";
+    case 'B': return "110101110101110";
     case 'C': return "111100100100111";
     case 'D': return "110101101101110";
     case 'F': return "111100110100100";
@@ -503,10 +504,20 @@ void drawBootGreeting() {
   forceTextGradient = false;
 }
 
+// Alternates WIFI, AP and the device id that ends the setup network's name.
 void drawSetupPrompt() {
+  const uint8_t frame = (millis() / 1600) % 3;
+  if (frame == 2) {
+    drawCenteredText3x5(1, deviceSuffix(), packedColor(config.colorText));
+    return;
+  }
   drawClockIcon(0, 0, (millis() / 450) % 4);
-  const bool showAp = ((millis() / 1600) % 2) == 1;
-  drawText3x5(12, 1, showAp ? "AP" : "WIFI", packedColor(config.colorText));
+  drawText3x5(12, 1, frame == 1 ? "AP" : "WIFI", packedColor(config.colorText));
+}
+
+void drawResetNotice() {
+  const String text = pendingFactoryWipe ? String("RESET") : "RESET " + String(resetCountdownSeconds);
+  drawCenteredText3x5(1, text, CRGB(255, 40, 30));
 }
 
 String weekdayShort(const tm &t) {
@@ -605,28 +616,33 @@ void drawTestPattern() {
 }
 
 uint32_t displayRenderInterval() {
-  if (millis() - bootStarted < BOOT_GREETING_MS ||
-      (setupMode && config.ssid.isEmpty()) || config.colorGradientMode != 0) return 200;
+  if (millis() - bootStarted < BOOT_GREETING_MS || setupMode || config.colorGradientMode != 0) return 200;
   return 1000;
 }
 
 void renderDisplay() {
   StateLock lock;
-  static CRGB previousFrame[MAX_LEDS];
   static uint8_t previousBrightness = 255;
   static uint16_t previousCount = 0;
   updateBrightnessForTime();
+  const bool resetNotice = pendingFactoryWipe || resetCountdownSeconds > 0;
+  // Keep the reset countdown readable even when the display is dimmed or off.
+  if (resetNotice && FastLED.getBrightness() < 48) FastLED.setBrightness(48);
   const uint8_t brightness = FastLED.getBrightness();
   if (brightness == 0 && previousBrightness == 0) return;
   fill_solid(leds, ledCount, CRGB::Black);
   if (brightness == 0) {
     // Send black once; leave the matrix latched off without further transfers.
+  } else if (resetNotice) {
+    drawResetNotice();
   } else if (millis() - bootStarted < BOOT_GREETING_MS) {
     drawBootGreeting();
-  } else if (setupMode && config.ssid.isEmpty()) {
-    drawSetupPrompt();
   } else if (displayTest && static_cast<int32_t>(millis() - displayTestUntil) < 0) {
+    // The test pattern wins over the setup prompt so wiring can be checked
+    // before any Wi-Fi is configured.
     drawTestPattern();
+  } else if (setupMode) {
+    drawSetupPrompt();
   } else {
     displayTest = false;
     const uint8_t page = config.autoPage ? currentPage : config.selectedPage;
@@ -636,9 +652,9 @@ void renderDisplay() {
     if (config.displayMode != 2) drawIndicator(page);
   }
   if (previousCount != ledCount || previousBrightness != brightness ||
-      memcmp(previousFrame, leds, ledCount * sizeof(CRGB)) != 0) {
+      memcmp(displayFrame, leds, ledCount * sizeof(CRGB)) != 0) {
     FastLED.show();
-    memcpy(previousFrame, leds, ledCount * sizeof(CRGB));
+    memcpy(displayFrame, leds, ledCount * sizeof(CRGB));
     previousBrightness = brightness;
     previousCount = ledCount;
   }

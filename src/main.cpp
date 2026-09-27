@@ -3,12 +3,15 @@
 #include <WiFi.h>
 
 #include "app_state.h"
+#include "runtime_policy.h"
 
 void setup() {
   Serial.begin(115200);
+  Serial.printf("PixelClock %s, Reset: %s\n", FIRMWARE_VERSION, resetReasonText());
   stateMutex = xSemaphoreCreateRecursiveMutex();
   if (!stateMutex) abort();
   keepFirmwareVersionBinaryMarker();
+  pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
   bootStarted = millis();
   loadConfig();
   seedTimeFromBuild();
@@ -33,11 +36,17 @@ void setup() {
 }
 
 void loop() {
+  serviceSetupAp();
+  serviceResetButton();
   {
     StateLock lock;
     const uint32_t now = millis();
     if (displayTest && static_cast<int32_t>(now - displayTestUntil) >= 0) displayTest = false;
-    if (pendingRestart && static_cast<int32_t>(now - restartAt) >= 0) ESP.restart();
+    if (displayPreviewActive && deadlineReached(now, displayPreviewUntil)) endDisplayPreview(true);
+    if (pendingRestart && static_cast<int32_t>(now - restartAt) >= 0) {
+      if (pendingFactoryWipe) performFactoryWipe();
+      ESP.restart();
+    }
     const uint8_t seconds = currentPage == 0 ? config.timePageSeconds : config.pageSeconds;
     if (config.autoPage && !displayTest && now - lastPageSwitch >= seconds * 1000UL) {
       lastPageSwitch = now;

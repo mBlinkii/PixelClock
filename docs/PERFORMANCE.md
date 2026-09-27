@@ -1,12 +1,49 @@
 # Performance and validation
 
-Firmware 0.1.16 / web UI 0.1.12.
+Firmware 0.1.17 / web UI 0.1.14.
 
 The display task yields instead of busy polling. TLS requests run in one worker
-and are limited by connect, handshake and stream timeouts. All providers use
+at idle priority so CPU-heavy library operations share time with the watchdog's
+idle task. Requests have connect, handshake and body timeouts. All providers use
 filtered JSON; MET parses only the first timeseries entry instead of allocating
 the complete forecast. This adds a 12 KB task stack and a 1.5 KB previous-frame
 buffer in exchange for responsive rendering during network requests.
+
+## Restart diagnosis in 0.1.17
+
+An intermittent return to the greeting was reported after 0.1.16. The greeting
+is only selected during the first nine seconds after boot (apart from the
+49.7-day `millis()` wrap); there is no normal periodic greeting or restart.
+
+Code inspection found a concrete watchdog risk in the new weather worker:
+ArduinoJson reads `Stream` via `readBytes()`, and Arduino ESP32 2.0.17 implements
+`Stream::timedRead()` as a busy loop. The configured read timeout is eight
+seconds, while this SDK watches CPU0's idle task with a five-second panic timeout.
+The unpinned priority-1 worker could starve that task during a stalled response.
+This fits the symptom; the specific device's reset cause has not been captured.
+See Espressif's [task watchdog documentation](https://docs.espressif.com/projects/esp-idf/en/v4.4.5/esp32/api-reference/system/wdts.html).
+
+Weather and geocoding now use `CooperativeReader` instead of `Stream::readBytes`
+and `Stream::find`. It buffers 256 bytes, sleeps one RTOS tick when waiting and
+yields regularly during continuous input. An eight-second idle deadline and
+30-second total body deadline also bound trickle responses (underlying socket
+calls retain their own timeouts). A failed response follows the existing backoff
+and preserves the last valid weather. `WiFiClientSecure::setTimeout()` now
+receives seconds, matching this Arduino core's API. The watchdog remains enabled.
+
+Status now includes `resetReason`, `uptimeMs`, `minFreeHeap` and
+`networkStackFreeBytes` (minimum unused worker stack, in ESP-IDF bytes). The new
+web UI displays these without extra polling; older web images remain compatible.
+The serial boot log prints the firmware version and reset reason at 115200 baud.
+This uses ESP-IDF's [reset reason API](https://docs.espressif.com/projects/esp-idf/en/v4.4.5/esp32/api-reference/system/system.html#reset-reason),
+not a new periodic flash write.
+
+If the greeting returns, record Status's last boot reason and memory values
+before removing power or requesting another restart. `Task-Watchdog` indicates
+task starvation; `Unterspannung (Brownout)` indicates a detected voltage dip;
+`Software-Absturz (Panic)` needs the serial panic/backtrace for further diagnosis.
+A full power interruption can appear as `Einschalten / Stromversorgung`.
+Installing the fix itself will normally show `Software-Neustart`.
 
 Weather failures retain the last valid reading and wait at least five minutes,
 including failures after a previously successful scheduled refresh. Rate limiting
@@ -38,12 +75,16 @@ g++ -std=c++17 -I .pio/libdeps/esp32dev/ArduinoJson/src tests/firmware-tests.cpp
 
 The C++ tests execute production filtering, decoding and scheduling code with
 fixtures for all five providers, null/missing values, failed retries and 32-bit
-timer rollover. Node tests exercise production request coalescing, visibility
+timer rollover. Slow, incomplete, disconnected and trickling network fixtures
+verify scheduler pauses and both response deadlines, including timer rollover.
+Node tests exercise production request coalescing, visibility
 and retry scheduling, secret handling and asynchronous scan completion. These
 checks also run in the PlatformIO CI workflow.
 
 For browser QA, run `node tests/mock-server.mjs` and open
-`http://127.0.0.1:8765`. Any synthetic login works. This server binds only to
+`http://127.0.0.1:8765`. Any synthetic login works. Add `--first-run` (and for a
+second instance `--port=8766`) to simulate a fresh clock in setup-AP mode with no
+Wi-Fi and the default login, which opens the setup assistant. This server binds only to
 loopback and never controls hardware. Stop it after testing.
 
 ## Hardware checks still required
@@ -62,7 +103,62 @@ loopback and never controls hardware. Stop it after testing.
 
 No current-consumption percentage is claimed without a physical measurement.
 
-## Validation of this build
+## Validation of 0.1.17 / web 0.1.13
+
+- Both PlatformIO builds passed: 56,088 bytes static RAM; 1,222,021 bytes
+  flash (81.1% of the OTA slot). The firmware image is 1,228,592 bytes and the
+  LittleFS image is 1,114,112 bytes.
+- Native C++ regression assertions and all seven Node tests passed, including
+  stalled/trickling response deadlines, scheduler pauses and restart diagnostics.
+- The status panel and German/English boot diagnostics were checked visually
+  against synthetic API data. A fresh mock server port avoided the browser
+  adapter's stale responses on the previously used port.
+- Gzip companions round-trip to their source files: 107,850 bytes uncompressed /
+  28,479 bytes compressed. Both image version markers were verified and SHA-256
+  hashes are recorded in `dist/restart-fix-v0.1.17-sha256.txt`.
+- Initial build checks did not flash a device. Subsequent on-device recovery and
+  OTA validation are recorded below. An overnight run is still needed to assess
+  the intermittent restart report.
+
+## Web UI 0.1.14 (setup assistant and redesign)
+
+- Only existing endpoints are used; firmware 0.1.17 needs no change. Older
+  firmware still falls back as before (provider list, power saving, scan mode).
+- Static assets grow to 188,976 bytes uncompressed / 48,315 bytes gzip across
+  seven files (one new request for `setup.js`). The LittleFS image builds at the
+  unchanged 1,114,112 bytes; gzip companions round-trip to their sources.
+- The overview clock advances locally between the existing 15-second status
+  polls and only while the overview tab is visible; no extra requests are made.
+- Eleven Node tests pass, including LED order parity with `xy()` for all origins
+  and wirings, hostname/user normalization and keeping the session after a
+  login change.
+- Mock-server QA covered the complete first-run flow, German/English, dark and
+  light mode, 375 px phone width without horizontal scrolling, validation of
+  missing Wi-Fi password, API key, password mismatch and more than 512 LEDs.
+- Not yet verified on hardware: the assistant against a real setup AP, the
+  handoff to the home network and `.local` detection on Android/iOS/Windows.
+
+## On-device recovery and OTA validation (13 September 2026)
+
+The affected clock was reachable, running firmware 0.1.16, but authenticated
+requests for `index.html`, `updates.js` and `index.html.gz` returned 404. Without
+authentication, missing-file requests reached the API-style 401 fallback. This
+confirmed unavailable web assets; it did not establish why they were missing.
+
+The existing web update endpoint accepted the verified LittleFS 0.1.13 image.
+After restart, HTML, CSS and all three JavaScript files returned HTTP 200 and
+matched the local source byte for byte. Browser login, configuration and live
+DWD weather display worked against the physical clock.
+
+Firmware 0.1.17 was then installed through its separate firmware update endpoint.
+The status API confirmed version 0.1.17 and `Software-Neustart`; the saved
+configuration digest was unchanged and all web assets still matched. The first
+weather fetch succeeded without an error. At approximately 31 seconds uptime,
+the API reported 186,924 bytes free heap, 129,392 bytes minimum free heap and
+7,672 bytes minimum unused weather-worker stack. These are a single boot's
+diagnostics, not a long-duration stability or power-consumption measurement.
+
+## Validation baseline (0.1.16 / web 0.1.12)
 
 - Firmware and LittleFS builds passed with ESP32 Arduino 2.0.17, FastLED 3.10.3,
   ArduinoJson 7.4.3 and ESPAsyncWebServer 3.11.0.

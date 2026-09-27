@@ -14,6 +14,8 @@ void keepFirmwareVersionBinaryMarker() {
 }
 
 CRGB leds[MAX_LEDS];
+// Last frame sent to the LEDs, in physical order; mirrored by /api/display/frame.
+CRGB displayFrame[MAX_LEDS];
 uint16_t ledCount = DEFAULT_WIDTH * DEFAULT_HEIGHT;
 uint8_t currentPage = 0;
 uint32_t lastPageSwitch = 0;
@@ -34,3 +36,8 @@ uint32_t restartAt = 0;
 SemaphoreHandle_t stateMutex = nullptr;
 uint32_t weatherRevision = 0;
 bool networkWorkerReady = false;
+bool displayPreviewActive = false;
+uint32_t displayPreviewUntil = 0;
+DisplayPreviewFields displayPreviewBackup = {};
+bool pendingFactoryWipe = false;
+uint8_t resetCountdownSeconds = 0;

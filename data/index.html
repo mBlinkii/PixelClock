@@ -2,534 +2,893 @@
 <html lang="de">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <title>Pixel Clock</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css?v=0.1.12">
+    <link rel="stylesheet" href="/app.css?v=0.1.15">
   </head>
   <body>
     <svg class="iconSprite" aria-hidden="true" focusable="false">
-      <symbol id="icon-status" viewBox="0 0 24 24">
-        <path d="M4 19h16"/>
-        <path d="M7 16V9"/>
-        <path d="M12 16V5"/>
-        <path d="M17 16v-4"/>
-      </symbol>
-      <symbol id="icon-wifi" viewBox="0 0 24 24">
-        <path d="M5 9.5a11 11 0 0 1 14 0"/>
-        <path d="M8 13a6.5 6.5 0 0 1 8 0"/>
-        <path d="M11 16.5a2 2 0 0 1 2 0"/>
-        <path d="M12 20h.01"/>
-      </symbol>
-      <symbol id="icon-lock" viewBox="0 0 24 24">
-        <rect x="5" y="11" width="14" height="10" rx="2"/>
-        <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
-        <path d="M12 15v2"/>
-      </symbol>
-      <symbol id="icon-weather" viewBox="0 0 24 24">
-        <path d="M14 5.5a4 4 0 1 0-6.5 3.1"/>
-        <path d="M6.5 16.5h10a3.5 3.5 0 0 0 .6-7 5.5 5.5 0 0 0-10.5 1.2 3 3 0 0 0-.1 5.8Z"/>
-        <path d="M8 20h8"/>
-      </symbol>
-      <symbol id="icon-display" viewBox="0 0 24 24">
-        <rect x="4" y="5" width="16" height="11" rx="2"/>
-        <path d="M8 20h8"/>
-        <path d="M12 16v4"/>
-      </symbol>
-      <symbol id="icon-pages" viewBox="0 0 24 24">
-        <rect x="5" y="4" width="14" height="16" rx="2"/>
-        <path d="M9 8h6"/>
-        <path d="M9 12h6"/>
-        <path d="M9 16h3"/>
-      </symbol>
-      <symbol id="icon-colors" viewBox="0 0 24 24">
-        <path d="M12 21a9 9 0 1 1 9-9 3 3 0 0 1-3 3h-1.5a2 2 0 0 0-1.7 3 2 2 0 0 1-1.8 3Z"/>
-        <path d="M7.5 10h.01"/>
-        <path d="M10 6.8h.01"/>
-        <path d="M14 6.8h.01"/>
-        <path d="M16.5 10h.01"/>
-      </symbol>
-      <symbol id="icon-brightness" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="4"/>
-        <path d="M12 2v2"/>
-        <path d="M12 20v2"/>
-        <path d="m4.9 4.9 1.4 1.4"/>
-        <path d="m17.7 17.7 1.4 1.4"/>
-        <path d="M2 12h2"/>
-        <path d="M20 12h2"/>
-        <path d="m4.9 19.1 1.4-1.4"/>
-        <path d="m17.7 6.3 1.4-1.4"/>
-      </symbol>
-      <symbol id="icon-help" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M9.8 9a2.5 2.5 0 0 1 4.7 1.2c0 1.7-2.5 2.1-2.5 3.8"/>
-        <path d="M12 17.5h.01"/>
-      </symbol>
-      <symbol id="icon-save" viewBox="0 0 24 24">
-        <path d="M5 4h12l2 2v14H5Z"/>
-        <path d="M8 4v6h8"/>
-        <path d="M8 20v-6h8v6"/>
-      </symbol>
-      <symbol id="icon-restart" viewBox="0 0 24 24">
-        <path d="M20 12a8 8 0 1 1-2.3-5.7"/>
-        <path d="M20 4v6h-6"/>
-      </symbol>
-      <symbol id="icon-update" viewBox="0 0 24 24">
-        <path d="M12 3v12"/>
-        <path d="m7 8 5-5 5 5"/>
-        <path d="M5 15v4h14v-4"/>
-      </symbol>
-      <symbol id="icon-chevron" viewBox="0 0 24 24">
-        <path d="m6 9 6 6 6-6"/>
-      </symbol>
+      <symbol id="icon-home" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v9.5h11V10"/><path d="M10 19.5v-5h4v5"/></symbol>
+      <symbol id="icon-sliders" viewBox="0 0 24 24"><path d="M4 7h9"/><path d="M17 7h3"/><path d="M4 17h3"/><path d="M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+      <symbol id="icon-weather" viewBox="0 0 24 24"><path d="M14 5.5a4 4 0 1 0-6.5 3.1"/><path d="M6.5 16.5h10a3.5 3.5 0 0 0 .6-7 5.5 5.5 0 0 0-10.5 1.2 3 3 0 0 0-.1 5.8Z"/><path d="M8 20h8"/></symbol>
+      <symbol id="icon-matrix" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01"/><path d="M10.3 10h.01"/><path d="M13.7 10h.01"/><path d="M17 10h.01"/><path d="M7 14h.01"/><path d="M10.3 14h.01"/><path d="M13.7 14h.01"/><path d="M17 14h.01"/></symbol>
+      <symbol id="icon-wifi" viewBox="0 0 24 24"><path d="M5 9.5a11 11 0 0 1 14 0"/><path d="M8 13a6.5 6.5 0 0 1 8 0"/><path d="M11 16.5a2 2 0 0 1 2 0"/><path d="M12 20h.01"/></symbol>
+      <symbol id="icon-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2.5"/><path stroke-width="2.6" d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><path d="M12 15v2"/></symbol>
+      <symbol id="icon-pages" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/></symbol>
+      <symbol id="icon-colors" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 1 9-9 3 3 0 0 1-3 3h-1.5a2 2 0 0 0-1.7 3 2 2 0 0 1-1.8 3Z"/><path d="M7.5 10h.01"/><path d="M10 6.8h.01"/><path d="M14 6.8h.01"/><path d="M16.5 10h.01"/></symbol>
+      <symbol id="icon-brightness" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m4.9 19.1 1.4-1.4"/><path d="m17.7 6.3 1.4-1.4"/></symbol>
+      <symbol id="icon-location" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+      <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.5 2.5 0 0 1 4.7 1.2c0 1.7-2.5 2.1-2.5 3.8"/><path d="M12 17.5h.01"/></symbol>
+      <symbol id="icon-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.8h.01"/></symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5Z"/><path d="M8 4v6h8"/><path d="M8 20v-6h8v6"/></symbol>
+      <symbol id="icon-restart" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v6h-6"/></symbol>
+      <symbol id="icon-update" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4h14v-4"/></symbol>
+      <symbol id="icon-logout" viewBox="0 0 24 24"><path d="M14.5 4H18a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3.5"/><path d="m10 17-5-5 5-5"/><path d="M5 12h11"/></symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+      <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4Z"/><path d="M12 10v4"/><path d="M12 16.8h.01"/></symbol>
+      <symbol id="icon-wand" viewBox="0 0 24 24"><path d="m4 20 10-10"/><path d="m15 3 .9 2.1L18 6l-2.1.9L15 9l-.9-2.1L12 6l2.1-.9Z"/><path d="m19.5 11 .6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6Z"/></symbol>
+      <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="icon-rainbow" viewBox="0 0 24 24"><path d="M3 17a9 9 0 0 1 18 0"/><path d="M7 17a5 5 0 0 1 10 0"/><path d="M11 17a1 1 0 0 1 2 0"/></symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></symbol>
+      <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/></symbol>
+      <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+      <symbol id="wx-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></symbol>
+      <symbol id="wx-partly" viewBox="0 0 24 24"><path d="M8.5 3.5V5M3.5 8.5H5M5 5l1 1M12 5l-1 1"/><path d="M5.3 11.6a3.5 3.5 0 1 1 6.4-3.4"/><path d="M9 19.5h8.5a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.4A2.8 2.8 0 0 0 9 19.5Z"/></symbol>
+      <symbol id="wx-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.6A3.3 3.3 0 0 0 7 18.5Z"/></symbol>
+      <symbol id="wx-fog" viewBox="0 0 24 24"><path d="M7 12h10a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.8 1.4A2.8 2.8 0 0 0 7 12Z"/><path d="M4 15.5h16"/><path d="M6 19h12"/></symbol>
+      <symbol id="wx-rain" viewBox="0 0 24 24"><path d="M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.6A3.3 3.3 0 0 0 7 14Z"/><path d="m8.5 17-1 3"/><path d="m12.5 17-1 3"/><path d="m16.5 17-1 3"/></symbol>
+      <symbol id="wx-snow" viewBox="0 0 24 24"><path d="M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.6A3.3 3.3 0 0 0 7 14Z"/><path d="M8 17.5h.01M12 17.5h.01M16 17.5h.01M10 20.5h.01M14 20.5h.01"/></symbol>
+      <symbol id="wx-thunder" viewBox="0 0 24 24"><path d="M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.6A3.3 3.3 0 0 0 7 14Z"/><path d="m12.5 14-2.3 3.8h3.4L11.3 22"/></symbol>
     </svg>
+
     <section id="loginView" class="loginView" hidden>
       <form id="loginForm" class="loginPanel">
-        <h1><img src="/favicon.svg" alt="" aria-hidden="true">Pixel Clock</h1>
+        <div class="loginTop">
+          <h1 class="brand"><img src="/favicon.svg" alt="" aria-hidden="true">Pixel Clock</h1>
+          <select id="loginLanguage" class="compactSelect" aria-label="Sprache" data-no-i18n>
+            <option value="de" lang="de">Deutsch</option>
+            <option value="en" lang="en">English</option>
+          </select>
+        </div>
         <h2>Admin-Login</h2>
         <label>
           Admin-Benutzer
-          <input id="loginUsername" name="loginUsername" autocomplete="username" value="admin">
+          <input id="loginUsername" name="loginUsername" autocomplete="username" autocapitalize="none" spellcheck="false" value="admin">
         </label>
         <label>
           Admin-Passwort
-          <input id="loginPassword" name="loginPassword" type="password" autocomplete="current-password">
+          <input id="loginPassword" name="loginPassword" type="password" autocomplete="current-password" data-reveal>
         </label>
-        <button id="loginBtn" type="submit">Anmelden</button>
+        <button id="loginBtn" class="primary" type="submit">Anmelden</button>
         <p id="loginMessage" role="status" aria-live="polite"></p>
+        <details class="loginHelp">
+          <summary>Erste Einrichtung?</summary>
+          <p>Der Standardzugang lautet admin / pixelclock. Nach der Anmeldung führt dich ein Assistent durch die Einrichtung.</p>
+          <p>Neue Uhren öffnen das WLAN „PixelClock-Setup-…“ (Passwort pixelclock). Nach dem Verbinden erscheint diese Seite meist automatisch.</p>
+        </details>
       </form>
     </section>
 
-    <main id="appShell" hidden>
-      <header>
-        <div>
-          <h1><img src="/favicon.svg" alt="" aria-hidden="true">Pixel Clock</h1>
-          <p id="statusLine" data-no-i18n>Lade Status...</p>
+    <div id="appShell" class="appShell" hidden>
+      <header class="topbar">
+        <div class="brandBlock">
+          <h1 class="brand"><img src="/favicon.svg" alt="" aria-hidden="true">Pixel Clock</h1>
+          <span id="connectionState" class="statusPill" data-no-i18n>Lade Status...</span>
         </div>
-        <div class="headerActions">
-          <label class="languageControl">
-            Sprache
-            <select id="languageSelect" aria-label="Sprache">
-              <option value="de">Deutsch</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-          <button id="logoutBtn" type="button">Abmelden</button>
-          <button id="restartBtn" type="button"><svg class="buttonIcon" aria-hidden="true"><use href="#icon-restart"></use></svg>Neustart</button>
+        <div class="topbarActions">
+          <select id="languageSelect" class="compactSelect" aria-label="Sprache" data-no-i18n>
+            <option value="de" lang="de">Deutsch</option>
+            <option value="en" lang="en">English</option>
+          </select>
+          <button id="restartBtn" class="iconButton" type="button" title="Neustart" aria-label="Neustart"><svg class="icon" aria-hidden="true"><use href="#icon-restart"></use></svg></button>
+          <button id="logoutBtn" class="iconButton" type="button" title="Abmelden" aria-label="Abmelden"><svg class="icon" aria-hidden="true"><use href="#icon-logout"></use></svg></button>
         </div>
       </header>
 
-      <nav class="sectionNav" aria-label="Einstellungen">
-        <a href="#statusSection">Übersicht</a>
-        <a href="#weatherSection">Wetter</a>
-        <a href="#pagesSection">Anzeige</a>
-        <a href="#brightnessSection">Energie</a>
-        <a href="#wifiSection">WLAN</a>
-        <a href="#updateSection">Updates</a>
-      </nav>
-      <section class="panel statusPanel statusSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-status"></use></svg>Status</h2>
-        <div class="statusTop"><span id="connectionState" class="statusBadge" data-no-i18n>Lade Status...</span><span id="weatherAge" data-no-i18n></span></div>
-        <div class="statusGrid">
-          <div>
-            <span>Wetter</span>
-            <strong id="weatherLine">Noch keine Wetterdaten</strong>
-          </div>
-          <div>
-            <span>Ort</span>
-            <strong id="locationLine">Noch kein Ort geladen</strong>
-          </div>
-          <div>
-            <span>Adresse</span>
-            <strong id="urlLine">-</strong>
-          </div>
-          <div>
-            <span>Firmware</span>
-            <strong id="firmwareLine">-</strong>
-            <span>Weboberfläche</span>
-            <strong id="littleFsLine">-</strong>
-          </div>
-          <div id="runtimeStats" hidden>
-            <span>System</span>
-            <strong id="systemLine" data-no-i18n>-</strong>
-          </div>
-        </div>
-      </section>
+      <div class="layout">
+        <nav class="tabs" aria-label="Bereiche">
+          <a href="#overview" data-page="overview"><svg class="icon" aria-hidden="true"><use href="#icon-home"></use></svg><span>Übersicht</span></a>
+          <a href="#display" data-page="display"><svg class="icon" aria-hidden="true"><use href="#icon-sliders"></use></svg><span>Anzeige</span></a>
+          <a href="#weather" data-page="weather"><svg class="icon" aria-hidden="true"><use href="#icon-weather"></use></svg><span>Wetter</span></a>
+          <a href="#hardware" data-page="hardware"><svg class="icon" aria-hidden="true"><use href="#icon-matrix"></use></svg><span>Hardware</span></a>
+          <a href="#network" data-page="network"><svg class="icon" aria-hidden="true"><use href="#icon-wifi"></use></svg><span>WLAN & Zugang</span></a>
+          <a href="#system" data-page="system"><svg class="icon" aria-hidden="true"><use href="#icon-gear"></use></svg><span>System</span></a>
+        </nav>
 
-      <section class="panel wifiSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wifi"></use></svg>WLAN-Zugang</h2>
-        <div class="grid">
-          <label>
-            Netzwerk
-            <input id="ssid" name="ssid" autocomplete="off">
-          </label>
-          <label>
-            WLAN-Region
-            <select id="wifiCountry" name="wifiCountry"></select>
-          </label>
-          <label>
-            Browser-Adresse
-            <input id="hostname" name="hostname" autocomplete="off" placeholder="pixelclock">
-          </label>
-        </div>
-        <div class="actionRow">
-          <button id="scanBtn" type="button">Scannen</button>
-        </div>
-        <div id="networks" class="networks"></div>
-        <label>
-          Passwort
-          <input id="password" name="password" type="password" placeholder="Leer lassen zum Beibehalten">
-        </label>
-      </section>
-
-      <section class="panel accessSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-lock"></use></svg>Admin-Zugriff</h2>
-        <label>
-          Admin-Benutzer
-          <input id="adminUsername" name="adminUsername" autocomplete="username" placeholder="admin">
-        </label>
-        <label>
-          Admin-Passwort
-          <input id="adminPassword" name="adminPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Leer lassen zum Beibehalten">
-        </label>
-      </section>
-
-      <section class="panel weatherSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-weather"></use></svg>Ort und Wetter</h2>
-        <div class="grid">
-          <label>
-            Stadt
-            <input minlength="2" maxlength="100" required id="cityName" name="cityName" autocomplete="address-level2" placeholder="z. B. Berlin">
-          </label>
-          <label>
-            Wetteranbieter
-            <select id="weatherProvider" name="weatherProvider">
-              <option value="0">Open-Meteo</option>
-              <option value="1">OpenWeatherMap</option>
-              <option value="2">Deutscher Wetterdienst (DWD)</option>
-              <option value="3" disabled>MET Norway</option>
-              <option value="4" disabled>WeatherAPI</option>
-            </select>
-          </label>
-          <label>
-            Wetter-Intervall
-            <select id="weatherIntervalHalfHours" name="weatherIntervalHalfHours"></select>
-          </label>
-          <label>
-            OpenWeatherMap API-Key
-            <input autocomplete="off" id="openWeatherApiKey" name="openWeatherApiKey" type="password" placeholder="Leer lassen zum Beibehalten">
-          </label>
-          <label id="weatherApiKeyField" hidden>
-            WeatherAPI API-Key
-            <input id="weatherApiKey" name="weatherApiKey" type="password" autocomplete="off" placeholder="Leer lassen zum Beibehalten">
-          </label>
-          <label>
-            Zeitzone
-            <input id="timezone" name="timezone">
-          </label>
-        </div>
-        <p id="providerHint" class="hint" data-no-i18n></p>
-        <p id="providerKeyState" class="hint" data-no-i18n></p>
-        <p id="metAttribution" class="hint" hidden>Daten: <a href="https://www.met.no/" target="_blank" rel="noopener">MET Norway</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Temperatur gerundet, Symbole zugeordnet.</p>
-        <div class="actionRow"><button id="weatherBtn" type="button">Wetter aktualisieren</button></div>
-      </section>
-
-      <section class="panel displaySection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-display"></use></svg>Display-Hardware</h2>
-        <div class="grid">
-          <label>
-            Breite
-            <input id="width" name="width" type="number" min="8" max="64">
-          </label>
-          <label>
-            Höhe
-            <input id="height" name="height" type="number" min="8" max="16">
-          </label>
-          <label>
-            Daten-Pin
-            <select id="dataPin" name="dataPin"></select>
-          </label>
-          <label>
-            Farbreihenfolge
-            <select id="colorOrder" name="colorOrder">
-              <option>GRB</option>
-              <option>RGB</option>
-            </select>
-          </label>
-          <label>
-            Start-Ecke
-            <select id="origin" name="origin">
-              <option value="0">Oben links</option>
-              <option value="1">Oben rechts</option>
-              <option value="2">Unten links</option>
-              <option value="3">Unten rechts</option>
-            </select>
-          </label>
-          <label>
-            LED-Verkabelung
-            <select id="wiringMode" name="wiringMode">
-              <option value="0">Zeilenweise gerade</option>
-              <option value="1">Zeilenweise Serpentine</option>
-              <option value="2">Spaltenweise gerade</option>
-              <option value="3">Spaltenweise Serpentine</option>
-            </select>
-          </label>
-        </div>
-        <div class="actionRow panelActions">
-          <button id="testBtn" type="button">Testmuster</button>
-        </div>
-      </section>
-
-      <section class="panel pagesSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-pages"></use></svg>Anzeige und Seiten</h2>
-        <div class="grid">
-          <label>
-            Anzeige-Modus
-            <select id="displayMode" name="displayMode">
-              <option value="0">Icons links, Text rechts</option>
-              <option value="1">Text links, Icons rechts</option>
-              <option value="2">Ohne Icons, zentriert</option>
-            </select>
-          </label>
-          <label>
-            Uhrzeitformat
-            <select id="hourFormat" name="hourFormat">
-              <option value="24">24 Stunden</option>
-              <option value="12">12 Stunden</option>
-            </select>
-          </label>
-          <label>
-            Temperatur
-            <select id="temperatureUnit" name="temperatureUnit">
-              <option value="0">Celsius</option>
-              <option value="1">Fahrenheit</option>
-            </select>
-          </label>
-          <label>
-            Uhrzeit-Dauer
-            <input id="timePageSeconds" name="timePageSeconds" type="number" min="3" max="60">
-          </label>
-          <label>
-            Andere Seiten
-            <input id="pageSeconds" name="pageSeconds" type="number" min="3" max="60">
-          </label>
-          <label>
-            Feste Seite
-            <select id="selectedPage" name="selectedPage">
-              <option value="0">Uhrzeit</option>
-              <option value="1">Datum</option>
-              <option value="2">Wetter</option>
-            </select>
-          </label>
-        </div>
-        <label class="check">
-          <input id="autoPage" name="autoPage" type="checkbox">
-          Seiten automatisch wechseln
-        </label>
-        <label class="check">
-          <input id="weatherIconEnabled" name="weatherIconEnabled" type="checkbox">
-          Aktuelles Wetter-Icon anzeigen
-        </label>
-      </section>
-
-      <section class="panel colorSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-colors"></use></svg>Farben</h2>
-        <div class="grid">
-          <label>
-            Wochentag
-            <input id="colorWeekday" name="colorWeekday" type="color">
-          </label>
-          <label>
-            Text/Uhrzeit
-            <input id="colorText" name="colorText" type="color">
-          </label>
-          <label>
-            Punkt/Markierung
-            <input id="colorPoint" name="colorPoint" type="color">
-          </label>
-          <label>
-            Doppelpunkt
-            <input id="colorColon" name="colorColon" type="color">
-          </label>
-        </div>
-        <label>
-          Farbverlaufs-Modus
-          <select id="colorGradientMode" name="colorGradientMode">
-            <option value="0">Standard</option>
-            <option value="1">Pixel-Farbverlauf</option>
-            <option value="2">Sanfter Farbwechsel</option>
-          </select>
-        </label>
-      </section>
-
-      <section class="panel brightnessSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-brightness"></use></svg>Helligkeit und Energie</h2>
-        <div class="grid">
-          <label>
-            Helligkeit (%)
-            <span class="rangeRow">
-              <input id="brightnessPercent" type="range" min="0" max="40" step="5">
-              <input id="brightnessPercentValue" type="number" min="0" max="40" inputmode="numeric" aria-label="Helligkeit in Prozent">
-              <input id="brightness" name="brightness" type="hidden">
-            </span>
-          </label>
-          <label>
-            Nacht-Helligkeit (%)
-            <span class="rangeRow">
-              <input id="nightBrightnessPercent" type="range" min="0" max="40" step="5">
-              <input id="nightBrightnessPercentValue" type="number" min="0" max="40" inputmode="numeric" aria-label="Nacht-Helligkeit in Prozent">
-              <input id="nightBrightness" name="nightBrightness" type="hidden">
-            </span>
-          </label>
-          <label>
-            Nacht ab
-            <input id="nightStart" name="nightStart" type="hidden">
-            <span class="timeRow">
-              <input id="nightStartDisplay" type="number" min="0" max="23">
-              <select id="nightStartPeriod" aria-label="Nacht ab AM/PM">
-                <option value="AM">AM</option>
-                <option value="PM">PM</option>
-              </select>
-            </span>
-          </label>
-          <label>
-            Nacht bis
-            <input id="nightEnd" name="nightEnd" type="hidden">
-            <span class="timeRow">
-              <input id="nightEndDisplay" type="number" min="0" max="23">
-              <select id="nightEndPeriod" aria-label="Nacht bis AM/PM">
-                <option value="AM">AM</option>
-                <option value="PM">PM</option>
-              </select>
-            </span>
-          </label>
-        </div>
-        <label class="check">
-          <input id="fullBrightnessUnlocked" name="fullBrightnessUnlocked" type="checkbox">
-          Volle Helligkeit freischalten
-        </label>
-        <label id="wifiPowerSaveField" class="check" hidden>
-          <input id="wifiPowerSave" name="wifiPowerSave" type="checkbox">
-          WLAN-Energiesparen
-        </label>
-        <p class="hint">0 % schaltet die Anzeige aus. WLAN-Energiesparen reduziert Funkaktivität; die Weboberfläche bleibt erreichbar.</p>
-        <p class="hint">Gleiche Nachtzeiten deaktivieren die Nachtabsenkung.</p>
-        <p id="brightnessWarning" class="warning" hidden>Warnung: Volle Helligkeit kann den ESP32 oder USB-Port überlasten, wenn die Matrix direkt darüber versorgt wird.</p>
-      </section>
-
-      <section class="panel updateSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-update"></use></svg>Firmware-Update</h2>
-        <div class="updateStack">
-          <div>
-            <div class="fileRow">
-              <label>
-                Firmware-Datei
-                <input id="firmwareFile" type="file" accept=".bin,application/octet-stream">
-              </label>
-              <button id="firmwareUpdateBtn" type="button">Firmware aktualisieren</button>
+        <main class="content">
+          <div id="restartNotice" class="banner warn" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+            <div>
+              <strong>Neustart erforderlich</strong>
+              <span>Einige Änderungen werden erst nach einem Neustart aktiv.</span>
             </div>
-            <progress id="firmwareProgress" value="0" max="100" hidden></progress>
-            <p id="firmwareSelectedVersion" class="hint updateVersion" hidden></p>
-            <p id="firmwareHint" class="hint">Wähle eine passende Firmware-Datei im .bin-Format aus. Während des Updates die Stromversorgung nicht trennen; danach startet die Uhr neu.</p>
+            <button id="restartRequiredBtn" type="button">Jetzt neu starten</button>
           </div>
-          <div>
-            <div class="fileRow">
-              <label>
-                Weboberflächen-Datei
-                <input id="webFile" type="file" accept=".bin,application/octet-stream">
-              </label>
-              <button id="webUpdateBtn" type="button">Weboberfläche aktualisieren</button>
+
+          <!-- Overview -->
+          <section class="page" data-page="overview" aria-label="Übersicht">
+            <div id="setupCard" class="panel setupCard" hidden>
+              <div class="setupCardText">
+                <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wand"></use></svg>Einrichtung abschließen</h2>
+                <p>Ein paar Schritte fehlen noch, damit deine Uhr vollständig eingerichtet ist.</p>
+                <ul id="setupChecklist" class="checklist" data-no-i18n></ul>
+              </div>
+              <button id="setupCardBtn" class="primary" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-wand"></use></svg>Assistent starten</button>
             </div>
-            <progress id="webProgress" value="0" max="100" hidden></progress>
-            <p id="webSelectedVersion" class="hint updateVersion" hidden></p>
-            <p id="webHint" class="hint">Wähle eine passende Weboberflächen-Datei im .bin-Format aus. Die Uhr startet danach neu und lädt die neue Oberfläche.</p>
+
+            <div class="heroGrid">
+              <section class="panel clockCard">
+                <span class="eyebrow">Zeit auf der Uhr</span>
+                <div id="clockTime" class="clockTime" data-no-i18n>--:--</div>
+                <div id="clockDate" class="clockDate" data-no-i18n></div>
+                <div class="clockMeta">
+                  <span id="timeSyncState" class="chip" data-no-i18n hidden></span>
+                  <span class="metaLine"><svg class="icon" aria-hidden="true"><use href="#icon-location"></use></svg><span id="locationLine" data-no-i18n>Noch kein Ort geladen</span></span>
+                </div>
+              </section>
+              <section class="panel weatherCard">
+                <span class="eyebrow">Wetter</span>
+                <div class="weatherMain">
+                  <svg id="weatherIcon" class="weatherIcon" aria-hidden="true"><use href="#wx-cloud"></use></svg>
+                  <div id="weatherTemp" class="weatherTemp" data-no-i18n>--</div>
+                </div>
+                <div id="weatherLine" class="weatherDesc" data-no-i18n>Noch keine Wetterdaten</div>
+                <div id="weatherMeta" class="weatherMeta" data-no-i18n></div>
+                <div id="weatherAge" class="weatherMeta" data-no-i18n></div>
+                <p id="weatherError" class="inlineError" data-no-i18n hidden></p>
+                <div class="actionRow"><button id="weatherBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-restart"></use></svg>Wetter aktualisieren</button></div>
+              </section>
+            </div>
+
+            <section id="liveCard" class="panel liveCard" hidden>
+              <div class="liveHeader">
+                <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-matrix"></use></svg>Live-Anzeige</h2>
+                <span class="liveBadges"><span class="chip previewChip" hidden>Vorschau</span><span class="chip pausedChip" hidden>Pausiert</span></span>
+              </div>
+              <canvas id="liveMatrix" class="liveMatrix" role="img" aria-label="Aktuelles Bild der LED-Matrix"></canvas>
+              <p class="hint liveHint" data-no-i18n></p>
+            </section>
+
+            <div class="statGrid">
+              <div class="stat"><span>Verbindung</span><strong id="networkLine" data-no-i18n>-</strong></div>
+              <div class="stat"><span>IP-Adresse</span><strong id="ipLine" data-no-i18n>-</strong></div>
+              <div class="stat"><span>Adresse</span><strong><a id="urlLine" data-no-i18n href="/">-</a></strong></div>
+              <div class="stat"><span>Helligkeit</span><strong id="brightnessLine" data-no-i18n>-</strong></div>
+            </div>
+          </section>
+
+          <!-- Display -->
+          <section class="page" data-page="display" aria-label="Anzeige" hidden>
+            <section id="liveCardDisplay" class="panel liveCard" hidden>
+              <div class="liveHeader">
+                <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-matrix"></use></svg>Live-Vorschau</h2>
+                <span class="liveBadges"><span class="chip previewChip" hidden>Vorschau</span><span class="chip pausedChip" hidden>Pausiert</span></span>
+              </div>
+              <canvas id="liveMatrixDisplay" class="liveMatrix" role="img" aria-label="Aktuelles Bild der LED-Matrix"></canvas>
+              <p class="hint">Änderungen auf dieser Seite erscheinen sofort auf der Uhr. Ohne Speichern werden sie nach 2 Minuten zurückgesetzt.</p>
+            </section>
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-pages"></use></svg>Seiten und Format</h2>
+              <div class="grid">
+                <label>
+                  Anzeige-Modus
+                  <select id="displayMode" name="displayMode">
+                    <option value="0">Icons links, Text rechts</option>
+                    <option value="1">Text links, Icons rechts</option>
+                    <option value="2">Ohne Icons, zentriert</option>
+                  </select>
+                </label>
+                <label>
+                  Uhrzeitformat
+                  <select id="hourFormat" name="hourFormat">
+                    <option value="24">24 Stunden</option>
+                    <option value="12">12 Stunden</option>
+                  </select>
+                </label>
+                <label>
+                  Temperatur
+                  <select id="temperatureUnit" name="temperatureUnit">
+                    <option value="0">Celsius</option>
+                    <option value="1">Fahrenheit</option>
+                  </select>
+                </label>
+              </div>
+              <div class="switchList">
+                <label class="check">
+                  <input id="autoPage" name="autoPage" type="checkbox">
+                  Seiten automatisch wechseln
+                </label>
+                <label class="check">
+                  <input id="weatherIconEnabled" name="weatherIconEnabled" type="checkbox">
+                  Aktuelles Wetter-Icon anzeigen
+                </label>
+              </div>
+              <div class="grid">
+                <label>
+                  Uhrzeit-Dauer (s)
+                  <input id="timePageSeconds" name="timePageSeconds" type="number" min="3" max="60" inputmode="numeric">
+                </label>
+                <label>
+                  Andere Seiten (s)
+                  <input id="pageSeconds" name="pageSeconds" type="number" min="3" max="60" inputmode="numeric">
+                </label>
+                <label>
+                  Feste Seite
+                  <select id="selectedPage" name="selectedPage">
+                    <option value="0">Uhrzeit</option>
+                    <option value="1">Datum</option>
+                    <option value="2">Wetter</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-colors"></use></svg>Farben</h2>
+              <div class="colorGrid">
+                <label class="colorField">
+                  <input id="colorWeekday" name="colorWeekday" type="color">
+                  Wochentag
+                </label>
+                <label class="colorField">
+                  <input id="colorText" name="colorText" type="color">
+                  Text/Uhrzeit
+                </label>
+                <label class="colorField">
+                  <input id="colorPoint" name="colorPoint" type="color">
+                  Punkt/Markierung
+                </label>
+                <label class="colorField">
+                  <input id="colorColon" name="colorColon" type="color">
+                  Doppelpunkt
+                </label>
+              </div>
+              <div class="grid">
+                <label>
+                  Farbverlaufs-Modus
+                  <select id="colorGradientMode" name="colorGradientMode">
+                    <option value="0">Standard</option>
+                    <option value="1">Pixel-Farbverlauf</option>
+                    <option value="2">Sanfter Farbwechsel</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-brightness"></use></svg>Helligkeit und Nachtmodus</h2>
+              <div class="grid">
+                <label>
+                  Helligkeit (%)
+                  <span class="rangeRow">
+                    <input id="brightnessPercent" type="range" min="0" max="40" step="5">
+                    <input id="brightnessPercentValue" type="number" min="0" max="40" inputmode="numeric" aria-label="Helligkeit in Prozent">
+                    <input id="brightness" name="brightness" type="hidden">
+                  </span>
+                </label>
+                <label>
+                  Nacht-Helligkeit (%)
+                  <span class="rangeRow">
+                    <input id="nightBrightnessPercent" type="range" min="0" max="40" step="5">
+                    <input id="nightBrightnessPercentValue" type="number" min="0" max="40" inputmode="numeric" aria-label="Nacht-Helligkeit in Prozent">
+                    <input id="nightBrightness" name="nightBrightness" type="hidden">
+                  </span>
+                </label>
+              </div>
+              <div class="grid">
+                <label>
+                  Nacht ab
+                  <input id="nightStart" name="nightStart" type="hidden">
+                  <span class="timeRow">
+                    <input id="nightStartDisplay" type="number" min="0" max="23" inputmode="numeric">
+                    <select id="nightStartPeriod" aria-label="Nacht ab AM/PM">
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </span>
+                </label>
+                <label>
+                  Nacht bis
+                  <input id="nightEnd" name="nightEnd" type="hidden">
+                  <span class="timeRow">
+                    <input id="nightEndDisplay" type="number" min="0" max="23" inputmode="numeric">
+                    <select id="nightEndPeriod" aria-label="Nacht bis AM/PM">
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </span>
+                </label>
+              </div>
+              <p class="hint">0 % schaltet die Anzeige aus. Gleiche Nachtzeiten deaktivieren die Nachtabsenkung.</p>
+              <div class="switchList">
+                <label class="check">
+                  <input id="fullBrightnessUnlocked" name="fullBrightnessUnlocked" type="checkbox">
+                  Volle Helligkeit freischalten
+                </label>
+                <label id="wifiPowerSaveField" class="check" hidden>
+                  <input id="wifiPowerSave" name="wifiPowerSave" type="checkbox">
+                  WLAN-Energiesparen
+                </label>
+              </div>
+              <p id="brightnessWarning" class="banner danger small" hidden>Warnung: Volle Helligkeit kann den ESP32 oder USB-Port überlasten, wenn die Matrix direkt darüber versorgt wird.</p>
+              <p class="hint">WLAN-Energiesparen reduziert Funkaktivität; die Weboberfläche bleibt erreichbar.</p>
+            </section>
+          </section>
+
+          <!-- Weather -->
+          <section class="page" data-page="weather" aria-label="Wetter" hidden>
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-location"></use></svg>Standort</h2>
+              <div class="grid">
+                <label>
+                  Stadt
+                  <input minlength="2" maxlength="100" required id="cityName" name="cityName" autocomplete="address-level2" placeholder="z. B. Berlin">
+                </label>
+              </div>
+              <p class="hint">Koordinaten und Zeitzone werden nach dem Speichern automatisch aus der Stadt ermittelt.</p>
+              <details class="advanced">
+                <summary>Zeitzone manuell festlegen</summary>
+                <label>
+                  Zeitzone (POSIX)
+                  <input id="timezone" name="timezone" autocomplete="off" spellcheck="false">
+                </label>
+                <p class="hint">Beispiel Deutschland: CET-1CEST,M3.5.0,M10.5.0/3</p>
+              </details>
+            </section>
+
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-weather"></use></svg>Wetterdienst</h2>
+              <div class="grid">
+                <label>
+                  Wetteranbieter
+                  <select id="weatherProvider" name="weatherProvider">
+                    <option value="0">Open-Meteo</option>
+                    <option value="1">OpenWeatherMap</option>
+                    <option value="2">Deutscher Wetterdienst (DWD)</option>
+                    <option value="3" disabled>MET Norway</option>
+                    <option value="4" disabled>WeatherAPI</option>
+                  </select>
+                </label>
+                <label>
+                  Wetter-Intervall
+                  <select id="weatherIntervalHalfHours" name="weatherIntervalHalfHours"></select>
+                </label>
+                <label>
+                  OpenWeatherMap API-Key
+                  <input autocomplete="off" id="openWeatherApiKey" name="openWeatherApiKey" type="password" placeholder="Leer lassen zum Beibehalten" data-reveal>
+                </label>
+                <label id="weatherApiKeyField" hidden>
+                  WeatherAPI API-Key
+                  <input id="weatherApiKey" name="weatherApiKey" type="password" autocomplete="off" placeholder="Leer lassen zum Beibehalten" data-reveal>
+                </label>
+              </div>
+              <p id="providerHint" class="hint" data-no-i18n></p>
+              <p id="providerKeyState" class="hint" data-no-i18n></p>
+              <p id="metAttribution" class="hint" hidden>Daten: <a href="https://www.met.no/" target="_blank" rel="noopener">MET Norway</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Temperatur gerundet, Symbole zugeordnet.</p>
+            </section>
+          </section>
+
+          <!-- Hardware -->
+          <section class="page" data-page="hardware" aria-label="Hardware" hidden>
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-matrix"></use></svg>LED-Matrix</h2>
+              <div class="grid">
+                <label>
+                  Breite
+                  <input id="width" name="width" type="number" min="8" max="64" inputmode="numeric">
+                </label>
+                <label>
+                  Höhe
+                  <input id="height" name="height" type="number" min="8" max="16" inputmode="numeric">
+                </label>
+                <label>
+                  Daten-Pin
+                  <select id="dataPin" name="dataPin"></select>
+                </label>
+                <label>
+                  Farbreihenfolge
+                  <select id="colorOrder" name="colorOrder">
+                    <option>GRB</option>
+                    <option>RGB</option>
+                  </select>
+                </label>
+              </div>
+              <p id="ledCountLine" class="hint" data-no-i18n></p>
+              <p class="hint">Größe, Daten-Pin und Farbreihenfolge werden nach einem Neustart aktiv.</p>
+            </section>
+
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-rainbow"></use></svg>Ausrichtung und Verkabelung</h2>
+              <div class="wiringLayout">
+                <div class="grid single">
+                  <label>
+                    Start-Ecke
+                    <select id="origin" name="origin">
+                      <option value="0">Oben links</option>
+                      <option value="1">Oben rechts</option>
+                      <option value="2">Unten links</option>
+                      <option value="3">Unten rechts</option>
+                    </select>
+                  </label>
+                  <label>
+                    LED-Verkabelung
+                    <select id="wiringMode" name="wiringMode">
+                      <option value="0">Zeilenweise gerade</option>
+                      <option value="1">Zeilenweise Serpentine</option>
+                      <option value="2">Spaltenweise gerade</option>
+                      <option value="3">Spaltenweise Serpentine</option>
+                    </select>
+                  </label>
+                </div>
+                <figure class="wiringFigure">
+                  <svg id="wiringDiagram" class="wiringDiagram" role="img" aria-label="Verlauf des Datensignals"></svg>
+                  <figcaption>Verlauf des Datensignals, Ansicht von vorne. Der grüne Punkt ist die erste LED.</figcaption>
+                </figure>
+              </div>
+              <div class="actionRow">
+                <button id="testBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-rainbow"></use></svg>Testmuster</button>
+              </div>
+              <p class="hint">Das Testmuster zeigt 10 Sekunden lang einen Regenbogen, links beginnend mit Rot. Ist er gespiegelt, ändere die Start-Ecke; ist er zerstückelt, ändere die Verkabelung. Das Testmuster nutzt die gespeicherten Einstellungen.</p>
+            </section>
+          </section>
+
+          <!-- Network & access -->
+          <section class="page" data-page="network" aria-label="WLAN & Zugang" hidden>
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wifi"></use></svg>WLAN-Zugang</h2>
+              <div class="grid">
+                <label>
+                  Netzwerk
+                  <span class="inputRow">
+                    <input id="ssid" name="ssid" autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <button id="scanBtn" type="button">Scannen</button>
+                  </span>
+                </label>
+                <label>
+                  Passwort
+                  <input id="password" name="password" type="password" autocomplete="off" placeholder="Leer lassen zum Beibehalten" data-reveal>
+                </label>
+              </div>
+              <div id="networks" class="networkList"></div>
+              <div class="grid">
+                <label>
+                  WLAN-Region
+                  <select id="wifiCountry" name="wifiCountry"></select>
+                </label>
+                <label>
+                  Browser-Adresse
+                  <span class="inputAffix">
+                    <span>http://</span>
+                    <input id="hostname" name="hostname" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="pixelclock">
+                    <span>.local</span>
+                  </span>
+                </label>
+              </div>
+              <p class="hint">WLAN, Region und Browser-Adresse werden nach einem Neustart aktiv.</p>
+            </section>
+
+            <section class="panel accessSection">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-lock"></use></svg>Admin-Zugriff</h2>
+              <div class="grid">
+                <label>
+                  Admin-Benutzer
+                  <input id="adminUsername" name="adminUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="admin">
+                </label>
+                <label>
+                  Admin-Passwort
+                  <input id="adminPassword" name="adminPassword" type="password" minlength="8" maxlength="64" autocomplete="new-password" placeholder="Leer lassen zum Beibehalten" data-reveal>
+                </label>
+              </div>
+              <p class="hint">8 bis 64 Zeichen. Nach dem Speichern bleibst du mit den neuen Daten angemeldet.</p>
+            </section>
+
+            <section id="setupApSection" class="panel" hidden>
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wifi"></use></svg>Setup-WLAN</h2>
+              <p>Dieses WLAN öffnet die Uhr, wenn sie sich nicht mit deinem WLAN verbinden kann.</p>
+              <div class="statGrid">
+                <div class="stat"><span>Name</span><strong id="setupApSsidLine" data-no-i18n>-</strong></div>
+                <div class="stat"><span>Passwort</span><strong id="setupApPasswordState" data-no-i18n>-</strong></div>
+              </div>
+              <div class="grid">
+                <label>
+                  Neues Setup-WLAN-Passwort
+                  <input id="setupApPassword" name="setupApPassword" type="password" minlength="8" maxlength="63" autocomplete="new-password" placeholder="Leer lassen zum Beibehalten" data-reveal>
+                </label>
+              </div>
+              <p class="hint">8 bis 63 Zeichen. Notiere es dir: Ohne WLAN-Verbindung erreichst du die Uhr nur über dieses Netz. Im Notfall setzt die BOOT-Taste alles zurück.</p>
+            </section>
+          </section>
+
+          <!-- System -->
+          <section class="page" data-page="system" aria-label="System" hidden>
+            <section class="panel">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-info"></use></svg>Geräteinfo</h2>
+              <div class="statGrid">
+                <div class="stat"><span>Firmware</span><strong id="firmwareLine">-</strong></div>
+                <div class="stat"><span>Weboberfläche</span><strong id="littleFsLine">-</strong></div>
+                <div id="runtimeStats" class="stat" hidden><span>System</span><strong id="systemLine" data-no-i18n>-</strong></div>
+                <div id="restartStats" class="stat" hidden>
+                  <span>Laufzeit / letzter Startgrund</span>
+                  <strong id="restartLine" data-no-i18n>-</strong>
+                  <span id="memoryLine" data-no-i18n></span>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel wizardPanel">
+              <div>
+                <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-wand"></use></svg>Einrichtungsassistent</h2>
+                <p>Führt dich Schritt für Schritt durch WLAN, Display, Standort und Admin-Passwort.</p>
+              </div>
+              <button id="wizardStartBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-wand"></use></svg>Assistent starten</button>
+            </section>
+
+            <section class="panel backupSection">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-save"></use></svg>Einstellungen sichern</h2>
+              <p>Speichert alle Einstellungen als Datei, z. B. vor einem Werksreset. Passwörter und API-Keys sind aus Sicherheitsgründen nicht enthalten.</p>
+              <div class="actionRow">
+                <button id="exportBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>Exportieren</button>
+                <label class="button" for="importFile"><svg class="icon" aria-hidden="true"><use href="#icon-upload"></use></svg>Importieren</label>
+                <input id="importFile" class="visuallyHidden" type="file" accept=".json,application/json">
+              </div>
+              <p class="hint">Importierte Werte erscheinen als ungespeicherte Änderungen. Prüfe sie und drücke dann Speichern.</p>
+            </section>
+
+            <section class="panel updateSection">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-update"></use></svg>Firmware-Update</h2>
+              <div class="updateStack">
+                <div>
+                  <div class="fileRow">
+                    <label>
+                      Firmware-Datei
+                      <input id="firmwareFile" type="file" accept=".bin,application/octet-stream">
+                    </label>
+                    <button id="firmwareUpdateBtn" type="button">Firmware aktualisieren</button>
+                  </div>
+                  <progress id="firmwareProgress" value="0" max="100" hidden></progress>
+                  <p id="firmwareSelectedVersion" class="hint updateVersion" hidden></p>
+                  <p id="firmwareHint" class="hint">Wähle eine passende Firmware-Datei im .bin-Format aus. Während des Updates die Stromversorgung nicht trennen; danach startet die Uhr neu.</p>
+                </div>
+                <div>
+                  <div class="fileRow">
+                    <label>
+                      Weboberflächen-Datei
+                      <input id="webFile" type="file" accept=".bin,application/octet-stream">
+                    </label>
+                    <button id="webUpdateBtn" type="button">Weboberfläche aktualisieren</button>
+                  </div>
+                  <progress id="webProgress" value="0" max="100" hidden></progress>
+                  <p id="webSelectedVersion" class="hint updateVersion" hidden></p>
+                  <p id="webHint" class="hint">Wähle eine passende Weboberflächen-Datei im .bin-Format aus. Die Uhr startet danach neu und lädt die neue Oberfläche.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel helpSection">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-help"></use></svg>Hilfe & Wiki</h2>
+              <div class="helpList">
+                <details open>
+                  <summary>Schnellstart</summary>
+                  <ol>
+                    <li>Mit dem WLAN PixelClock-Setup-… verbinden (Passwort pixelclock), wenn noch kein WLAN eingerichtet ist. Die Endung steht auch auf der Matrix.</li>
+                    <li>Die Einrichtungsseite öffnet sich meist automatisch, sonst http://192.168.4.1 öffnen. Mit admin / pixelclock anmelden.</li>
+                    <li>Der Einrichtungsassistent führt durch WLAN, Display, Standort und Admin-Passwort.</li>
+                    <li>Nach dem Neustart die Uhr im eigenen WLAN unter http://pixelclock.local öffnen.</li>
+                  </ol>
+                </details>
+                <details>
+                  <summary>Login und Sprache</summary>
+                  <p>Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung unter Admin-Zugriff. Die Sprache kann oben umgestellt werden und steuert auch die Wochentage auf dem Display.</p>
+                </details>
+                <details>
+                  <summary>WLAN und Adresse</summary>
+                  <p>Die Browser-Adresse ist der Hostname für die .local-Adresse. Mit pixelclock erreichst du die Uhr normalerweise unter http://pixelclock.local. Wenn .local nicht klappt, nutze die IP-Adresse aus dem Router.</p>
+                </details>
+                <details>
+                  <summary>Display einrichten</summary>
+                  <p>Starte mit Breite 32, Höhe 8, GPIO 18 und spaltenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.</p>
+                </details>
+                <details>
+                  <summary>Wetter einrichten</summary>
+                  <p>Open-Meteo, DWD und MET Norway funktionieren ohne API-Key. OpenWeatherMap und WeatherAPI benötigen einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.</p>
+                </details>
+                <details>
+                  <summary>Helligkeit und Nachtmodus</summary>
+                  <p>0% schaltet die Matrix aus. Ohne Freischalter ist die maximale Helligkeit auf 40% begrenzt. Die Nacht-Helligkeit gilt im eingestellten Zeitraum.</p>
+                </details>
+                <details>
+                  <summary>Häufige Probleme</summary>
+                  <ul>
+                    <li>Keine Weboberfläche: IP-Adresse aus dem Router testen oder Setup-AP verwenden.</li>
+                    <li>Keine Wetterdaten: WLAN, Internet, Stadt und API-Key prüfen.</li>
+                    <li>Falsche Farben: Farbreihenfolge zwischen GRB und RGB wechseln.</li>
+                    <li>Bild durcheinander: Start-Ecke und LED-Verkabelung anpassen.</li>
+                  </ul>
+                </details>
+              </div>
+            </section>
+
+            <section class="panel dangerZone">
+              <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-alert"></use></svg>Zurücksetzen</h2>
+              <div class="dangerRow">
+                <div>
+                  <strong>Einstellungen zurücksetzen</strong>
+                  <p>Setzt alles außer WLAN und Admin-Zugang auf Standard und startet neu.</p>
+                </div>
+                <button id="settingsResetBtn" type="button">Einstellungen resetten</button>
+              </div>
+              <div class="dangerRow">
+                <div>
+                  <strong>Werksreset – Uhr weitergeben</strong>
+                  <p>Löscht alle Daten inklusive WLAN, Passwörtern und API-Keys. Danach ist die Uhr wie neu.</p>
+                </div>
+                <button id="factoryResetBtn" class="danger" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg>Werksreset</button>
+              </div>
+              <p id="resetButtonHint" class="hint" hidden>Ohne Zugang zur Weboberfläche: die BOOT-Taste am ESP32 10 Sekunden gedrückt halten, bis RESET auf der Matrix erscheint.</p>
+            </section>
+          </section>
+        </main>
+      </div>
+
+      <div id="saveBar" class="saveBar" role="region" aria-label="Änderungen">
+        <span id="saveState" role="status" data-no-i18n></span>
+        <button id="discardBtn" class="ghost" type="button" disabled>Verwerfen</button>
+        <button id="saveBtn" class="primary" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-save"></use></svg>Speichern</button>
+      </div>
+    </div>
+
+    <div id="message" class="toast" role="status" aria-live="polite"></div>
+
+    <div id="setupWizard" class="wizardOverlay" hidden>
+      <section class="wizard" role="dialog" aria-modal="true" aria-labelledby="wizardHeading">
+        <header class="wizardHeader">
+          <div>
+            <span id="wizardStepLabel" class="eyebrow" data-no-i18n></span>
+            <strong id="wizardHeading">Einrichtung</strong>
+          </div>
+          <button id="wizardClose" class="iconButton ghost" type="button" title="Assistent schließen" aria-label="Assistent schließen"><svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
+        </header>
+        <div class="wizardProgress" aria-hidden="true"><span id="wizardProgressBar"></span></div>
+
+        <div class="wizardBody">
+          <div class="wizardStep" data-step="welcome">
+            <div class="wizardHero"><img src="/favicon.svg" alt="" aria-hidden="true"></div>
+            <h3>Willkommen bei Pixel Clock</h3>
+            <p>In wenigen Schritten ist deine Uhr bereit: WLAN verbinden, Display prüfen, Standort wählen und den Zugang absichern.</p>
+            <div class="choiceGrid two" role="radiogroup" aria-label="Sprache" data-no-i18n>
+              <label class="choice"><input type="radio" name="wizardLanguage" value="de"><span><strong lang="de">Deutsch</strong></span></label>
+              <label class="choice"><input type="radio" name="wizardLanguage" value="en"><span><strong lang="en">English</strong></span></label>
+            </div>
+            <p class="hint">Alle Einstellungen kannst du später jederzeit ändern.</p>
+          </div>
+
+          <div class="wizardStep" data-step="wifi" hidden>
+            <h3>WLAN verbinden</h3>
+            <p id="wizardWifiIntro" data-no-i18n></p>
+            <div class="scanHeader">
+              <span class="fieldLabel">Verfügbare Netzwerke</span>
+              <button id="wizardScanBtn" class="ghost small" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-restart"></use></svg>Suchen</button>
+            </div>
+            <div id="wizardNetworks" class="networkList tall"></div>
+            <div class="grid">
+              <label>
+                Netzwerkname (SSID)
+                <input id="wizardSsid" data-bind="ssid" autocomplete="off" autocapitalize="none" spellcheck="false">
+              </label>
+              <label>
+                WLAN-Passwort
+                <input id="wizardWifiPassword" data-bind="password" type="password" autocomplete="off" data-reveal>
+              </label>
+            </div>
+            <details class="advanced">
+              <summary>Erweitert</summary>
+              <div class="grid">
+                <label>
+                  WLAN-Region
+                  <select id="wizardWifiCountry" data-bind="wifiCountry"></select>
+                </label>
+                <label>
+                  Browser-Adresse
+                  <span class="inputAffix">
+                    <span>http://</span>
+                    <input id="wizardHostname" data-bind="hostname" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="pixelclock">
+                    <span>.local</span>
+                  </span>
+                </label>
+              </div>
+            </details>
+          </div>
+
+          <div class="wizardStep" data-step="display" hidden>
+            <h3>LED-Matrix einrichten</h3>
+            <p>Wähle die Größe deiner Matrix und wie die LEDs verkabelt sind. Für die meisten 32×8-Matrizen passen die Vorgaben.</p>
+            <span class="fieldLabel">Matrixgröße</span>
+            <div class="choiceGrid" role="radiogroup" aria-label="Matrixgröße">
+              <label class="choice"><input type="radio" name="wizardSize" value="32x8"><span><strong data-no-i18n>32 × 8</strong><small>Standard</small></span></label>
+              <label class="choice"><input type="radio" name="wizardSize" value="32x16"><span><strong data-no-i18n>32 × 16</strong><small>512 LEDs</small></span></label>
+              <label class="choice"><input type="radio" name="wizardSize" value="64x8"><span><strong data-no-i18n>64 × 8</strong><small>512 LEDs</small></span></label>
+              <label class="choice"><input type="radio" name="wizardSize" value="custom"><span><strong>Eigene</strong><small>Größe</small></span></label>
+            </div>
+            <div id="wizardCustomSize" class="grid" hidden>
+              <label>
+                Breite
+                <input id="wizardWidth" data-bind="width" type="number" min="8" max="64" inputmode="numeric">
+              </label>
+              <label>
+                Höhe
+                <input id="wizardHeight" data-bind="height" type="number" min="8" max="16" inputmode="numeric">
+              </label>
+            </div>
+            <div class="grid">
+              <label>
+                Daten-Pin
+                <select id="wizardDataPin" data-bind="dataPin"></select>
+              </label>
+              <label>
+                Farbreihenfolge
+                <select id="wizardColorOrder" data-bind="colorOrder">
+                  <option>GRB</option>
+                  <option>RGB</option>
+                </select>
+              </label>
+              <label>
+                Start-Ecke
+                <select id="wizardOrigin" data-bind="origin">
+                  <option value="0">Oben links</option>
+                  <option value="1">Oben rechts</option>
+                  <option value="2">Unten links</option>
+                  <option value="3">Unten rechts</option>
+                </select>
+              </label>
+              <label>
+                LED-Verkabelung
+                <select id="wizardWiring" data-bind="wiringMode">
+                  <option value="0">Zeilenweise gerade</option>
+                  <option value="1">Zeilenweise Serpentine</option>
+                  <option value="2">Spaltenweise gerade</option>
+                  <option value="3">Spaltenweise Serpentine</option>
+                </select>
+              </label>
+            </div>
+            <figure class="wiringFigure">
+              <svg id="wizardWiringDiagram" class="wiringDiagram" role="img" aria-label="Verlauf des Datensignals"></svg>
+              <figcaption>Verlauf des Datensignals, Ansicht von vorne. Der grüne Punkt ist die erste LED.</figcaption>
+            </figure>
+            <div class="testBox">
+              <button id="wizardTestBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-rainbow"></use></svg>Übernehmen und Testmuster zeigen</button>
+              <p class="hint">Erwartet wird ein Regenbogen, links beginnend mit Rot. Gespiegelt? Start-Ecke ändern. Zerstückelt? Verkabelung ändern. Größe, Daten-Pin und Farbreihenfolge wirken erst nach dem Neustart am Ende.</p>
+              <p id="wizardTestApHint" class="hint" hidden>Ohne gespeichertes WLAN zeigt die Matrix im Setup-Modus „WIFI/AP“ statt des Testmusters.</p>
+            </div>
+          </div>
+
+          <div class="wizardStep" data-step="location" hidden>
+            <h3>Standort und Wetter</h3>
+            <p>Die Stadt bestimmt Wetter und Zeitzone. Beides wird nach dem Neustart automatisch ermittelt.</p>
+            <label>
+              Stadt
+              <input id="wizardCity" data-bind="cityName" minlength="2" maxlength="100" required autocomplete="address-level2" placeholder="z. B. Berlin">
+            </label>
+            <span class="fieldLabel">Wetterdienst</span>
+            <div class="choiceList" role="radiogroup" aria-label="Wetterdienst">
+              <label class="choice wide"><input type="radio" name="wizardProvider" value="0" data-bind="weatherProvider"><span><strong>Open-Meteo</strong><small>Empfohlen · weltweit · ohne API-Key</small></span></label>
+              <label class="choice wide"><input type="radio" name="wizardProvider" value="2" data-bind="weatherProvider"><span><strong>Deutscher Wetterdienst (DWD)</strong><small>Messwerte, vor allem Deutschland · ohne API-Key</small></span></label>
+              <label class="choice wide"><input type="radio" name="wizardProvider" value="3" data-bind="weatherProvider"><span><strong>MET Norway</strong><small>Weltweit · ohne API-Key</small></span></label>
+              <label class="choice wide"><input type="radio" name="wizardProvider" value="1" data-bind="weatherProvider"><span><strong>OpenWeatherMap</strong><small>Eigener API-Key nötig</small></span></label>
+              <label class="choice wide"><input type="radio" name="wizardProvider" value="4" data-bind="weatherProvider"><span><strong>WeatherAPI</strong><small>Eigener API-Key nötig</small></span></label>
+            </div>
+            <label id="wizardOwmKeyField" hidden>
+              OpenWeatherMap API-Key
+              <input id="wizardOwmKey" data-bind="openWeatherApiKey" type="password" autocomplete="off" data-reveal>
+            </label>
+            <label id="wizardWaKeyField" hidden>
+              WeatherAPI API-Key
+              <input id="wizardWaKey" data-bind="weatherApiKey" type="password" autocomplete="off" data-reveal>
+            </label>
+            <div class="grid">
+              <div class="field">
+                <span class="fieldLabel">Temperatur</span>
+                <div class="segmented" role="radiogroup" aria-label="Temperatur" data-no-i18n>
+                  <label><input type="radio" name="wizardTemp" value="0" data-bind="temperatureUnit"><span>°C</span></label>
+                  <label><input type="radio" name="wizardTemp" value="1" data-bind="temperatureUnit"><span>°F</span></label>
+                </div>
+              </div>
+              <div class="field">
+                <span class="fieldLabel">Uhrzeitformat</span>
+                <div class="segmented" role="radiogroup" aria-label="Uhrzeitformat" data-no-i18n>
+                  <label><input type="radio" name="wizardHour" value="24" data-bind="hourFormat"><span>24 h</span></label>
+                  <label><input type="radio" name="wizardHour" value="12" data-bind="hourFormat"><span>12 h</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="wizardStep" data-step="security" hidden>
+            <h3>Zugang absichern</h3>
+            <p>Lege ein eigenes Admin-Passwort fest, damit niemand im Netzwerk die Uhr einfach umstellen kann.</p>
+            <p id="wizardDefaultPwNote" class="banner warn small" hidden>Der Standardzugang admin / pixelclock ist noch aktiv.</p>
+            <div class="grid">
+              <label>
+                Neues Admin-Passwort
+                <input id="wizardAdminPassword" type="password" minlength="8" autocomplete="new-password" data-reveal>
+              </label>
+              <label>
+                Passwort wiederholen
+                <input id="wizardAdminPassword2" type="password" minlength="8" autocomplete="new-password" data-reveal>
+              </label>
+            </div>
+            <p class="hint">Mindestens 8 Zeichen. Der Benutzername bleibt <strong id="wizardAdminUser" data-no-i18n>admin</strong>.</p>
+            <button id="wizardSkipPassword" class="linkButton" type="button" hidden>Später ändern</button>
+          </div>
+
+          <div class="wizardStep" data-step="summary" hidden>
+            <h3>Alles bereit</h3>
+            <p>Prüfe deine Angaben. Wenn nötig, startet die Uhr danach neu, damit alle Einstellungen aktiv werden.</p>
+            <dl id="wizardSummary" class="summaryList" data-no-i18n></dl>
+          </div>
+
+          <div class="wizardStep" data-step="done" hidden>
+            <div class="doneIcon"><svg class="icon" aria-hidden="true"><use href="#icon-check"></use></svg></div>
+            <h3 id="wizardDoneTitle" data-no-i18n></h3>
+            <div id="wizardDoneText" class="doneText" data-no-i18n></div>
+            <p id="wizardProbeState" class="probeState" data-no-i18n hidden></p>
+            <a id="wizardDoneLink" class="button primary" data-no-i18n hidden href="/"></a>
           </div>
         </div>
-      </section>
 
-      <section class="panel helpSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-help"></use></svg>Hilfe & Wiki</h2>
-        <div class="helpList">
-          <details open>
-            <summary>Schnellstart</summary>
-            <ol>
-              <li>Mit PixelClock-Setup verbinden, wenn noch kein WLAN eingerichtet ist.</li>
-              <li>http://192.168.4.1 öffnen und mit admin / pixelclock anmelden.</li>
-              <li>WLAN, Stadt, Matrixgröße und Datenpin setzen.</li>
-              <li>Speichern drücken und bei Bedarf neu starten.</li>
-            </ol>
-          </details>
-          <details>
-            <summary>Login und Sprache</summary>
-            <p>Der Standardzugang ist admin / pixelclock. Ändere Benutzer und Passwort nach der Einrichtung unter Admin-Zugriff. Die Sprache kann oben umgestellt werden und steuert auch die Wochentage auf dem Display.</p>
-          </details>
-          <details>
-            <summary>WLAN und Adresse</summary>
-            <p>Die Browser-Adresse ist der Hostname für die .local-Adresse. Mit pixelclock erreichst du die Uhr normalerweise unter http://pixelclock.local. Wenn .local nicht klappt, nutze die IP-Adresse aus dem Router.</p>
-          </details>
-          <details>
-            <summary>Display einrichten</summary>
-            <p>Starte mit Breite 32, Höhe 8, GPIO 18 und spaltenweiser Serpentine. Wenn die Anzeige gespiegelt ist, ändere Start-Ecke oder LED-Verkabelung. Das Testmuster hilft beim Prüfen der Richtung.</p>
-          </details>
-          <details>
-            <summary>Wetter einrichten</summary>
-            <p>Open-Meteo, DWD und MET Norway funktionieren ohne API-Key. OpenWeatherMap und WeatherAPI benötigen einen eigenen API-Key. Das Wetter-Intervall kannst du in 0,5-Stunden-Schritten einstellen.</p>
-          </details>
-          <details>
-            <summary>Helligkeit und Nachtmodus</summary>
-            <p>0% schaltet die Matrix aus. Ohne Freischalter ist die maximale Helligkeit auf 40% begrenzt. Die Nacht-Helligkeit gilt im eingestellten Zeitraum.</p>
-          </details>
-          <details>
-            <summary>Häufige Probleme</summary>
-            <ul>
-              <li>Keine Weboberfläche: IP-Adresse aus dem Router testen oder Setup-AP verwenden.</li>
-              <li>Keine Wetterdaten: WLAN, Internet, Stadt und API-Key prüfen.</li>
-              <li>Falsche Farben: Farbreihenfolge zwischen GRB und RGB wechseln.</li>
-              <li>Durcheinanderes Bild: Start-Ecke und LED-Verkabelung anpassen.</li>
-            </ul>
-          </details>
-        </div>
+        <p id="wizardError" class="inlineError wizardError" role="alert" data-no-i18n hidden></p>
+        <footer class="wizardFooter">
+          <button id="wizardBack" class="ghost" type="button">Zurück</button>
+          <button id="wizardNext" class="primary" type="button" data-no-i18n>Weiter</button>
+        </footer>
       </section>
+    </div>
 
-      <section class="panel maintenanceSection">
-        <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-restart"></use></svg>Zurücksetzen</h2>
-        <div class="actionRow">
-          <button id="settingsResetBtn" type="button">Einstellungen resetten</button>
-          <button id="factoryResetBtn" class="danger" type="button">Werksreset</button>
-        </div>
-      </section>
-      <footer>
-        <div class="footerActions">
-          <button id="saveBtn" type="button" disabled><svg class="buttonIcon" aria-hidden="true"><use href="#icon-save"></use></svg>Speichern</button>
-          <button id="discardBtn" type="button" disabled>Änderungen verwerfen</button>
-          <span id="saveState" role="status" data-no-i18n></span>
-        </div>
-        <div id="restartNotice" class="restartNotice" hidden>
-          <strong>Neustart erforderlich</strong>
-          <button id="restartRequiredBtn" type="button">Jetzt neu starten</button>
-        </div>
-        <div id="message" class="footerStatus" role="status" aria-live="polite"></div>
-      </footer>
-    </main>
     <div id="adminReminder" class="modalOverlay" hidden>
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="adminReminderTitle">
         <h2 id="adminReminderTitle">Admin-Passwort ändern</h2>
         <p>Der Standardzugang ist noch aktiv. Ändere das Admin-Passwort, damit niemand im Netzwerk die Uhr einfach umstellen kann.</p>
         <div class="modalActions">
-          <button id="adminReminderGo" type="button">Jetzt ändern</button>
-          <button id="adminReminderDismiss" type="button">Nicht mehr anzeigen</button>
+          <button id="adminReminderGo" class="primary" type="button">Jetzt ändern</button>
+          <button id="adminReminderDismiss" class="ghost" type="button">Nicht mehr anzeigen</button>
         </div>
       </section>
     </div>
-    <div id="restartOverlay" class="restartOverlay" hidden>
-      <section class="restartPanel" role="status" aria-live="assertive">
-        <div class="spinner" aria-hidden="true"></div>
-        <h2>Neustart läuft...</h2>
-        <p>Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
+    <div id="factoryResetModal" class="modalOverlay" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="factoryResetTitle">
+        <h2 id="factoryResetTitle">Uhr auf Werkszustand zurücksetzen</h2>
+        <p>Danach ist die Uhr wie neu und kann weitergegeben werden. Gelöscht werden:</p>
+        <ul class="bulletList">
+          <li>WLAN-Zugangsdaten und WLAN-Region</li>
+          <li>Admin-Benutzer und Admin-Passwort</li>
+          <li>Setup-WLAN-Passwort</li>
+          <li>Standort, API-Keys und alle Anzeige-Einstellungen</li>
+        </ul>
+        <p>Firmware und Weboberfläche bleiben erhalten. Die Uhr startet danach im Setup-Modus. Tipp: Vorher unter „Einstellungen sichern“ exportieren.</p>
+        <label class="confirmCheck">
+          <input id="factoryResetConfirm" type="checkbox">
+          Ich möchte alle Daten unwiderruflich löschen.
+        </label>
+        <div class="modalActions">
+          <button id="factoryResetGo" class="danger" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg>Alles löschen</button>
+          <button id="factoryResetCancel" class="ghost" type="button">Abbrechen</button>
+        </div>
       </section>
     </div>
-    <script src="/i18n.js?v=0.1.12" defer></script>
-    <script src="/updates.js?v=0.1.12" defer></script>
-    <script src="/app.js?v=0.1.12" defer></script>
+    <div id="restartOverlay" class="modalOverlay" hidden>
+      <section class="modal restartPanel" role="status" aria-live="assertive">
+        <div class="spinner" aria-hidden="true"></div>
+        <h2>Neustart läuft...</h2>
+        <p id="restartOverlayText">Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
+      </section>
+    </div>
+    <script src="/i18n.js?v=0.1.15" defer></script>
+    <script src="/updates.js?v=0.1.15" defer></script>
+    <script src="/setup.js?v=0.1.15" defer></script>
+    <script src="/app.js?v=0.1.15" defer></script>
   </body>
 </html>

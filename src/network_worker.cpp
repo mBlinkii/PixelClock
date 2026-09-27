@@ -2,6 +2,8 @@
 #include "app_state.h"
 #include "runtime_policy.h"
 
+static TaskHandle_t networkWorkerHandle = nullptr;
+
 static void networkWorker(void *) {
   uint32_t lastCityAttempt = 0;
   uint32_t cityRevision = 0;
@@ -43,9 +45,16 @@ static void networkWorker(void *) {
 }
 
 void startNetworkWorker() {
-  networkWorkerReady = xTaskCreate(networkWorker, "weather", 12288, nullptr, 1, nullptr) == pdPASS;
+  // TLS may spend a long time inside library code. Idle priority also allows
+  // the watchdog's idle task to run during CPU-heavy handshake operations.
+  networkWorkerReady = xTaskCreate(networkWorker, "weather", 12288, nullptr,
+                                  tskIDLE_PRIORITY, &networkWorkerHandle) == pdPASS;
   if (!networkWorkerReady) {
     weather.lastError = "Netzwerktask konnte nicht gestartet werden";
     Serial.println(weather.lastError);
   }
+}
+
+uint32_t networkWorkerStackFree() {
+  return networkWorkerHandle ? uxTaskGetStackHighWaterMark(networkWorkerHandle) : 0;
 }
