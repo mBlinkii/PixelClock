@@ -207,6 +207,15 @@ int main() {
   assert(owm.temperature == 21 && owm.temperatureMin == 19 && owm.weatherCode == 2 && !owm.isDay);
   auto dwd = parse(R"({"weather":{"temperature":0,"icon":"sleet"}})", 2);
   assert(dwd.temperature == 0 && dwd.weatherCode == 67 && std::isnan(dwd.temperatureMin));
+  // Bright Sky "wind" and null icons fall back to condition and cloud cover.
+  assert(parse(R"({"weather":{"temperature":9,"icon":"wind","condition":"dry","cloud_cover":90}})", 2).weatherCode == 3);
+  assert(parse(R"({"weather":{"temperature":9,"icon":"wind","condition":"rain","cloud_cover":90}})", 2).weatherCode == 61);
+  assert(parse(R"({"weather":{"temperature":9,"icon":null,"condition":"dry","cloud_cover":10}})", 2).weatherCode == 0);
+  assert(parse(R"({"weather":{"temperature":9,"icon":null,"condition":null,"cloud_cover":50}})", 2).weatherCode == 2);
+  auto night = parse(R"({"weather":{"temperature":4,"icon":"partly-cloudy-night","condition":"dry","cloud_cover":50}})", 2);
+  assert(night.weatherCode == 2 && !night.isDay);
+  assert(parse(R"({"weather":{"temperature":9,"icon":null,"condition":null,"cloud_cover":null}})", 2).weatherCode == -1);
+  assert(normalizeBrightSkyCondition("hail", NAN) == 77);
   auto met = parse(R"({"time":"2026-09-11T10:00:00Z","data":{"instant":{"details":{"air_temperature":12.5}},"next_1_hours":{"summary":{"symbol_code":"lightrainshowers_night"}}}})", 3);
   assert(met.temperature == 12.5 && met.weatherCode == 80 && !met.isDay && std::isnan(met.temperatureMax));
   auto fallback = parse(R"({"data":{"instant":{"details":{"air_temperature":6}},"next_6_hours":{"summary":{"symbol_code":"snow"}}}})", 3);

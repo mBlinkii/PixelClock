@@ -11,6 +11,8 @@ inline void filterWeather(JsonDocument &filter, uint8_t provider) {
   } else if (provider == WEATHER_PROVIDER_DWD) {
     filter["weather"]["temperature"] = true;
     filter["weather"]["icon"] = true;
+    filter["weather"]["condition"] = true;
+    filter["weather"]["cloud_cover"] = true;
   } else if (provider == WEATHER_PROVIDER_WEATHER_API) {
     filter["current"]["temp_c"] = true;
     filter["current"]["is_day"] = true;
@@ -42,6 +44,9 @@ inline void decodeWeather(JsonDocument &doc, uint8_t provider, WeatherReading &s
     sample.temperature = doc["weather"]["temperature"] | NAN;
     const char *icon = doc["weather"]["icon"] | "";
     sample.weatherCode = normalizeBrightSkyIcon(icon);
+    if (sample.weatherCode < 0) {
+      sample.weatherCode = normalizeBrightSkyCondition(doc["weather"]["condition"] | "", doc["weather"]["cloud_cover"] | NAN);
+    }
     sample.isDay = strstr(icon, "night") == nullptr;
   } else if (provider == WEATHER_PROVIDER_WEATHER_API) {
     sample.temperature = doc["current"]["temp_c"] | NAN;
