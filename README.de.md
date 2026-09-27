@@ -5,14 +5,19 @@ Deutsch | [English](README.md)
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
 Aktuelle Firmware-Version: `0.1.17`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.13`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.14`
 
 Version 0.1.17 behebt ein Watchdog-Risiko bei stockenden Wetterantworten.
 Netzwerk-Lesevorgänge geben jetzt regelmäßig Rechenzeit frei und haben eine
-Gesamtfrist. Weboberfläche 0.1.13 zeigt unter Status die Laufzeit, den letzten
+Gesamtfrist. Die Weboberfläche zeigt unter `System` die Laufzeit, den letzten
 Startgrund und Speicherreserven. Erscheint die Begrüßung erneut, den Startgrund
 vor dem Trennen der Stromversorgung ablesen; siehe
 [Neustartdiagnose](docs/PERFORMANCE.md#restart-diagnosis-in-0117).
+
+Weboberfläche 0.1.14 bringt einen Einrichtungsassistenten für den ersten Start
+und eine neu gestaltete Oberfläche mit Bereichs-Tabs sowie automatischem Hell-/
+Dunkelmodus. Sie nutzt nur die vorhandene Firmware-API und braucht kein
+Firmware-Update.
 
 ## Funktionen
 
@@ -25,6 +30,8 @@ vor dem Trennen der Stromversorgung ablesen; siehe
 - Open-Meteo, DWD oder MET Norway ohne API-Key; OpenWeatherMap und WeatherAPI mit eigenem API-Key
 - Standortsuche per Stadtname mit automatischer Zeitzone für viele Regionen
 - zweisprachige Weboberfläche, Deutsch/Englisch, mit passenden Wochentagen auf dem Display
+- Einrichtungsassistent: WLAN-Suche, LED-Matrix mit Verkabelungsdiagramm und Testmuster, Standort und Admin-Passwort
+- moderne, handytaugliche Weboberfläche mit Tabs, Speicherleiste und automatischem Hell-/Dunkelmodus
 - integrierte Hilfe/Wiki direkt in der Weboberfläche
 - Login-Seite vor dem Laden der Einstellungen
 - Erinnerung zum Ändern des Standard-Admin-Passworts
@@ -56,6 +63,7 @@ data/                         LittleFS-Weboberfläche
 data/index.html               HTML der Konfigurationsoberfläche
 data/i18n.js                  Web-UI-Uebersetzungen und Sprachauswahl
 data/updates.js               Web-UI-Updates und Versionspruefungen
+data/setup.js                 Einrichtungsassistent
 data/app.js                   Web-UI-Logik, API-Aufrufe, Formulare und Status
 data/app.css                  Styling der Weboberfläche
 platformio.ini                PlatformIO-Konfiguration
@@ -75,7 +83,7 @@ Benutzer: admin
 Passwort: pixelclock
 ```
 
-Ändere diese Daten nach der ersten Einrichtung unter `Admin-Zugriff`. Solange das Standardpasswort aktiv ist, erinnert dich die Weboberfläche beim Öffnen daran.
+Der Einrichtungsassistent fragt nach einem neuen Admin-Passwort; später kannst du es unter `WLAN & Zugang` > `Admin-Zugriff` ändern. Solange das Standardpasswort aktiv ist, erinnert dich die Weboberfläche beim Öffnen daran.
 
 Wenn keine WLAN-Verbindung möglich ist, startet die Uhr einen Setup-Access-Point:
 
@@ -136,16 +144,18 @@ OTA-Slots und alle gespeicherten Daten verloren. Danach Firmware und Weboberflae
 ## Erste Einrichtung
 
 1. ESP32 starten.
-2. Falls die Uhr noch kein WLAN kennt, mit `PixelClock-Setup` verbinden.
+2. Falls die Uhr noch kein WLAN kennt, mit `PixelClock-Setup` verbinden (Passwort `pixelclock`).
 3. `http://192.168.4.1` öffnen.
 4. Mit `admin` / `pixelclock` anmelden.
-5. Unter `WLAN-Zugang` Netzwerk, WLAN-Passwort und Browser-Adresse setzen.
-6. Unter `Ort und Wetter` Stadt und Wetteranbieter setzen.
-7. Unter `Display-Hardware` Matrixgröße, Datenpin, Start-Ecke und Verkabelung setzen.
-8. Unter `Helligkeit und Energie` Helligkeit und Nachtzeiten einstellen.
-9. Unter `Admin-Zugriff` das Standard-Admin-Passwort ändern.
-10. `Speichern` drücken.
-11. Wenn die Oberfläche einen Neustart meldet, `Neustart` ausführen.
+5. Der Einrichtungsassistent öffnet sich automatisch und führt durch sechs Schritte:
+   Sprache, WLAN (Netzwerksuche, nur 2,4 GHz), LED-Matrix mit Verkabelungsdiagramm
+   und Testmuster, Stadt und Wetterdienst, neues Admin-Passwort, Zusammenfassung.
+6. `Speichern und abschließen` drücken. Falls nötig, startet die Uhr neu und der
+   Assistent zeigt die neue Adresse. Handy oder PC wieder mit dem eigenen WLAN
+   verbinden; der Assistent erkennt, sobald die Uhr erreichbar ist.
+
+Der Assistent lässt sich unter `System` jederzeit erneut starten. Alle
+Einstellungen bleiben zusätzlich einzeln in den Tabs erreichbar.
 
 Nach erfolgreicher WLAN-Verbindung ist die Oberfläche normalerweise erreichbar unter:
 
@@ -164,15 +174,17 @@ entsteht `xxxxxx` aus den letzten drei Bytes der ESP32-MAC-Adresse.
 
 ## Bedienung der Weboberfläche
 
-- `Status`: zeigt Wetter, Ort und Adresse.
-- `WLAN-Zugang`: Netzwerk, WLAN-Passwort, WLAN-Region, Browser-Adresse und WLAN-Scan.
-- `Admin-Zugriff`: Admin-Benutzer und Admin-Passwort für den Web-Login.
-- `Ort und Wetter`: Stadt, Wetteranbieter, API-Key und Zeitzone.
-- `Display-Hardware`: Matrixgröße, Datenpin, Farbreihenfolge und LED-Mapping.
-- `Anzeige und Seiten`: Layout, Zeitformat, Temperaturformat, feste Seite und getrennte Rotationsdauer für Uhrzeit und andere Seiten.
-- `Farben`: Farben für Wochentag, Text, Punkte und Doppelpunkt.
-- `Helligkeit und Energie`: Tages- und Nacht-Helligkeit in Prozent, Sicherheits-Freischalter und Nachtzeitraum.
-- `Hilfe & Wiki`: kurze Einrichtungshilfe und Problembehandlung direkt im Interface.
+- `Übersicht`: Uhrzeit der Uhr, aktuelles Wetter, Verbindung, Adresse und Helligkeit. Solange WLAN oder eigenes Admin-Passwort fehlen, erscheint eine Einrichtungs-Checkliste.
+- `Anzeige`: Layout, Zeit- und Temperaturformat, Seitenwechsel, Farben, Tages- und Nacht-Helligkeit, Sicherheits-Freischalter und WLAN-Energiesparen.
+- `Wetter`: Stadt, Wetteranbieter, Intervall, API-Keys und optional eine manuelle Zeitzone.
+- `Hardware`: Matrixgröße, Datenpin, Farbreihenfolge, Start-Ecke und Verkabelung mit Live-Verkabelungsdiagramm und Testmuster.
+- `WLAN & Zugang`: Netzwerk mit Suche, WLAN-Passwort, WLAN-Region, Browser-Adresse, Admin-Benutzer und Admin-Passwort.
+- `System`: Firmware- und Weboberflächen-Version, Diagnose, Einrichtungsassistent, Updates, Hilfe & Wiki und Zurücksetzen.
+
+Sobald etwas ungespeichert ist, erscheint eine Speicherleiste; Tabs mit
+ungespeicherten Änderungen sind markiert. Nach einer Änderung des Admin-Logins
+bleibst du mit den neuen Daten angemeldet. Die Oberfläche folgt dem Hell- oder
+Dunkelmodus deines Geräts.
 
 Oben im Header kannst du zwischen Deutsch und Englisch wechseln. Die Auswahl wird im Browser und auf der Uhr gespeichert; die Wochentage auf dem Display folgen dieser Sprache.
 
@@ -189,9 +201,9 @@ aktiv.
 - Wetter und Standortsuche laufen in einem Hintergrundtask; die Anzeige bleibt bedienbar.
 - Unveränderte LED-Bilder werden nicht erneut übertragen. Bei 0 % wird einmal schwarz gesendet.
 - Statische Seiten werden einmal pro Sekunde geprüft, Animationen weiterhin alle 200 ms.
-- WLAN-Energiesparen ist standardmäßig aktiv und unter `Helligkeit und Energie` abschaltbar.
+- WLAN-Energiesparen ist standardmäßig aktiv und unter `Anzeige` abschaltbar.
 - Geocoding-Ergebnisse werden gespeichert; unveränderte Einstellungen lösen keine erneuten NVS-Schreibvorgänge aus.
-- Komprimierte Webdateien, Sprungnavigation, Speichern/Verwerfen und Statusabfragen nur im aktiven Tab.
+- Komprimierte Webdateien, Tab-Navigation, Speichern/Verwerfen und Statusabfragen nur im aktiven Browser-Tab.
 
 Die tatsächliche Stromersparnis hängt von Matrix, Helligkeit und Access Point ab und muss am Gerät gemessen werden. Bei 0 % bleiben die LEDs elektrisch versorgt; Deep Sleep wird nicht verwendet, damit Uhr und Weboberfläche verfügbar bleiben.
 
@@ -235,7 +247,7 @@ app1     0x170000  Firmware-Slot 2
 littlefs 0x110000  Weboberfläche und Assets
 ```
 
-Die zwei App-Slots ermöglichen Firmware-Updates über die Weboberfläche. Nach einer Änderung an `partitions.csv` muss der ESP32 einmal per USB mit `pio run --target upload` und `pio run --target uploadfs` neu geflasht werden. Danach können neue Firmware- und Weboberflächen-Binaries im Bereich `Firmware-Update` der Weboberfläche hochgeladen werden.
+Die zwei App-Slots ermöglichen Firmware-Updates über die Weboberfläche. Nach einer Änderung an `partitions.csv` muss der ESP32 einmal per USB mit `pio run --target upload` und `pio run --target uploadfs` neu geflasht werden. Danach können neue Firmware- und Weboberflächen-Binaries unter `System` > `Firmware-Update` hochgeladen werden.
 
 Die Weboberfläche liegt nicht im Firmware-Binary. Nach Änderungen an `data/` muss ein neues LittleFS-Image gebaut werden. Du kannst es danach entweder per USB mit `uploadfs` oder über die Weboberfläche aktualisieren.
 
@@ -268,7 +280,7 @@ Die Weboberfläche liegt nicht im Firmware-Binary. Nach Änderungen an `data/` m
 ### Wetter wird nicht angezeigt
 
 - Prüfe WLAN-Verbindung und Internetzugriff.
-- Prüfe unter `Status`, ob ein Fehler angezeigt wird.
+- Prüfe in der Wetterkarte unter `Übersicht`, ob ein Fehler angezeigt wird.
 - Bei OpenWeatherMap prüfen, ob der API-Key gültig und aktiv ist.
 - Bei falscher Stadt einen eindeutigeren Namen eingeben.
 - Nach Änderungen `Speichern` und danach `Wetter aktualisieren` drücken.
@@ -361,7 +373,8 @@ Gute Einstiegspunkte:
 - `src/weather.cpp`: Wetter- und Standortlogik.
 - `data/i18n.js`: Browser-Uebersetzungen und Sprachauswahl.
 - `data/updates.js`: Firmware-/LittleFS-Upload und Versionspruefungen.
-- `data/app.js`: Browser-Logik, Formular-Sync und Status-Refresh.
+- `data/setup.js`: Einrichtungsassistent auf Basis der normalen Formularfelder.
+- `data/app.js`: Browser-Logik, Tabs, Formular-Sync und Status-Refresh.
 - `data/index.html`: Struktur der Weboberfläche.
 
 Wenn du eine Einstellung erweiterst, müssen meist Firmware-Konfiguration,

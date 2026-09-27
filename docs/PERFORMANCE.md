@@ -1,6 +1,6 @@
 # Performance and validation
 
-Firmware 0.1.17 / web UI 0.1.13.
+Firmware 0.1.17 / web UI 0.1.14.
 
 The display task yields instead of busy polling. TLS requests run in one worker
 at idle priority so CPU-heavy library operations share time with the watchdog's
@@ -82,7 +82,9 @@ and retry scheduling, secret handling and asynchronous scan completion. These
 checks also run in the PlatformIO CI workflow.
 
 For browser QA, run `node tests/mock-server.mjs` and open
-`http://127.0.0.1:8765`. Any synthetic login works. This server binds only to
+`http://127.0.0.1:8765`. Any synthetic login works. Add `--first-run` (and for a
+second instance `--port=8766`) to simulate a fresh clock in setup-AP mode with no
+Wi-Fi and the default login, which opens the setup assistant. This server binds only to
 loopback and never controls hardware. Stop it after testing.
 
 ## Hardware checks still required
@@ -117,6 +119,24 @@ No current-consumption percentage is claimed without a physical measurement.
 - Initial build checks did not flash a device. Subsequent on-device recovery and
   OTA validation are recorded below. An overnight run is still needed to assess
   the intermittent restart report.
+
+## Web UI 0.1.14 (setup assistant and redesign)
+
+- Only existing endpoints are used; firmware 0.1.17 needs no change. Older
+  firmware still falls back as before (provider list, power saving, scan mode).
+- Static assets grow to 188,976 bytes uncompressed / 48,315 bytes gzip across
+  seven files (one new request for `setup.js`). The LittleFS image builds at the
+  unchanged 1,114,112 bytes; gzip companions round-trip to their sources.
+- The overview clock advances locally between the existing 15-second status
+  polls and only while the overview tab is visible; no extra requests are made.
+- Eleven Node tests pass, including LED order parity with `xy()` for all origins
+  and wirings, hostname/user normalization and keeping the session after a
+  login change.
+- Mock-server QA covered the complete first-run flow, German/English, dark and
+  light mode, 375 px phone width without horizontal scrolling, validation of
+  missing Wi-Fi password, API key, password mismatch and more than 512 LEDs.
+- Not yet verified on hardware: the assistant against a real setup AP, the
+  handoff to the home network and `.local` detection on Android/iOS/Windows.
 
 ## On-device recovery and OTA validation (13 September 2026)
 

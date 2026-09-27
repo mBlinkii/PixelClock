@@ -5,13 +5,17 @@
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
 Current firmware version: `0.1.17`
-Current LittleFS web interface version: `0.1.13`
+Current LittleFS web interface version: `0.1.14`
 
 Version 0.1.17 fixes a watchdog risk when a weather response stalls. Network
-reads now yield and have a total response deadline. Web UI 0.1.13 shows uptime,
-the last boot reason and memory reserves under Status. If the greeting returns,
+reads now yield and have a total response deadline. The web UI shows uptime,
+the last boot reason and memory reserves under `System`. If the greeting returns,
 check the boot reason there before disconnecting power; see
 [restart diagnosis](docs/PERFORMANCE.md#restart-diagnosis-in-0117).
+
+Web UI 0.1.14 adds a guided setup assistant for the first start and a redesigned
+tab-based interface with automatic light/dark mode. It only uses the existing
+firmware API and does not require a firmware update.
 
 ## Features
 
@@ -24,6 +28,8 @@ check the boot reason there before disconnecting power; see
 - Open-Meteo, DWD or MET Norway without an API key; OpenWeatherMap and WeatherAPI with your own API key
 - city-based location lookup with automatic time zone for many regions
 - bilingual web interface, German/English, with matching weekdays on the display
+- guided setup assistant: Wi-Fi scan, LED matrix with wiring diagram and test pattern, location and admin password
+- modern, phone-friendly web interface with tabs, save bar and automatic light/dark mode
 - integrated help/wiki directly inside the web interface
 - Login page before settings are loaded
 - reminder to change the default admin password
@@ -55,6 +61,7 @@ data/                         LittleFS web interface
 data/index.html               HTML for the configuration interface
 data/i18n.js                  Web UI translations and language selection
 data/updates.js               Web UI update upload and version checks
+data/setup.js                 Guided setup assistant
 data/app.js                   Web UI logic, API calls, forms, and status refresh
 data/app.css                  Styling for the web interface
 platformio.ini                PlatformIO configuration
@@ -74,7 +81,7 @@ User: admin
 Password: pixelclock
 ```
 
-Change these credentials after the first setup under `Admin access`. While the default password is still active, the web interface reminds you when it opens.
+The setup assistant asks for a new admin password; you can also change it later under `Wi-Fi & access` > `Admin access`. While the default password is still active, the web interface reminds you when it opens.
 
 If no Wi-Fi connection is possible, the clock starts a setup access point:
 
@@ -135,16 +142,18 @@ and all persisted data. Flash firmware and the web UI again afterwards:
 ## First Setup
 
 1. Start the ESP32.
-2. If the clock does not know a Wi-Fi network yet, connect to `PixelClock-Setup`.
+2. If the clock does not know a Wi-Fi network yet, connect to `PixelClock-Setup` (password `pixelclock`).
 3. Open `http://192.168.4.1`.
 4. Log in with `admin` / `pixelclock`.
-5. Under `Wi-Fi access`, set network, Wi-Fi password, and browser address.
-6. Under `Location and weather`, set city and weather provider.
-7. Under `Display hardware`, set matrix size, data pin, start corner, and wiring.
-8. Under `Brightness and energy`, set brightness and night hours.
-9. Under `Admin access`, change the default admin password.
-10. Press `Save`.
-11. If the interface reports that a restart is required, press `Restart`.
+5. The setup assistant opens automatically and guides you through six steps:
+   language, Wi-Fi (network scan, 2.4 GHz only), LED matrix with wiring diagram
+   and test pattern, city and weather service, new admin password, summary.
+6. Press `Save and finish`. If needed, the clock restarts and the assistant shows
+   the new address. Reconnect your phone or PC to your home Wi-Fi; the assistant
+   detects when the clock is reachable again.
+
+The assistant can be started again at any time under `System`. Every setting
+also remains available on its own tab.
 
 After a successful Wi-Fi connection, the interface is usually reachable at:
 
@@ -163,15 +172,16 @@ from the last three bytes of the ESP32 MAC address.
 
 ## Using the Web Interface
 
-- `Status`: shows weather, location, and address.
-- `Wi-Fi access`: network, Wi-Fi password, Wi-Fi region, browser address, and Wi-Fi scan.
-- `Admin access`: admin user and admin password for the web login.
-- `Location and weather`: city, weather provider, API key, and time zone.
-- `Display hardware`: matrix size, data pin, color order, and LED mapping.
-- `Display and pages`: layout, time format, temperature format, fixed page, and separate rotation durations for the time page and other pages.
-- `Colors`: colors for weekday, text, dots, and colon.
-- `Brightness and energy`: day and night brightness in percent, safety unlock, and night period.
-- `Help & Wiki`: short setup guide and troubleshooting directly in the interface.
+- `Overview`: time on the clock, current weather, connection, address, and brightness. While Wi-Fi or the admin password is missing, a setup checklist is shown.
+- `Display`: layout, time and temperature format, page rotation, colors, day and night brightness, safety unlock, and Wi-Fi power saving.
+- `Weather`: city, weather provider, interval, API keys, and an optional manual time zone.
+- `Hardware`: matrix size, data pin, color order, start corner, and wiring with a live wiring diagram and test pattern.
+- `Wi-Fi & access`: network with scan, Wi-Fi password, Wi-Fi region, browser address, admin user, and admin password.
+- `System`: firmware and web interface versions, diagnostics, setup assistant, updates, help & wiki, and reset.
+
+A save bar appears as soon as something is unsaved, and tabs with unsaved changes
+are marked. After changing the admin login you stay logged in with the new
+credentials. The interface follows the light or dark mode of your device.
 
 The language can be switched between German and English in the header. The selection is saved in the browser and on the clock, and the weekday labels on the display follow it.
 
@@ -187,9 +197,9 @@ world safe mode. Changing the Wi-Fi region requires a restart.
 - Weather and geocoding run in a background task so the display keeps updating.
 - Unchanged LED frames are not retransmitted. At 0% the matrix receives black once.
 - Static pages are checked once per second; animations retain their 200 ms cadence.
-- Wi-Fi power saving defaults to on and can be disabled under `Brightness and energy`.
+- Wi-Fi power saving defaults to on and can be disabled under `Display`.
 - Cached geocoding and changed-value-only NVS writes avoid unnecessary requests and flash writes.
-- Compressed web assets, section navigation, save/discard controls and status polling only in visible tabs.
+- Compressed web assets, tab navigation, save/discard controls and status polling only in visible tabs.
 
 Actual power savings depend on the matrix, brightness and access point and require measurement on hardware. At 0% the LEDs remain electrically powered. Deep sleep is not used so the clock and web interface stay available.
 
@@ -233,7 +243,7 @@ app1     0x170000  Firmware slot 2
 littlefs 0x110000  Web interface and assets
 ```
 
-The two app slots enable firmware updates through the web interface. After changing `partitions.csv`, flash the ESP32 once over USB with `pio run --target upload` and `pio run --target uploadfs`. After that, upload new firmware and web-interface binaries in the web UI's `Firmware update` section.
+The two app slots enable firmware updates through the web interface. After changing `partitions.csv`, flash the ESP32 once over USB with `pio run --target upload` and `pio run --target uploadfs`. After that, upload new firmware and web-interface binaries under `System` > `Firmware update`.
 
 The web interface is not embedded in the firmware binary. After changing anything in `data/`, build a new LittleFS image. You can then update it either over USB with `uploadfs` or through the web interface.
 
@@ -266,7 +276,7 @@ The web interface is not embedded in the firmware binary. After changing anythin
 ### Weather is not shown
 
 - Check Wi-Fi connection and internet access.
-- Check `Status` for an error message.
+- Check the weather card under `Overview` for an error message.
 - If using OpenWeatherMap, make sure the API key is valid and active.
 - If the city is ambiguous, enter a more specific name.
 - After changes, press `Save` and then `Refresh weather`.
@@ -359,7 +369,8 @@ Good entry points:
 - `src/weather.cpp`: weather and location logic.
 - `data/i18n.js`: browser translations and language selection.
 - `data/updates.js`: firmware/LittleFS upload flow and version checks.
-- `data/app.js`: browser logic, form sync, and status refresh.
+- `data/setup.js`: guided setup assistant on top of the regular form fields.
+- `data/app.js`: browser logic, tabs, form sync, and status refresh.
 - `data/index.html`: web interface structure.
 
 When adding or changing a setting, the firmware configuration, API JSON, form

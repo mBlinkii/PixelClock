@@ -78,10 +78,15 @@ data/i18n.js
 data/updates.js
   Firmware/LittleFS version scanning and browser-side binary upload flow.
 
+data/setup.js
+  Guided setup assistant. Its controls mirror regular form fields through
+  `data-bind="<field id>"`, so it saves through the same formBody()/saveConfig()
+  path and needs no firmware endpoint of its own.
+
 data/app.js
-  Browser-side app bootstrap, form serialization, API calls, status refresh,
-  and browser-local UI state such as the one-time admin password reminder
-  dismissal.
+  Browser-side app bootstrap, hash-based page tabs, form serialization, API
+  calls, status refresh, and browser-local UI state such as the admin reminder
+  and setup assistant dismissal.
 
 platformio.ini
   Board, framework, filesystem, partition table, and library dependencies.
@@ -122,7 +127,8 @@ setting, update these places together:
 - load/save keys in `src/config.cpp`,
 - JSON output and POST parsing in `src/web_api.cpp`,
 - form field list in `data/app.js`,
-- markup in `data/index.html`,
+- markup in `data/index.html` (inside the matching `.page` tab),
+- a `data-bind` control in `data/setup.js`/`index.html` if first-time users need it,
 - user-facing text/translations in `data/i18n.js`,
 - README or troubleshooting notes if the setting affects setup.
 
@@ -183,10 +189,19 @@ fallback path when the field is missing. This prevents a separately uploaded web
 UI from showing 404 errors on devices that have not received the matching
 firmware yet.
 
-`GET /api/config` includes `adminPasswordIsDefault`. The browser uses this to
-show the first-run admin password reminder when the default login is still
-active. The dismissal is stored only in browser `localStorage`; changing the
-actual password remains a normal `POST /api/config` save.
+`GET /api/config` includes `adminPasswordIsDefault`. The browser uses this,
+together with an empty `ssid` or `setupMode` from `/api/status`, to open the
+setup assistant automatically, and otherwise shows the admin password reminder.
+Dismissals are stored only in browser `localStorage`; changing the actual
+password remains a normal `POST /api/config` save. Because the firmware checks
+Basic Auth against the live configuration, the browser replaces its stored
+credentials after a successful login change instead of forcing a new login.
+
+While `setupMode` is active and no SSID is saved, the matrix shows its WIFI/AP
+prompt instead of the test pattern. The assistant therefore asks for Wi-Fi first
+and saves before it requests a test pattern. After the final restart it polls the
+public `favicon.svg` of the new `.local` address to tell the user when the clock
+is reachable in the home network.
 
 ## Display Pipeline
 

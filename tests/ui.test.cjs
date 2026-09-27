@@ -7,7 +7,7 @@ function harness(fetchImpl) {
   const elements = new Map();
   const makeElement = (id) => ({ id, value: '', type: 'text', checked: false, hidden: false,
     textContent: '', children: [], classList: { toggle() {}, add() {} },
-    append(el) { this.children.push(el); }, replaceChildren() { this.children = []; },
+    append(...els) { this.children.push(...els); }, replaceChildren() { this.children = []; },
     addEventListener() {}, focus() {}, closest() { return { hidden: false }; } });
   const element = (id) => { if (!elements.has(id)) elements.set(id, makeElement(id)); return elements.get(id); };
   const timers = new Map(); let nextTimer = 1; const storage = new Map();
@@ -15,7 +15,7 @@ function harness(fetchImpl) {
     window: {}, document: { hidden: false, getElementById: element, createElement: makeElement },
     navigator: { language: 'de' }, sessionStorage: { getItem: (key) => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) },
     localStorage: { getItem() { return null; } }, storedLanguage: 'de',
-    tr: (text) => text, fetch: fetchImpl, URLSearchParams, Headers, AbortController, TextEncoder,
+    tr: (text) => text, fetch: fetchImpl, URLSearchParams, Headers, AbortController, TextEncoder, TextDecoder, atob, btoa,
     setTimeout(fn, ms) { const id = nextTimer++; timers.set(id, { fn, ms }); return id; },
     clearTimeout(id) { timers.delete(id); }, console
   });
@@ -109,7 +109,58 @@ test('async scan polls to completion, sorts, deduplicates and treats SSIDs as te
     setTimeout = (fn) => { fn(); return 1; };`);
   await h.run('scanNetworks()');
   assert.equal(h.run('scans'), 2);
-  assert.equal(h.element('networks').children.length, 2);
-  assert.equal(h.element('networks').children[0].textContent, 'Network · -40 dBm');
-  assert.equal(h.element('networks').children[1].textContent, '<script>test</script> · -70 dBm');
+  const items = h.element('networks').children;
+  assert.equal(items.length, 2);
+  assert.equal(items[0].children[0].textContent, 'Network');
+  assert.equal(items[0].children[1].textContent, '-40 dBm');
+  assert.equal(items[1].children[0].textContent, '<script>test</script>');
+  assert.equal(items[1].children[0].innerHTML, undefined);
+});
+
+test('open networks are labelled and signal strength maps to four levels', () => {
+  const h = harness();
+  h.run('renderNetworks(document.getElementById("list"), [{ ssid: "Guest", rssi: -80, secure: false }], () => {}, "")');
+  const item = h.element('list').children[0];
+  assert.equal(item.children[1].textContent, 'offen · -80 dBm');
+  assert.equal(item.children[1].className, 'networkMeta signal1');
+  assert.deepEqual([-50, -60, -70, -90].map((rssi) => h.run(`signalLevel(${rssi})`)), [4, 3, 2, 1]);
+});
+
+test('LED index mapping matches the firmware xy() for every wiring and origin', () => {
+  const h = harness();
+  const index = (x, y, origin, wiring) => h.run(`ledIndex(${x}, ${y}, 32, 8, ${origin}, ${wiring})`);
+  // Default: columns, serpentine, top left.
+  assert.deepEqual([index(0, 0, 0, 3), index(0, 7, 0, 3), index(1, 7, 0, 3), index(1, 0, 0, 3)], [0, 7, 8, 15]);
+  assert.deepEqual([index(0, 0, 0, 0), index(31, 0, 0, 0), index(0, 1, 0, 0)], [0, 31, 32]);
+  assert.deepEqual([index(31, 1, 0, 1), index(0, 1, 0, 1)], [32, 63]);
+  assert.equal(index(31, 0, 1, 2), 0);
+  assert.equal(index(0, 7, 2, 0), 0);
+  assert.equal(index(31, 7, 3, 3), 0);
+  for (let origin = 0; origin < 4; origin++) {
+    for (let wiring = 0; wiring < 4; wiring++) {
+      const seen = new Set();
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 32; x++) seen.add(index(x, y, origin, wiring));
+      assert.equal(seen.size, 256, `origin ${origin}, wiring ${wiring} must be a permutation`);
+    }
+  }
+});
+
+test('names are normalized like the firmware hostname sanitizer', () => {
+  const h = harness();
+  assert.equal(h.run('sanitizeName("  Pixel Clock-Küche! ")'), 'pixelclock-kche');
+  assert.equal(h.run('sanitizeName("--Wohnzimmer--")'), 'wohnzimmer');
+  assert.equal(h.run('sanitizeName("")'), 'pixelclock');
+  assert.equal(h.run('sanitizeName("", "")'), '');
+  assert.equal(h.run('sanitizeName("a".repeat(40)).length'), 31);
+});
+
+test('a changed admin login keeps the session with the new credentials', () => {
+  const h = harness();
+  h.run('savedConfig = {}; setAuthHeader(basicAuthValue("admin", "test-old:pw"))');
+  assert.deepEqual({ ...h.run('decodeBasicAuth(authHeaderValue())') }, { username: 'admin', password: 'test-old:pw' });
+  h.run('adoptChangedLogin(new URLSearchParams("adminUsername=Admin&adminPassword=test-new-pw"))');
+  assert.deepEqual({ ...h.run('decodeBasicAuth(authHeaderValue())') }, { username: 'admin', password: 'test-new-pw' });
+  h.run('adoptChangedLogin(new URLSearchParams("adminUsername=Kitchen"))');
+  assert.deepEqual({ ...h.run('decodeBasicAuth(authHeaderValue())') }, { username: 'kitchen', password: 'test-new-pw' });
+  assert.equal(h.element('adminUsername').value, 'kitchen');
 });
