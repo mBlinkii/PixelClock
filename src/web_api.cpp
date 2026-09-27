@@ -293,6 +293,8 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   doc["uptimeMs"] = millis();
   doc["freeHeap"] = ESP.getFreeHeap();
   doc["minFreeHeap"] = ESP.getMinFreeHeap();
+  doc["resetReason"] = resetReasonText();
+  doc["networkStackFreeBytes"] = networkWorkerStackFree();
   doc["wifiPowerSave"] = config.wifiPowerSave;
   doc["networkWorkerReady"] = networkWorkerReady;
   doc["capabilities"]["asyncWifiScan"] = true;

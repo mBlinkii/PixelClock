@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pixel Clock</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css?v=0.1.12">
+    <link rel="stylesheet" href="/app.css?v=0.1.13">
   </head>
   <body>
     <svg class="iconSprite" aria-hidden="true" focusable="false">
@@ -152,6 +152,11 @@
           <div id="runtimeStats" hidden>
             <span>System</span>
             <strong id="systemLine" data-no-i18n>-</strong>
+          </div>
+          <div id="restartStats" hidden>
+            <span>Laufzeit / letzter Startgrund</span>
+            <strong id="restartLine" data-no-i18n>-</strong>
+            <span id="memoryLine" data-no-i18n></span>
           </div>
         </div>
       </section>
@@ -528,8 +533,8 @@
         <p>Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
       </section>
     </div>
-    <script src="/i18n.js?v=0.1.12" defer></script>
-    <script src="/updates.js?v=0.1.12" defer></script>
-    <script src="/app.js?v=0.1.12" defer></script>
+    <script src="/i18n.js?v=0.1.13" defer></script>
+    <script src="/updates.js?v=0.1.13" defer></script>
+    <script src="/app.js?v=0.1.13" defer></script>
   </body>
 </html>

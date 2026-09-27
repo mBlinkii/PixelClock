@@ -4,8 +4,15 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.16`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.12`
+Aktuelle Firmware-Version: `0.1.17`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.13`
+
+Version 0.1.17 behebt ein Watchdog-Risiko bei stockenden Wetterantworten.
+Netzwerk-Lesevorgänge geben jetzt regelmäßig Rechenzeit frei und haben eine
+Gesamtfrist. Weboberfläche 0.1.13 zeigt unter Status die Laufzeit, den letzten
+Startgrund und Speicherreserven. Erscheint die Begrüßung erneut, den Startgrund
+vor dem Trennen der Stromversorgung ablesen; siehe
+[Neustartdiagnose](docs/PERFORMANCE.md#restart-diagnosis-in-0117).
 
 ## Funktionen
 

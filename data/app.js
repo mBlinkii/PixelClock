@@ -578,10 +578,30 @@ async function loadConfig() {
   setForm(await res.json());
 }
 
+function formatUptime(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "-";
+  const seconds = Math.floor(milliseconds / 1000);
+  const days = Math.floor(seconds / 86400);
+  const clock = [Math.floor(seconds / 3600) % 24, Math.floor(seconds / 60) % 60, seconds % 60]
+    .map(value => String(value).padStart(2, "0")).join(":");
+  return `${days ? `${days} d ` : ""}${clock}`;
+}
+
+function updateRestartDiagnostics(status) {
+  $("restartStats").hidden = !status.resetReason;
+  $("restartLine").textContent = status.resetReason
+    ? `${formatUptime(status.uptimeMs)} · ${tr(status.resetReason)}` : "";
+  const memory = [];
+  if (Number.isFinite(status.minFreeHeap)) memory.push(`${tr("Min. freier Speicher")}: ${Math.round(status.minFreeHeap / 1024)} KB`);
+  if (status.networkStackFreeBytes > 0) memory.push(`${tr("Min. freier Wetter-Stack")}: ${status.networkStackFreeBytes} B`);
+  $("memoryLine").textContent = memory.join(" · ");
+}
+
 async function fetchStatus() {
   const res = await apiFetch("/api/status");
   if (!res.ok) throw new Error("Status unavailable");
   const status = await res.json();
+  updateRestartDiagnostics(status);
   capabilities = status.capabilities || {};
   $("connectionState").textContent = tr(status.wifiConnected ? "Verbunden" : status.setupMode ? "Setup-AP" : "WLAN getrennt");
   $("connectionState").classList.toggle("isWarning", !status.wifiConnected);

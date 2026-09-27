@@ -3,6 +3,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 const root = resolve('data');
+const port = Number(process.env.PIXEL_CLOCK_MOCK_PORT || 8765);
 const config = {
   ssid: 'PixelClock-Test', wifiCountry: 'DE', hostname: 'pixelclock', cityName: 'Berlin',
   locationLabel: 'Berlin, Deutschland', timezone: 'CET-1CEST,M3.5.0,M10.5.0/3', language: 'de',
@@ -28,7 +29,9 @@ http.createServer(async (req, res) => {
         temperature: 22.4, temperatureMin: 16, temperatureMax: 25, temperatureUnit: 'C', weatherCode: 2,
         weatherProvider: ['Open-Meteo', 'OpenWeatherMap', 'DWD (Bright Sky)', 'MET Norway', 'WeatherAPI'][config.weatherProvider],
         weatherAgeMs: 360000, freeHeap: 156000, rssi: -48, wifiPowerSave: config.wifiPowerSave,
-        firmwareVersion: '0.1.16', capabilities: { asyncWifiScan: true, weatherProviderMax: 4, wifiPowerSave: true } }); return;
+        firmwareVersion: '0.1.17', uptimeMs: 90061000, resetReason: 'Task-Watchdog',
+        minFreeHeap: 84000, networkStackFreeBytes: 4096,
+        capabilities: { asyncWifiScan: true, weatherProviderMax: 4, wifiPowerSave: true } }); return;
     }
     if (url.pathname === '/api/networks') {
       reply(200, ++scans % 3 ? { scanning: true } : { networks: [{ ssid: 'Test-Netz', rssi: -45 }, { ssid: 'Test-Netz', rssi: -60 }, { ssid: '<Test & WiFi>', rssi: -75 }] }); return;
@@ -50,4 +53,4 @@ http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' })[extname(path)] || 'application/octet-stream' });
     res.end(data);
   } catch { res.writeHead(404); res.end(); }
-}).listen(8765, '127.0.0.1', () => console.log('Mock UI: http://127.0.0.1:8765 (any test login)'));
+}).listen(port, '127.0.0.1', () => console.log(`Mock UI: http://127.0.0.1:${port} (any test login)`));

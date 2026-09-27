@@ -5,6 +5,15 @@
 
 #include "app_state.h"
 #include "weather_decode.h"
+#include "cooperative_reader.h"
+
+struct WeatherReaderClock {
+  static uint32_t now() { return millis(); }
+  static void pause() { vTaskDelay(1); }
+};
+
+using WeatherReader = CooperativeReader<WiFiClient, WeatherReaderClock>;
+constexpr uint32_t WEATHER_BODY_TIMEOUT_MS = 30000;
 
 static const char ISRG_ROOT_X1[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
@@ -172,7 +181,8 @@ void configureWeatherClient(WiFiClientSecure &client, uint8_t provider) {
   client.setCACert(provider == WEATHER_PROVIDER_MET_NORWAY ? HARICA_ROOT :
     provider == WEATHER_PROVIDER_OPEN_WEATHER_MAP ? SECTIGO_PUBLIC_SERVER_AUTH_ROOT_R46 : ISRG_ROOT_X1);
   client.setHandshakeTimeout(8);
-  client.setTimeout(HTTP_TIMEOUT_MS);
+  // WiFiClientSecure uses seconds; HTTPClient and Stream use milliseconds.
+  client.setTimeout((HTTP_TIMEOUT_MS + 999) / 1000);
 }
 
 static void prepareHttp(HTTPClient &http) {
@@ -253,8 +263,7 @@ static bool requestWeather(const AppConfig &source, WeatherState &sample) {
   const String modified = http.header("Last-Modified");
   JsonDocument doc, filter;
   filterWeather(filter, source.weatherProvider);
-  Stream &stream = http.getStream();
-  stream.setTimeout(HTTP_TIMEOUT_MS);
+  WeatherReader stream(http.getStream(), HTTP_TIMEOUT_MS, WEATHER_BODY_TIMEOUT_MS);
   // Only the nearest forecast is displayed. Do not allocate the entire MET timeseries.
   if (source.weatherProvider == WEATHER_PROVIDER_MET_NORWAY &&
       (!stream.find("\"timeseries\"") || !stream.find("["))) {
@@ -339,8 +348,8 @@ bool resolveCity() {
     const int code = http.GET();
     if (code != HTTP_CODE_OK) error = "Geocoding HTTP " + String(code);
     else {
-      http.getStream().setTimeout(HTTP_TIMEOUT_MS);
-      const DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
+      WeatherReader stream(http.getStream(), HTTP_TIMEOUT_MS, WEATHER_BODY_TIMEOUT_MS);
+      const DeserializationError err = deserializeJson(doc, stream, DeserializationOption::Filter(filter), DeserializationOption::NestingLimit(16));
       if (err) error = String("Geocoding JSON ") + err.c_str();
     }
     http.end();

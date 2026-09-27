@@ -35,6 +35,19 @@ test('API requests are authenticated, uncached and time bounded', async () => {
   assert.equal(h.timers.size, 0);
 });
 
+test('restart diagnostics show uptime/reason and tolerate older firmware', () => {
+  const h = harness();
+  h.run('updateRestartDiagnostics({ uptimeMs: 90061000, resetReason: "Task-Watchdog", minFreeHeap: 20480, networkStackFreeBytes: 4096 })');
+  assert.equal(h.element('restartStats').hidden, false);
+  assert.equal(h.element('restartLine').textContent, '1 d 01:01:01 · Task-Watchdog');
+  assert.equal(h.element('memoryLine').textContent, 'Min. freier Speicher: 20 KB · Min. freier Wetter-Stack: 4096 B');
+  h.run('updateRestartDiagnostics({})');
+  assert.equal(h.element('restartStats').hidden, true);
+  assert.equal(h.element('restartLine').textContent, '');
+  assert.equal(h.run('formatUptime(0)'), '00:00:00');
+  assert.equal(h.run('formatUptime(undefined)'), '-');
+});
+
 test('status requests never overlap and failures release the in-flight guard', async () => {
   const h = harness();
   h.run('let count = 0; let finish; fetchStatus = () => { count++; return new Promise(resolve => { finish = resolve; }); };');

@@ -33,7 +33,7 @@ constexpr const char *DEFAULT_ADMIN_USERNAME = "admin";
 constexpr const char *DEFAULT_ADMIN_PASSWORD = "pixelclock";
 constexpr const char *DEFAULT_LANGUAGE = "de";
 constexpr const char *DEFAULT_WIFI_COUNTRY = "DE";
-#define FIRMWARE_VERSION_TEXT "0.1.16"
+#define FIRMWARE_VERSION_TEXT "0.1.17"
 constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
 extern const char FIRMWARE_VERSION_BINARY_MARKER[];
 constexpr uint8_t AUTH_CONFIG_VERSION = 1;
@@ -146,6 +146,8 @@ void startMdns();
 void syncTime();
 uint32_t lastConfirmedNtpSync();
 void startNetworkWorker();
+uint32_t networkWorkerStackFree();
+const char *resetReasonText();
 void applyWifiPowerSave();
 void seedTimeFromBuild();
 bool timeIsReasonable();

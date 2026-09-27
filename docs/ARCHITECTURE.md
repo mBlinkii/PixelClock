@@ -42,6 +42,13 @@ src/weather.cpp
   HTTPS root certificates, weather provider requests, city geocoding, and
   timezone mapping.
 
+src/cooperative_reader.h
+  Buffered JSON input with scheduler pauses, idle and total body deadlines.
+  Shared by weather and geocoding; tested with simulated slow/disconnected clients.
+
+src/diagnostics.cpp
+  ESP reset reason labels for the serial boot log and authenticated status API.
+
 src/display.cpp
   FastLED setup, matrix coordinate mapping, text/icon drawing, page rendering,
   brightness handling, and test pattern.
