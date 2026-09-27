@@ -7,34 +7,30 @@ ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, dat
 Current firmware version: `0.1.19`
 Current LittleFS web interface version: `0.1.16`
 
-Firmware 0.1.19 fixes DWD weather: Bright Sky may report the icon `wind` or none
-at all, which showed as "no weather data"; precipitation and cloud cover now
-provide the symbol. The Let's Encrypt root certificates now cover the 2026
-certificate chains, and connection errors name their cause. Open-Meteo can use
-the forecast model of a specific weather service (e.g. DWD ICON). Web UI 0.1.16 opens
-the setup assistant only while no Wi-Fi is saved on the clock and replaces the
-admin password popup with the setup card on the overview.
+### New in this version
 
-Firmware 0.1.18 and web UI 0.1.15 make the first setup and handing the clock on
-easier: the setup Wi-Fi gets a per-device name and opens the web UI by itself
-(captive portal), the test pattern works before Wi-Fi is configured, the clock
-leaves setup mode on its own once the saved Wi-Fi is back, and a factory reset
-(web UI or 10 s on the BOOT button) erases all data. The admin password is stored
-as a salted hash and failed logins are throttled. The web UI adds a live view of
-the matrix, instant preview of display changes and settings export/import.
+- **Easy first setup:** After joining the setup Wi-Fi the setup page opens by itself and an
+  assistant guides you through every step.
+- **Hand the clock on:** A factory reset in the web interface or with the BOOT button erases all data.
+- **Modern web interface** with tabs, live view of the matrix, instant preview, light/dark mode
+  and settings export/import.
+- **Weather:** Open-Meteo with a selectable weather model (e.g. DWD ICON); DWD / Bright Sky
+  reliably shows a weather symbol again.
+- **Security:** The admin password is stored only as a hash, logins lock after failed attempts.
 
-Downgrading to firmware 0.1.17 or older resets the admin login to
-`admin` / `pixelclock`, because older firmware cannot read the hashed password.
+Important: Going back to firmware 0.1.17 or older resets the admin login to
+`admin` / `pixelclock`. Older notes are under [Release notes](#release-notes).
 
-Version 0.1.17 fixes a watchdog risk when a weather response stalls. Network
-reads now yield and have a total response deadline. The web UI shows uptime,
-the last boot reason and memory reserves under `System`. If the greeting returns,
-check the boot reason there before disconnecting power; see
-[restart diagnosis](docs/PERFORMANCE.md#restart-diagnosis-in-0117).
+## Quick Start
 
-Web UI 0.1.14 adds a guided setup assistant for the first start and a redesigned
-tab-based interface with automatic light/dark mode. It only uses the existing
-firmware API and does not require a firmware update.
+1. **Flash once over USB:** Upload firmware and web interface with PlatformIO, see
+   [Install the software](#2-install-the-software-once-over-usb).
+2. **Connect to the clock:** On your phone choose the Wi-Fi `PixelClock-Setup-XXXXXX`
+   (password `pixelclock`). The setup page opens automatically.
+3. **Follow the assistant:** Log in with `admin` / `pixelclock` and follow the steps.
+   Afterwards the clock runs in your Wi-Fi at `http://pixelclock.local`.
+
+The detailed guide is under [First Setup](#first-setup).
 
 ## Features
 
@@ -172,36 +168,83 @@ and all persisted data. Flash firmware and the web UI again afterwards:
 
 ## First Setup
 
-1. Start the ESP32.
-2. If the clock does not know a Wi-Fi network yet, connect to `PixelClock-Setup-XXXXXX` (password `pixelclock`).
-3. The setup page usually opens automatically; otherwise open `http://192.168.4.1`.
-4. Log in with `admin` / `pixelclock`.
-5. The setup assistant opens automatically and guides you through six steps:
-   language, Wi-Fi (network scan, 2.4 GHz only), LED matrix with wiring diagram
-   and test pattern, city and weather service, new admin password, summary.
-6. Press `Save and finish`. If needed, the clock restarts and the assistant shows
-   the new address. Reconnect your phone or PC to your home Wi-Fi; the assistant
-   detects when the clock is reachable again.
+This guide takes you from the wired clock to a running display. Allow about 10 minutes.
 
-The assistant only opens by itself while no Wi-Fi is saved on the clock, i.e.
-on the first start or after a factory reset. On a configured clock it never pops
-up after login; start it manually under `System` whenever you like. Every setting
-also remains available on its own tab.
+### 1. What you need
 
-After a successful Wi-Fi connection, the interface is usually reachable at:
+- the clock: an ESP32 with the LED matrix and its own 5 V power supply (see [Hardware](#hardware)),
+- a PC with a USB cable for the first upload,
+- a phone, tablet or laptop with Wi-Fi,
+- the name and password of your Wi-Fi. The clock supports **2.4 GHz networks** only.
 
-```text
-http://pixelclock.local
-```
+### 2. Install the software (once, over USB)
 
-If you changed the browser address, use:
+1. Install [PlatformIO](https://platformio.org/), most easily as a VS Code extension.
+2. Download this project and open the folder in VS Code.
+3. Connect the ESP32 over USB.
+4. Upload firmware and web interface, either on Windows with the helper script
 
-```text
-http://<your-hostname>.local
-```
+   ```powershell
+   .\flash-pixel-clock.cmd
+   ```
 
-Routers usually list the device as `pixelclock-xxxxxx`, where `xxxxxx` is built
-from the last three bytes of the ESP32 MAC address.
+   or in a terminal in the project folder with
+
+   ```powershell
+   pio run --target upload
+   pio run --target uploadfs
+   ```
+
+The clock then starts. The matrix briefly shows `HELLO` and then alternates between `WIFI`,
+`AP` and a six-character id such as `A1B2C3`. This means the clock is waiting to be set up.
+Later updates do not need USB, see [Install updates](#5-install-updates).
+
+### 3. Set up the clock
+
+1. **Join the setup Wi-Fi.** In the Wi-Fi settings of your phone or laptop choose
+   `PixelClock-Setup-XXXXXX`, where `XXXXXX` is the id on the matrix. The password is `pixelclock`.
+2. **Open the setup page.** It usually opens automatically ("Sign in to network"). If not,
+   enter `http://192.168.4.1` in the browser. A "No internet" notice is normal here.
+3. **Log in** with user `admin` and password `pixelclock`.
+4. **Follow the assistant.** It opens by itself and has six steps:
+   - **Language:** German or English. The weekdays on the clock follow this choice.
+   - **Wi-Fi:** Tap your network in the list and enter the Wi-Fi password. If it is missing,
+     tap `Search` or type the name yourself.
+   - **LED matrix:** The defaults fit most 32×8 matrices. `Apply and show test pattern`
+     shows a rainbow starting with red on the left. Mirrored? Change the start corner.
+     Fragmented? Change the wiring. The diagram shows how the signal runs through the LEDs.
+   - **Location and weather:** Enter your city and choose a weather service without an API
+     key; Open-Meteo is recommended. Also choose °C or °F and the 12 or 24-hour format.
+   - **Secure access:** Set your own admin password with at least 8 characters. This is
+     strongly recommended; if needed, choose `Change later`.
+   - **Summary:** Check everything and tap `Save and finish`.
+5. **Back to your own Wi-Fi.** The clock restarts and joins your Wi-Fi; the setup Wi-Fi
+   disappears. Reconnect your phone to your normal Wi-Fi. The assistant reports
+   `Clock found!` as soon as the clock is reachable and offers a link.
+
+If the clock does not connect, the Wi-Fi password was usually wrong or the network is a
+5 GHz network. After about 20 seconds the clock opens the setup Wi-Fi again; repeat from step 1.
+
+### 4. After the setup
+
+- In your Wi-Fi the web interface is at `http://pixelclock.local`, or `http://<your-name>.local`
+  if you changed the browser address.
+- If `.local` does not work (some Android devices), look up the clock's IP address in your
+  router, where it is listed as `pixelclock-XXXXXX`.
+- Log in with `admin` and your new password.
+- Every setting can be changed on its own tab at any time. You can start the assistant again
+  under `System`; it only opens by itself on a new or reset clock.
+- Tip: Export your settings to a file under `System` > `Back up settings`.
+
+### 5. Install updates
+
+1. Download `pixel-clock-firmware-vX.Y.Z.bin` and `pixel-clock-littlefs-vX.Y.Z.bin` from the
+   [release page](https://github.com/mBlinkii/PixelClock/releases/latest).
+2. In the web interface open `System` > `Firmware update`.
+3. Select the firmware file first and press `Update firmware`. The clock restarts.
+4. Then select the web interface file and press `Update web interface`.
+
+Do not disconnect power during an update. Settings are kept.
 
 ## Using the Web Interface
 
@@ -408,6 +451,37 @@ pio run --target uploadfs
 ```powershell
 .\flash-pixel-clock.cmd -Port COM5
 ```
+
+## Release Notes
+
+Firmware 0.1.19 fixes DWD weather: Bright Sky may report the icon `wind` or none
+at all, which showed as "no weather data"; precipitation and cloud cover now
+provide the symbol. The Let's Encrypt root certificates now cover the 2026
+certificate chains, and connection errors name their cause. Open-Meteo can use
+the forecast model of a specific weather service (e.g. DWD ICON). Web UI 0.1.16 opens
+the setup assistant only while no Wi-Fi is saved on the clock and replaces the
+admin password popup with the setup card on the overview.
+
+Firmware 0.1.18 and web UI 0.1.15 make the first setup and handing the clock on
+easier: the setup Wi-Fi gets a per-device name and opens the web UI by itself
+(captive portal), the test pattern works before Wi-Fi is configured, the clock
+leaves setup mode on its own once the saved Wi-Fi is back, and a factory reset
+(web UI or 10 s on the BOOT button) erases all data. The admin password is stored
+as a salted hash and failed logins are throttled. The web UI adds a live view of
+the matrix, instant preview of display changes and settings export/import.
+
+Downgrading to firmware 0.1.17 or older resets the admin login to
+`admin` / `pixelclock`, because older firmware cannot read the hashed password.
+
+Version 0.1.17 fixes a watchdog risk when a weather response stalls. Network
+reads now yield and have a total response deadline. The web UI shows uptime,
+the last boot reason and memory reserves under `System`. If the greeting returns,
+check the boot reason there before disconnecting power; see
+[restart diagnosis](docs/PERFORMANCE.md#restart-diagnosis-in-0117).
+
+Web UI 0.1.14 adds a guided setup assistant for the first start and a redesigned
+tab-based interface with automatic light/dark mode. It only uses the existing
+firmware API and does not require a firmware update.
 
 ## Development
 

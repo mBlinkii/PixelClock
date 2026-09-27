@@ -7,41 +7,30 @@ ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datu
 Aktuelle Firmware-Version: `0.1.19`
 Aktuelle LittleFS-Weboberflächen-Version: `0.1.16`
 
-Firmware 0.1.19 behebt DWD-Wetter: Bright Sky meldet als Icon teils `wind` oder
-gar keines, was als „Noch keine Wetterdaten“ erschien; jetzt liefern Niederschlag
-und Bewölkung das Symbol. Die Let's-Encrypt-Wurzelzertifikate decken die neuen
-Zertifikatsketten von 2026 ab, und Verbindungsfehler nennen ihre Ursache.
-Open-Meteo kann das Vorhersagemodell eines bestimmten Wetterdienstes nutzen
-(z. B. DWD ICON).
-Weboberfläche 0.1.16 öffnet den Einrichtungsassistenten nur, solange auf der Uhr
-kein WLAN gespeichert ist, und ersetzt das Admin-Passwort-Popup durch die
-Einrichtungskarte auf der Übersicht.
+### Neu in dieser Version
 
-Firmware 0.1.18 und Weboberfläche 0.1.15 erleichtern die erste Einrichtung und
-das Weitergeben der Uhr: Das Setup-WLAN hat einen Namen pro Gerät und öffnet die
-Weboberfläche von selbst (Captive Portal), das Testmuster funktioniert schon vor
-der WLAN-Einrichtung, die Uhr verlässt den Setup-Modus selbstständig, sobald das
-gespeicherte WLAN wieder da ist, und ein Werksreset (Weboberfläche oder 10 s
-BOOT-Taste) löscht alle Daten. Das Admin-Passwort wird als gesalzener Hash
-gespeichert, fehlgeschlagene Logins werden gebremst. Die Weboberfläche zeigt die
-Matrix live, übernimmt Anzeige-Änderungen sofort als Vorschau und kann
-Einstellungen exportieren und importieren.
+- **Einfache Ersteinrichtung:** Nach dem Verbinden mit dem Setup-WLAN öffnet sich die
+  Einrichtungsseite von selbst, ein Assistent führt durch alle Schritte.
+- **Uhr weitergeben:** Werksreset in der Weboberfläche oder per BOOT-Taste löscht alle Daten.
+- **Moderne Weboberfläche** mit Tabs, Live-Ansicht der Matrix, Sofort-Vorschau,
+  Hell-/Dunkelmodus und Export/Import der Einstellungen.
+- **Wetter:** Open-Meteo mit wählbarem Wettermodell (z. B. DWD ICON); DWD / Bright Sky
+  zeigt wieder zuverlässig ein Wettersymbol.
+- **Sicherheit:** Admin-Passwort nur noch als Hash gespeichert, Login-Sperre nach Fehlversuchen.
 
-Ein Wechsel zurück auf Firmware 0.1.17 oder älter setzt den Admin-Login auf
-`admin` / `pixelclock` zurück, weil ältere Firmware das gehashte Passwort nicht
-lesen kann.
+Wichtig: Ein Wechsel zurück auf Firmware 0.1.17 oder älter setzt den Admin-Login auf
+`admin` / `pixelclock` zurück. Ältere Hinweise stehen unter [Versionshinweise](#versionshinweise).
 
-Version 0.1.17 behebt ein Watchdog-Risiko bei stockenden Wetterantworten.
-Netzwerk-Lesevorgänge geben jetzt regelmäßig Rechenzeit frei und haben eine
-Gesamtfrist. Die Weboberfläche zeigt unter `System` die Laufzeit, den letzten
-Startgrund und Speicherreserven. Erscheint die Begrüßung erneut, den Startgrund
-vor dem Trennen der Stromversorgung ablesen; siehe
-[Neustartdiagnose](docs/PERFORMANCE.md#restart-diagnosis-in-0117).
+## Schnellstart
 
-Weboberfläche 0.1.14 bringt einen Einrichtungsassistenten für den ersten Start
-und eine neu gestaltete Oberfläche mit Bereichs-Tabs sowie automatischem Hell-/
-Dunkelmodus. Sie nutzt nur die vorhandene Firmware-API und braucht kein
-Firmware-Update.
+1. **Einmalig per USB aufspielen:** Firmware und Weboberfläche mit PlatformIO auf den ESP32
+   laden, siehe [Software aufspielen](#2-software-aufspielen-einmalig-per-usb).
+2. **Mit der Uhr verbinden:** Am Handy das WLAN `PixelClock-Setup-XXXXXX` wählen
+   (Passwort `pixelclock`). Die Einrichtungsseite öffnet sich automatisch.
+3. **Assistent durchklicken:** Mit `admin` / `pixelclock` anmelden und den Schritten folgen.
+   Danach läuft die Uhr in deinem WLAN unter `http://pixelclock.local`.
+
+Die ausführliche Anleitung steht unter [Erste Einrichtung](#erste-einrichtung).
 
 ## Funktionen
 
@@ -180,37 +169,89 @@ OTA-Slots und alle gespeicherten Daten verloren. Danach Firmware und Weboberflae
 
 ## Erste Einrichtung
 
-1. ESP32 starten.
-2. Falls die Uhr noch kein WLAN kennt, mit `PixelClock-Setup-XXXXXX` verbinden (Passwort `pixelclock`).
-3. Die Einrichtungsseite öffnet sich meist automatisch, sonst `http://192.168.4.1` öffnen.
-4. Mit `admin` / `pixelclock` anmelden.
-5. Der Einrichtungsassistent öffnet sich automatisch und führt durch sechs Schritte:
-   Sprache, WLAN (Netzwerksuche, nur 2,4 GHz), LED-Matrix mit Verkabelungsdiagramm
-   und Testmuster, Stadt und Wetterdienst, neues Admin-Passwort, Zusammenfassung.
-6. `Speichern und abschließen` drücken. Falls nötig, startet die Uhr neu und der
-   Assistent zeigt die neue Adresse. Handy oder PC wieder mit dem eigenen WLAN
-   verbinden; der Assistent erkennt, sobald die Uhr erreichbar ist.
+Diese Anleitung führt von der fertig verkabelten Uhr bis zur laufenden Anzeige.
+Rechne mit etwa 10 Minuten.
 
-Der Assistent öffnet sich nur von selbst, solange auf der Uhr kein WLAN
-gespeichert ist, also beim ersten Start oder nach einem Werksreset. Bei einer
-eingerichteten Uhr erscheint er nach dem Login nie; du kannst ihn jederzeit
-manuell unter `System` starten. Alle Einstellungen bleiben zusätzlich einzeln in
-den Tabs erreichbar.
+### 1. Das brauchst du
 
-Nach erfolgreicher WLAN-Verbindung ist die Oberfläche normalerweise erreichbar unter:
+- die Uhr: ESP32 mit angeschlossener LED-Matrix und eigenem 5-V-Netzteil (siehe [Hardware](#hardware)),
+- einen PC mit USB-Kabel für das erste Aufspielen,
+- ein Handy, Tablet oder Notebook mit WLAN,
+- den Namen und das Passwort deines WLANs. Die Uhr unterstützt nur **2,4-GHz-Netze**.
 
-```text
-http://pixelclock.local
-```
+### 2. Software aufspielen (einmalig per USB)
 
-Wenn du die Browser-Adresse geändert hast, verwende entsprechend:
+1. [PlatformIO](https://platformio.org/) installieren, am einfachsten als Erweiterung für VS Code.
+2. Dieses Projekt herunterladen und den Ordner in VS Code öffnen.
+3. ESP32 per USB anschließen.
+4. Firmware und Weboberfläche aufspielen, entweder unter Windows mit dem Hilfsskript
 
-```text
-http://<dein-hostname>.local
-```
+   ```powershell
+   .\flash-pixel-clock.cmd
+   ```
 
-Im Router wird das Gerät normalerweise als `pixelclock-xxxxxx` angezeigt. Dabei
-entsteht `xxxxxx` aus den letzten drei Bytes der ESP32-MAC-Adresse.
+   oder in einem Terminal im Projektordner mit
+
+   ```powershell
+   pio run --target upload
+   pio run --target uploadfs
+   ```
+
+Danach startet die Uhr. Die Matrix zeigt kurz `HELLO` und dann abwechselnd `WIFI`, `AP`
+und eine sechsstellige Kennung wie `A1B2C3`. Das bedeutet: Die Uhr wartet auf die Einrichtung.
+Spätere Updates brauchen kein USB mehr, siehe [Updates einspielen](#5-updates-einspielen).
+
+### 3. Uhr einrichten
+
+1. **Mit dem Setup-WLAN verbinden.** Am Handy oder Notebook in den WLAN-Einstellungen
+   `PixelClock-Setup-XXXXXX` wählen. `XXXXXX` ist die Kennung von der Matrix.
+   Das Passwort lautet `pixelclock`.
+2. **Einrichtungsseite öffnen.** Meist öffnet sich die Seite automatisch („Im Netzwerk
+   anmelden“). Falls nicht, im Browser `http://192.168.4.1` eingeben. Die Meldung
+   „Kein Internet“ ist hier normal.
+3. **Anmelden** mit Benutzer `admin` und Passwort `pixelclock`.
+4. **Dem Assistenten folgen.** Er öffnet sich von selbst und hat sechs Schritte:
+   - **Sprache:** Deutsch oder Englisch. Auch die Wochentage auf der Uhr folgen dieser Wahl.
+   - **WLAN:** Dein Netz aus der Liste antippen und das WLAN-Passwort eingeben.
+     Steht dein Netz nicht in der Liste, auf `Suchen` tippen oder den Namen selbst eintragen.
+   - **LED-Matrix:** Die Vorgaben passen für die meisten 32×8-Matrizen. Mit
+     `Übernehmen und Testmuster zeigen` erscheint ein Regenbogen, links beginnend mit Rot.
+     Ist er gespiegelt, die Start-Ecke ändern; ist er zerstückelt, die Verkabelung ändern.
+     Das Diagramm zeigt, wie das Signal durch die LEDs läuft.
+   - **Standort und Wetter:** Deine Stadt eintragen. Wetterdienst ohne API-Key wählen,
+     empfohlen ist Open-Meteo. Dazu Temperatur in °C oder °F und 12- oder 24-Stunden-Format.
+   - **Zugang absichern:** Ein eigenes Admin-Passwort mit mindestens 8 Zeichen festlegen.
+     Das empfehlen wir dringend; notfalls geht es später über `Später ändern`.
+   - **Zusammenfassung:** Alles prüfen und `Speichern und abschließen` tippen.
+5. **Zurück ins eigene WLAN.** Die Uhr startet neu und verbindet sich mit deinem WLAN. Das
+   Setup-WLAN verschwindet. Verbinde dein Handy wieder mit deinem normalen WLAN. Der
+   Assistent meldet `Uhr gefunden!`, sobald die Uhr erreichbar ist, und bietet einen Link an.
+
+Verbindet sich die Uhr nicht, war meist das WLAN-Passwort falsch oder das Netz ist ein
+5-GHz-Netz. Nach etwa 20 Sekunden öffnet die Uhr wieder das Setup-WLAN; dann ab Schritt 1
+wiederholen.
+
+### 4. Nach der Einrichtung
+
+- Die Weboberfläche erreichst du im eigenen WLAN unter `http://pixelclock.local`. Hast du die
+  Browser-Adresse geändert, unter `http://<dein-name>.local`.
+- Klappt `.local` nicht (manche Android-Geräte), die IP-Adresse der Uhr im Router nachsehen.
+  Dort heißt sie `pixelclock-XXXXXX`.
+- Anmelden mit `admin` und deinem neuen Passwort.
+- Alle Einstellungen lassen sich jederzeit einzeln in den Tabs ändern. Den Assistenten
+  kannst du unter `System` erneut starten; von selbst erscheint er nur bei einer neuen oder
+  zurückgesetzten Uhr.
+- Tipp: Unter `System` > `Einstellungen sichern` die Einstellungen als Datei exportieren.
+
+### 5. Updates einspielen
+
+1. Auf der [Release-Seite](https://github.com/mBlinkii/PixelClock/releases/latest) die beiden
+   Dateien `pixel-clock-firmware-vX.Y.Z.bin` und `pixel-clock-littlefs-vX.Y.Z.bin` herunterladen.
+2. In der Weboberfläche `System` > `Firmware-Update` öffnen.
+3. Zuerst die Firmware-Datei auswählen und `Firmware aktualisieren` drücken. Die Uhr startet neu.
+4. Danach die Weboberflächen-Datei auswählen und `Weboberfläche aktualisieren` drücken.
+
+Während eines Updates die Stromversorgung nicht trennen. Einstellungen bleiben erhalten.
 
 ## Bedienung der Weboberfläche
 
@@ -422,6 +463,44 @@ pio run --target uploadfs
 ```powershell
 .\flash-pixel-clock.cmd -Port COM5
 ```
+
+## Versionshinweise
+
+Firmware 0.1.19 behebt DWD-Wetter: Bright Sky meldet als Icon teils `wind` oder
+gar keines, was als „Noch keine Wetterdaten“ erschien; jetzt liefern Niederschlag
+und Bewölkung das Symbol. Die Let's-Encrypt-Wurzelzertifikate decken die neuen
+Zertifikatsketten von 2026 ab, und Verbindungsfehler nennen ihre Ursache.
+Open-Meteo kann das Vorhersagemodell eines bestimmten Wetterdienstes nutzen
+(z. B. DWD ICON).
+Weboberfläche 0.1.16 öffnet den Einrichtungsassistenten nur, solange auf der Uhr
+kein WLAN gespeichert ist, und ersetzt das Admin-Passwort-Popup durch die
+Einrichtungskarte auf der Übersicht.
+
+Firmware 0.1.18 und Weboberfläche 0.1.15 erleichtern die erste Einrichtung und
+das Weitergeben der Uhr: Das Setup-WLAN hat einen Namen pro Gerät und öffnet die
+Weboberfläche von selbst (Captive Portal), das Testmuster funktioniert schon vor
+der WLAN-Einrichtung, die Uhr verlässt den Setup-Modus selbstständig, sobald das
+gespeicherte WLAN wieder da ist, und ein Werksreset (Weboberfläche oder 10 s
+BOOT-Taste) löscht alle Daten. Das Admin-Passwort wird als gesalzener Hash
+gespeichert, fehlgeschlagene Logins werden gebremst. Die Weboberfläche zeigt die
+Matrix live, übernimmt Anzeige-Änderungen sofort als Vorschau und kann
+Einstellungen exportieren und importieren.
+
+Ein Wechsel zurück auf Firmware 0.1.17 oder älter setzt den Admin-Login auf
+`admin` / `pixelclock` zurück, weil ältere Firmware das gehashte Passwort nicht
+lesen kann.
+
+Version 0.1.17 behebt ein Watchdog-Risiko bei stockenden Wetterantworten.
+Netzwerk-Lesevorgänge geben jetzt regelmäßig Rechenzeit frei und haben eine
+Gesamtfrist. Die Weboberfläche zeigt unter `System` die Laufzeit, den letzten
+Startgrund und Speicherreserven. Erscheint die Begrüßung erneut, den Startgrund
+vor dem Trennen der Stromversorgung ablesen; siehe
+[Neustartdiagnose](docs/PERFORMANCE.md#restart-diagnosis-in-0117).
+
+Weboberfläche 0.1.14 bringt einen Einrichtungsassistenten für den ersten Start
+und eine neu gestaltete Oberfläche mit Bereichs-Tabs sowie automatischem Hell-/
+Dunkelmodus. Sie nutzt nur die vorhandene Firmware-API und braucht kein
+Firmware-Update.
 
 ## Entwicklung
 
