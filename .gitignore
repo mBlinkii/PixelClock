@@ -12,10 +12,6 @@
 *.elf
 *.map
 data/*.gz
-tools/*
-!tools/reset-pixel-clock.ps1
-build-pixel-clock.cmd
-flash-pixel-clock.cmd
 
 # OS/editor noise.
 .DS_Store
