@@ -9,6 +9,11 @@ Use this before publishing a release or pushing a public branch.
 - Keep existing `/api/update/firmware` and `/api/update/web` routes working.
 - For changed web/API contracts, keep old routes as aliases or add `/api/status` capability detection.
 - Run `pio run`.
+- Platform and library versions are pinned in `platformio.ini`. Update them
+  deliberately, rebuild and keep the firmware below the 1,507,328-byte OTA slot
+  (FastLED 3.10.5, for example, grows it to about 1.64 MB and no longer fits).
+- Make sure the `PlatformIO` workflow is green on the commit you tag; the
+  `Release` workflow only builds and does not run the tests.
 - Run `.\build-pixel-clock.cmd` when you need the two versioned upload binaries in `dist/`.
 - Flash firmware with `pio run --target upload` when firmware changed.
 - Flash LittleFS with `pio run --target uploadfs` when files in `data/` changed.

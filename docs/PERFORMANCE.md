@@ -127,8 +127,11 @@ No current-consumption percentage is claimed without a physical measurement.
 
 ## Firmware 0.1.18-0.1.19 / web UI 0.1.15-0.1.16
 
-- Firmware: 1,248,201 bytes flash (82.8% of the OTA slot, +26 KB against 0.1.17)
-  and 56,724 bytes static RAM. The web assets are 212,956 bytes uncompressed /
+- Firmware: 1,249,389 bytes flash (82.9% of the OTA slot, +27 KB against 0.1.17)
+  and 56,724 bytes static RAM with the pinned libraries (FastLED 3.10.3,
+  ArduinoJson 7.4.3, AsyncTCP 3.5.0, ESPAsyncWebServer 3.12.1, espressif32
+  7.0.0). FastLED 3.10.5 no longer compiled the frame comparison (ambiguous
+  `fl::memcmp`) and, once fixed, produced 1,642,989 bytes, which exceeds the slot. The web assets are 212,956 bytes uncompressed /
   54,672 bytes gzip in seven files; the LittleFS image stays 1,114,112 bytes.
 - The setup AP runs a DNS server only while it is active; `loop()` calls it
   every iteration. Station retries run every 60 s and pause while a device is
