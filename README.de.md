@@ -11,6 +11,8 @@ Firmware 0.1.19 behebt DWD-Wetter: Bright Sky meldet als Icon teils `wind` oder
 gar keines, was als „Noch keine Wetterdaten“ erschien; jetzt liefern Niederschlag
 und Bewölkung das Symbol. Die Let's-Encrypt-Wurzelzertifikate decken die neuen
 Zertifikatsketten von 2026 ab, und Verbindungsfehler nennen ihre Ursache.
+Open-Meteo kann das Vorhersagemodell eines bestimmten Wetterdienstes nutzen
+(z. B. DWD ICON).
 Weboberfläche 0.1.16 öffnet den Einrichtungsassistenten nur, solange auf der Uhr
 kein WLAN gespeichert ist, und ersetzt das Admin-Passwort-Popup durch die
 Einrichtungskarte auf der Übersicht.
@@ -249,7 +251,7 @@ Die tatsächliche Stromersparnis hängt von Matrix, Helligkeit und Access Point 
 
 | Anbieter | API-Key | Daten |
 | --- | --- | --- |
-| Open-Meteo | Nein | Weltweite Vorhersage, Tages-Min/Max |
+| Open-Meteo | Nein | Weltweite Vorhersage, Tages-Min/Max; optional Modell eines nationalen Wetterdienstes |
 | DWD / Bright Sky | Nein | Stationsdaten, hauptsächlich Deutschland; kein Tages-Min/Max; Symbol notfalls aus Niederschlag und Bewölkung |
 | MET Norway | Nein | Weltweite Vorhersage; kein Tages-Min/Max |
 | OpenWeatherMap | Ja | Aktuelles Wetter; Min/Max der aktuellen Umgebung |
@@ -259,7 +261,13 @@ Für WeatherAPI einen eigenen Schlüssel unter `Ort und Wetter` hinterlegen. Ges
 
 MET-Norway-Daten stammen vom [Norwegischen Meteorologischen Institut](https://www.met.no/) unter [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); Temperaturen werden gerundet und Symbole zugeordnet. Die Firmware beachtet `Expires` und nutzt `If-Modified-Since`. [API-Nutzungsregeln](https://docs.api.met.no/doc/TermsOfService), [WeatherAPI-Dokumentation](https://www.weatherapi.com/docs/).
 
-Standard ist Open-Meteo. Dafür ist kein API-Key nötig.
+Standard ist Open-Meteo. Dafür ist kein API-Key nötig. Unter `Wetter` >
+`Wettermodell` bleibt entweder die automatische Modellwahl aktiv, oder du wählst
+das Vorhersagemodell eines Wetterdienstes: DWD ICON (Deutschland), ECMWF IFS,
+MeteoSwiss, GeoSphere Austria, Météo-France, KNMI, DMI, UK Met Office, MET Nordic,
+ItaliaMeteo ARPAE, NOAA GFS, Environment Canada GEM oder JMA. Landesmodelle sind
+in ihrer Region meist am genauesten. Anders als DWD / Bright Sky (Stationsmesswerte)
+ist DWD ICON über Open-Meteo eine Vorhersage mit Tages-Min/Max.
 
 Der Anbieter `Deutscher Wetterdienst (DWD)` nutzt die Bright-Sky-JSON-API
 für offene DWD-Wetterdaten und braucht ebenfalls keinen API-Key. Bright Sky

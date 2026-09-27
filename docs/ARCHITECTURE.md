@@ -265,6 +265,9 @@ If a matrix looks mirrored or scrambled, inspect `xy()`, `wiringMode`, and
 ## Weather And Time
 
 - Open-Meteo is the default weather provider and does not need an API key.
+  `weatherModel` (NVS `wModel`) adds `&models=<id>`; ids are allow-listed in
+  `src/weather_models.h` and mirrored by `openMeteoModels` in `data/app.js`
+  (a UI test compares both lists). Empty means Open-Meteo's best_match.
 - OpenWeatherMap needs a user-provided API key.
 - DWD weather uses the Bright Sky JSON API for DWD open weather data and does
   not need an API key. Its `icon` may be `wind` or null; `condition` and

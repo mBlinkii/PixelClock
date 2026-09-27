@@ -8,6 +8,7 @@
 #include <time.h>
 #include "weather_data.h"
 #include "admin_auth.h"
+#include "weather_models.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
@@ -69,6 +70,8 @@ struct AppConfig {
   float longitude = 13.41;
   uint8_t weatherProvider = WEATHER_PROVIDER_OPEN_METEO;
   uint8_t weatherIntervalHalfHours = DEFAULT_WEATHER_INTERVAL_HALF_HOURS;
+  // Open-Meteo model id from weather_models.h; empty uses best_match.
+  String weatherModel;
   String openWeatherApiKey;
   String weatherApiKey;
   String resolvedCityName;

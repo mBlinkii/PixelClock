@@ -220,3 +220,16 @@ test('the assistant opens on its own only while the clock has no saved Wi-Fi', (
   assert.equal(h.run('isFirstSetup()'), false);
   assert.equal(h.run('setupIncomplete()'), false);
 });
+
+test('the Open-Meteo model is saved with the form and named in the weather card', () => {
+  const h = harness();
+  h.element('weatherModel').value = 'icon_seamless';
+  assert.equal(h.run('formBody()').get('weatherModel'), 'icon_seamless');
+  assert.equal(h.run('weatherModelLabel("icon_seamless")'), 'DWD ICON');
+  assert.equal(h.run('weatherModelLabel("")'), '');
+  assert.equal(h.run('weatherModelLabel("unknown")'), '');
+  const ids = h.run('openMeteoModels.map(([id]) => id).join()');
+  const firmware = fs.readFileSync('src/weather_models.h', 'utf8');
+  const firmwareIds = [...firmware.matchAll(/^\s*"([a-z0-9_]+)",/gm)].map((match) => match[1]);
+  assert.deepEqual(ids.split(',').slice(1), firmwareIds);
+});

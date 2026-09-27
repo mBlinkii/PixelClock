@@ -6,6 +6,7 @@
 #include "../src/weather_decode.h"
 #include "../src/cooperative_reader.h"
 #include "../src/admin_auth.h"
+#include "../src/weather_models.h"
 
 struct TestClock {
   static inline uint32_t time = 0, pauses = 0;
@@ -216,6 +217,8 @@ int main() {
   assert(night.weatherCode == 2 && !night.isDay);
   assert(parse(R"({"weather":{"temperature":9,"icon":null,"condition":null,"cloud_cover":null}})", 2).weatherCode == -1);
   assert(normalizeBrightSkyCondition("hail", NAN) == 77);
+  assert(isOpenMeteoModel("") && isOpenMeteoModel("icon_seamless") && isOpenMeteoModel("jma_seamless"));
+  assert(!isOpenMeteoModel("bom_access_global") && !isOpenMeteoModel("icon_seamless&x=1"));
   auto met = parse(R"({"time":"2026-09-11T10:00:00Z","data":{"instant":{"details":{"air_temperature":12.5}},"next_1_hours":{"summary":{"symbol_code":"lightrainshowers_night"}}}})", 3);
   assert(met.temperature == 12.5 && met.weatherCode == 80 && !met.isDay && std::isnan(met.temperatureMax));
   auto fallback = parse(R"({"data":{"instant":{"details":{"air_temperature":6}},"next_6_hours":{"summary":{"symbol_code":"snow"}}}})", 3);

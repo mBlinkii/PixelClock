@@ -299,6 +299,7 @@ static bool requestWeather(const AppConfig &source, WeatherState &sample) {
     url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(source.latitude, 4) +
       "&longitude=" + String(source.longitude, 4) +
       "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1";
+    if (!source.weatherModel.isEmpty()) url += "&models=" + source.weatherModel;
   }
   WiFiClientSecure client;
   configureWeatherClient(client, source.weatherProvider);

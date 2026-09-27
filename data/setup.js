@@ -50,7 +50,7 @@ function pullWizardFields(root) {
     } else if (el.type === "checkbox") {
       el.checked = source.checked;
     } else {
-      if (el.id === "wizardWifiCountry" || el.id === "wizardDataPin") el.innerHTML = source.innerHTML;
+      if (el.id === "wizardWifiCountry" || el.id === "wizardDataPin" || el.id === "wizardWeatherModel") el.innerHTML = source.innerHTML;
       el.value = source.value;
     }
   }
@@ -83,6 +83,7 @@ function updateWizardPasswordPlaceholder() {
 
 function updateWizardProviderFields() {
   const provider = Number($("weatherProvider").value);
+  $("wizardModelField").hidden = provider !== 0 || savedConfig?.weatherModel === undefined;
   $("wizardOwmKeyField").hidden = provider !== 1;
   $("wizardWaKeyField").hidden = provider !== 4;
   setPlaceholder($("wizardOwmKey"), hasProviderKeys[1] ? "Leer lassen zum Beibehalten" : "API-Key eingeben");

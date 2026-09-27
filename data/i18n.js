@@ -114,6 +114,8 @@ const translations = {
     "Wetteranbieter": "Weather provider",
     "Deutscher Wetterdienst (DWD)": "German Weather Service (DWD)",
     "Wetter-Intervall": "Weather interval",
+    "Wettermodell": "Weather model",
+    "Wählt das Vorhersagemodell eines Wetterdienstes. Landesmodelle sind in ihrer Region meist am genauesten.": "Selects the forecast model of a weather service. National models are usually most accurate in their region.",
     "OpenWeatherMap API-Key": "OpenWeatherMap API key",
     "LED-Matrix": "LED matrix",
     "Breite": "Width",

@@ -358,6 +358,10 @@
                     <option value="4" disabled>WeatherAPI</option>
                   </select>
                 </label>
+                <label id="weatherModelField" hidden>
+                  Wettermodell
+                  <select id="weatherModel" name="weatherModel"></select>
+                </label>
                 <label>
                   Wetter-Intervall
                   <select id="weatherIntervalHalfHours" name="weatherIntervalHalfHours"></select>
@@ -785,6 +789,10 @@
               <label class="choice wide"><input type="radio" name="wizardProvider" value="1" data-bind="weatherProvider"><span><strong>OpenWeatherMap</strong><small>Eigener API-Key nötig</small></span></label>
               <label class="choice wide"><input type="radio" name="wizardProvider" value="4" data-bind="weatherProvider"><span><strong>WeatherAPI</strong><small>Eigener API-Key nötig</small></span></label>
             </div>
+            <label id="wizardModelField" hidden>
+              Wettermodell
+              <select id="wizardWeatherModel" data-bind="weatherModel"></select>
+            </label>
             <label id="wizardOwmKeyField" hidden>
               OpenWeatherMap API-Key
               <input id="wizardOwmKey" data-bind="openWeatherApiKey" type="password" autocomplete="off" data-reveal>

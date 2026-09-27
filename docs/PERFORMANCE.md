@@ -147,6 +147,9 @@ No current-consumption percentage is claimed without a physical measurement.
   three plus one RSA-4096 signature. The embedded roots were checked against the
   live chains of all five providers and against the official PEMs from
   letsencrypt.org (identical public keys).
+- Open-Meteo model selection: all 13 allow-listed models were queried live and
+  returned temperature, weather code and daily min/max in about 580 bytes, the
+  same size as best_match. BOM ACCESS-G returned no data and is not offered.
 - The Bright Sky OpenAPI schema (2.2.9) allows `icon` values `wind` and `null`,
   which were decoded as "unknown" before; `condition` and `cloud_cover` now fill in.
 - Not yet verified on hardware: captive-portal detection on Android/iOS/Windows,

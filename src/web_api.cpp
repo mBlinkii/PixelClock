@@ -40,6 +40,7 @@ void sendConfigJson(AsyncWebServerRequest *request) {
   doc["longitude"] = c.longitude;
   doc["weatherProvider"] = c.weatherProvider;
   doc["weatherIntervalHalfHours"] = c.weatherIntervalHalfHours;
+  doc["weatherModel"] = c.weatherModel;
   doc["hasOpenWeatherApiKey"] = !c.openWeatherApiKey.isEmpty();
   doc["hasWeatherApiKey"] = !c.weatherApiKey.isEmpty();
   doc["weatherProviderMax"] = WEATHER_PROVIDER_MAX;
@@ -173,6 +174,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   const float oldLatitude = config.latitude;
   const float oldLongitude = config.longitude;
   const uint8_t oldWeatherProvider = config.weatherProvider;
+  const String oldWeatherModel = config.weatherModel;
   const String oldOpenWeatherApiKey = config.openWeatherApiKey;
   const String oldWeatherApiKey = config.weatherApiKey;
 
@@ -194,6 +196,8 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   config.cityName.trim();
   config.weatherProvider = constrain(paramValue(request, "weatherProvider", String(config.weatherProvider)).toInt(), 0, WEATHER_PROVIDER_MAX);
   config.weatherIntervalHalfHours = constrain(paramValue(request, "weatherIntervalHalfHours", String(config.weatherIntervalHalfHours)).toInt(), 1, 48);
+  const String newWeatherModel = paramValue(request, "weatherModel", config.weatherModel);
+  if (isOpenMeteoModel(newWeatherModel.c_str())) config.weatherModel = newWeatherModel;
   const String newOpenWeatherApiKey = paramValue(request, "openWeatherApiKey", "");
   if (newOpenWeatherApiKey.length() > 0) config.openWeatherApiKey = newOpenWeatherApiKey;
   const String newWeatherApiKey = paramValue(request, "weatherApiKey", "");
@@ -219,6 +223,7 @@ void handleConfigPost(AsyncWebServerRequest *request) {
   const bool weatherSourceChanged =
     oldCityName != config.cityName ||
     oldWeatherProvider != config.weatherProvider ||
+    oldWeatherModel != config.weatherModel ||
     oldOpenWeatherApiKey != config.openWeatherApiKey ||
     oldWeatherApiKey != config.weatherApiKey ||
     fabs(oldLatitude - config.latitude) > 0.0001f ||
@@ -300,6 +305,7 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   doc["language"] = config.language;
   doc["firmwareVersion"] = FIRMWARE_VERSION;
   doc["weatherProvider"] = weatherProviderName();
+  if (config.weatherProvider == WEATHER_PROVIDER_OPEN_METEO) doc["weatherModel"] = config.weatherModel;
   doc["rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   doc["lastWeatherMs"] = weather.lastFetch;
   doc["lastWeatherAttemptMs"] = weather.lastAttempt;
@@ -330,6 +336,7 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   capabilities["fullFactoryReset"] = true;
   capabilities["resetButton"] = true;
   capabilities["loginThrottle"] = true;
+  capabilities["weatherModel"] = true;
   if (isnan(weather.temperature)) {
     doc["temperature"] = nullptr;
   } else {
