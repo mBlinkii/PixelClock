@@ -4,8 +4,16 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.18`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.15`
+Aktuelle Firmware-Version: `0.1.19`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.16`
+
+Firmware 0.1.19 behebt DWD-Wetter: Bright Sky meldet als Icon teils `wind` oder
+gar keines, was als „Noch keine Wetterdaten“ erschien; jetzt liefern Niederschlag
+und Bewölkung das Symbol. Die Let's-Encrypt-Wurzelzertifikate decken die neuen
+Zertifikatsketten von 2026 ab, und Verbindungsfehler nennen ihre Ursache.
+Weboberfläche 0.1.16 öffnet den Einrichtungsassistenten nur, solange auf der Uhr
+kein WLAN gespeichert ist, und ersetzt das Admin-Passwort-Popup durch die
+Einrichtungskarte auf der Übersicht.
 
 Firmware 0.1.18 und Weboberfläche 0.1.15 erleichtern die erste Einrichtung und
 das Weitergeben der Uhr: Das Setup-WLAN hat einen Namen pro Gerät und öffnet die
@@ -15,9 +23,7 @@ gespeicherte WLAN wieder da ist, und ein Werksreset (Weboberfläche oder 10 s
 BOOT-Taste) löscht alle Daten. Das Admin-Passwort wird als gesalzener Hash
 gespeichert, fehlgeschlagene Logins werden gebremst. Die Weboberfläche zeigt die
 Matrix live, übernimmt Anzeige-Änderungen sofort als Vorschau und kann
-Einstellungen exportieren und importieren. DWD-Wetter zeigt jetzt auch dann ein
-Symbol, wenn Bright Sky `wind` oder kein Icon meldet, und die
-Let's-Encrypt-Wurzelzertifikate decken die neuen Zertifikatsketten von 2026 ab.
+Einstellungen exportieren und importieren.
 
 Ein Wechsel zurück auf Firmware 0.1.17 oder älter setzt den Admin-Login auf
 `admin` / `pixelclock` zurück, weil ältere Firmware das gehashte Passwort nicht

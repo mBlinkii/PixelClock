@@ -84,7 +84,7 @@ http.createServer(async (req, res) => {
         temperature: 22.4, temperatureMin: 16, temperatureMax: 25, temperatureUnit: 'C', weatherCode: 2,
         weatherProvider: ['Open-Meteo', 'OpenWeatherMap', 'DWD (Bright Sky)', 'MET Norway', 'WeatherAPI'][config.weatherProvider],
         weatherAgeMs: 360000, freeHeap: 156000, rssi: -48, wifiPowerSave: config.wifiPowerSave,
-        firmwareVersion: '0.1.18', uptimeMs: 90061000, resetReason: 'Task-Watchdog',
+        firmwareVersion: '0.1.19', uptimeMs: 90061000, resetReason: 'Task-Watchdog',
         minFreeHeap: 84000, networkStackFreeBytes: 4096, setupApSsid: config.setupApSsid,
         routerHostname: config.routerHostname, displayPreviewActive: Boolean(preview),
         capabilities: { asyncWifiScan: true, weatherProviderMax: 4, wifiPowerSave: true, captivePortal: true,

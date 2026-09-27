@@ -4,8 +4,15 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.18`
-Current LittleFS web interface version: `0.1.15`
+Current firmware version: `0.1.19`
+Current LittleFS web interface version: `0.1.16`
+
+Firmware 0.1.19 fixes DWD weather: Bright Sky may report the icon `wind` or none
+at all, which showed as "no weather data"; precipitation and cloud cover now
+provide the symbol. The Let's Encrypt root certificates now cover the 2026
+certificate chains, and connection errors name their cause. Web UI 0.1.16 opens
+the setup assistant only while no Wi-Fi is saved on the clock and replaces the
+admin password popup with the setup card on the overview.
 
 Firmware 0.1.18 and web UI 0.1.15 make the first setup and handing the clock on
 easier: the setup Wi-Fi gets a per-device name and opens the web UI by itself
@@ -13,9 +20,7 @@ easier: the setup Wi-Fi gets a per-device name and opens the web UI by itself
 leaves setup mode on its own once the saved Wi-Fi is back, and a factory reset
 (web UI or 10 s on the BOOT button) erases all data. The admin password is stored
 as a salted hash and failed logins are throttled. The web UI adds a live view of
-the matrix, instant preview of display changes and settings export/import. DWD
-weather now also shows a symbol when Bright Sky reports `wind` or no icon, and
-the Let's Encrypt root certificates cover the new 2026 certificate chains.
+the matrix, instant preview of display changes and settings export/import.
 
 Downgrading to firmware 0.1.17 or older resets the admin login to
 `admin` / `pixelclock`, because older firmware cannot read the hashed password.

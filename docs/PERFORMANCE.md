@@ -1,6 +1,6 @@
 # Performance and validation
 
-Firmware 0.1.18 / web UI 0.1.15.
+Firmware 0.1.19 / web UI 0.1.16.
 
 The display task yields instead of busy polling. TLS requests run in one worker
 at idle priority so CPU-heavy library operations share time with the watchdog's
@@ -125,7 +125,7 @@ No current-consumption percentage is claimed without a physical measurement.
   OTA validation are recorded below. An overnight run is still needed to assess
   the intermittent restart report.
 
-## Firmware 0.1.18 / web UI 0.1.15
+## Firmware 0.1.18-0.1.19 / web UI 0.1.15-0.1.16
 
 - Firmware: 1,248,201 bytes flash (82.8% of the OTA slot, +26 KB against 0.1.17)
   and 56,724 bytes static RAM. The web assets are 212,956 bytes uncompressed /
