@@ -15,7 +15,12 @@ struct WeatherReaderClock {
 using WeatherReader = CooperativeReader<WiFiClient, WeatherReaderClock>;
 constexpr uint32_t WEATHER_BODY_TIMEOUT_MS = 30000;
 
-static const char ISRG_ROOT_X1[] PROGMEM = R"EOF(
+// Let's Encrypt trust anchors: ISRG Root X1 plus ISRG Root X2 and the 2025
+// "Gen Y" roots Root YE (ECDSA) and Root YR (RSA). Servers moved to YE1/YR1
+// intermediates in 2026; trusting these roots directly shortens the chain
+// the ESP32 has to verify (Bright Sky: 2 instead of 4 signatures) and keeps
+// working once the cross-signatures to X1 are no longer served.
+static const char LETS_ENCRYPT_ROOTS[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
 TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
@@ -46,6 +51,62 @@ oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
 4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
 mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
 emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIICGzCCAaGgAwIBAgIQQdKd0XLq7qeAwSxs6S+HUjAKBggqhkjOPQQDAzBPMQsw
+CQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJuZXQgU2VjdXJpdHkgUmVzZWFyY2gg
+R3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBYMjAeFw0yMDA5MDQwMDAwMDBaFw00
+MDA5MTcxNjAwMDBaME8xCzAJBgNVBAYTAlVTMSkwJwYDVQQKEyBJbnRlcm5ldCBT
+ZWN1cml0eSBSZXNlYXJjaCBHcm91cDEVMBMGA1UEAxMMSVNSRyBSb290IFgyMHYw
+EAYHKoZIzj0CAQYFK4EEACIDYgAEzZvVn4CDCuwJSvMWSj5cz3es3mcFDR0HttwW
++1qLFNvicWDEukWVEYmO6gbf9yoWHKS5xcUy4APgHoIYOIvXRdgKam7mAHf7AlF9
+ItgKbppbd9/w+kHsOdx1ymgHDB/qo0IwQDAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0T
+AQH/BAUwAwEB/zAdBgNVHQ4EFgQUfEKWrt5LSDv6kviejM9ti6lyN5UwCgYIKoZI
+zj0EAwMDaAAwZQIwe3lORlCEwkSHRhtFcP9Ymd70/aTSVaYgLXTWNLxBo1BfASdW
+tL4ndQavEi51mI38AjEAi/V3bNTIZargCyzuFJ0nN6T5U6VR5CmD1/iQMVtCnwr1
+/q4AaOeMSQ+2b1tbFfLn
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIB2TCCAWCgAwIBAgIRAKQCa6LvbHwg1AR+XmWmk4AwCgYIKoZIzj0EAwMwLjEL
+MAkGA1UEBhMCVVMxDTALBgNVBAoTBElTUkcxEDAOBgNVBAMTB1Jvb3QgWUUwHhcN
+MjUwOTAzMDAwMDAwWhcNNDUwOTAyMjM1OTU5WjAuMQswCQYDVQQGEwJVUzENMAsG
+A1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZRTB2MBAGByqGSM49AgEGBSuBBAAi
+A2IABDwS/6vhrcVqcbBo+wgdI3fwn9x7DNJJOY/lTOti0vkwuRN87RhEhTH17E7X
+yFjWsPYhIPt/wzOqxTd2b+4ZJNy9ID04YywF9U5zasDVyGSNErVNtz8uSGh5izW8
+7j77GaNCMEAwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0O
+BBYEFKPIJlqOoUzQNWP8myPIOq5W809WMAoGCCqGSM49BAMDA2cAMGQCMHhMr8N9
+LdL1VQKs9BdV81r76eXRB6mtjuNjzk6/lBsPNToWLTDzGYgtQKO1jl63uAIwGV7m
+onyF377c+MM1oqVNs17sgu7F9YKZwgLmVbeOMDbKAXHtKMDLbiGllCcs8f47
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIFKTCCAxGgAwIBAgIRAOxGNJNgz0sP+KmC2Tqpyj0wDQYJKoZIhvcNAQELBQAw
+LjELMAkGA1UEBhMCVVMxDTALBgNVBAoTBElTUkcxEDAOBgNVBAMTB1Jvb3QgWVIw
+HhcNMjUwOTAzMDAwMDAwWhcNNDUwOTAyMjM1OTU5WjAuMQswCQYDVQQGEwJVUzEN
+MAsGA1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZUjCCAiIwDQYJKoZIhvcNAQEB
+BQADggIPADCCAgoCggIBANvGJnN78CTJdWL3+eGfsLN5TrNBJs+VH9hRXqRbwxu9
+sGNiB0BD1fcOxbSUQCJIM1xE13Db+5Cw1w0s0EBYsvuIP/6joF0w8cuImbgR1OGg
+YbSQ4OpzI+DG8SGuTlcE873OCS+kh3srlo6vl43M5OJg4Aeo1sfHp6kTJDoIiFBN
+JAY+OKfX/FUvYKuhjT+no49lmqmupSBI5PkBQiqrEGtWU5uxU/cQWHGu8jSjFBzn
+ZqvbNPLMXMLFxCb3WTfrJBXXjqvWG+v4bjzxjjeAtOlU7qarRDvNOyAuQYLln904
+M+faKx8hnLCpJ15ZqaEgcNlY+9MMWcC5yvL2A2j3l9+2buggZX+dOE91zYmIdawT
+vSZuVvlbRrAlLxIB6pwMBjneXCjYQ8+3BCCjssbSNpZU3hTcBDdhfAlEDlYr6pEa
+tnMdmDT5BqnKC92bd0EhM1fbLHioLccLCuievT8ZkPhZrq7Mii7gNXAcUEAR8+lz
+Yal+9zTg7C5DALyVOeG/CqfRAMn1KSHCR0NSA6P8tn/mGRlnCct5rtVCLnVySVpU
+6H1qGg3DgTOuskf8eahTMiYbI5ezPJmO5ertalskQ1utp74+eDy92PI4ftHKTbq9
+IWhH4YZKh3WnJEIt+oQvlYZbY8tpEroKrFB6PFGzrJIDRyts4HqvuH52RFj2zv/B
+AgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTADAQH/MB0GA1Ud
+DgQWBBTe51tg0CJtQCh9Pw0B/qS1UrRRlDANBgkqhkiG9w0BAQsFAAOCAgEAWHnf
+713Bdkq7t5yN2dNIgQakUb94X9WuyhMEHHkgx4oDpSUlnG0w4g94MoqaEUE31ZjR
+LU7L5LD1g9ujFHTQu8AD215AHMVQFbm6j8hQxdXHAzDajFNQnOlDJrLjzIx176oy
+AjvUtejZx2NNmdb5fd0WGVGsCdoAJ3N8ozo7ajE8t6vfxStZb4BQ9WYJGHUDrv2N
+i5tJF6CNiPnlzs3BUfECRbE4JSk+jvy8+VoGiFE8qsH/j78x2fjgQhAQFV7P7Zxy
+dBTZ1wEkNpZNW2qnaK1SKBLa+xf6E06YRIq5uaI+HWH8SY1y5VbRgzq40EKg3yxP
+06fz+uYAUIFJoLNfhwRCc3Q6pQVuMX3yAjHAes4gk4moGcLQ5p7HAh39yeylZc1J
+41sx/jKwLIkPE6Rr1Nf4pxdsxf9SA4yOEiAkDgq04DVxn8hgYFdUtBCuiuVC2heA
+EiqVEa+8QZjuw8Gj0EbHXcRd1nInvGqRS1o9Is7YBdQN57X1AYveGBNNqjICSb7c
+awuw1EawTDrs13VUlJVEsbQ0/O/1aaV73mCdOQ8azqL2KTv1Ewu1xbquE2S+kdQU
+To9TUwat3wUA6cwXh1EfpS/3fJ0aGah5hdpRyoCLDlsSn8tkrjMfFFX0viC+GxHc
+sI1ANRYvqSFC2X1VRZfDg+wD6E21BccmifG4yWc=
 -----END CERTIFICATE-----
 )EOF";
 
@@ -179,8 +240,9 @@ String timezoneFromIana(const String &iana) {
 
 void configureWeatherClient(WiFiClientSecure &client, uint8_t provider) {
   client.setCACert(provider == WEATHER_PROVIDER_MET_NORWAY ? HARICA_ROOT :
-    provider == WEATHER_PROVIDER_OPEN_WEATHER_MAP ? SECTIGO_PUBLIC_SERVER_AUTH_ROOT_R46 : ISRG_ROOT_X1);
-  client.setHandshakeTimeout(8);
+    provider == WEATHER_PROVIDER_OPEN_WEATHER_MAP ? SECTIGO_PUBLIC_SERVER_AUTH_ROOT_R46 : LETS_ENCRYPT_ROOTS);
+  // ECDSA P-384 chains are verified in software; leave room on a busy core.
+  client.setHandshakeTimeout(12);
   // WiFiClientSecure uses seconds; HTTPClient and Stream use milliseconds.
   client.setTimeout((HTTP_TIMEOUT_MS + 999) / 1000);
 }
@@ -190,6 +252,16 @@ static void prepareHttp(HTTPClient &http) {
   http.setTimeout(HTTP_TIMEOUT_MS);
   http.useHTTP10(true); // Stream JSON without chunk framing or a second body buffer.
   http.setUserAgent("PixelClock/" FIRMWARE_VERSION_TEXT " https://github.com/mBlinkii/PixelClock");
+}
+
+// Negative HTTPClient codes mean the connection or TLS handshake failed; the
+// mbedtls text tells certificate problems apart from network timeouts.
+static String connectionError(WiFiClientSecure &client, int code, const char *prefix) {
+  char tlsError[96] = {};
+  if (client.lastError(tlsError, sizeof(tlsError)) != 0 && tlsError[0]) {
+    return String(prefix) + "TLS: " + tlsError;
+  }
+  return String(prefix) + "Verbindung fehlgeschlagen (" + HTTPClient::errorToString(code) + ")";
 }
 
 // Date and Expires use the same GMT clock. Only their difference is needed.
@@ -227,6 +299,7 @@ static bool requestWeather(const AppConfig &source, WeatherState &sample) {
     url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(source.latitude, 4) +
       "&longitude=" + String(source.longitude, 4) +
       "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1";
+    if (!source.weatherModel.isEmpty()) url += "&models=" + source.weatherModel;
   }
   WiFiClientSecure client;
   configureWeatherClient(client, source.weatherProvider);
@@ -250,6 +323,11 @@ static bool requestWeather(const AppConfig &source, WeatherState &sample) {
   if (source.weatherProvider == WEATHER_PROVIDER_MET_NORWAY && code == HTTP_CODE_NOT_MODIFIED && isfinite(sample.temperature)) {
     http.end();
     return true;
+  }
+  if (code < 0) {
+    sample.lastError = connectionError(client, code, "");
+    http.end();
+    return false;
   }
   if (code != HTTP_CODE_OK) {
     sample.lastError = "HTTP " + String(code);
@@ -346,7 +424,8 @@ bool resolveCity() {
   else {
     http.addHeader("Accept-Encoding", "identity");
     const int code = http.GET();
-    if (code != HTTP_CODE_OK) error = "Geocoding HTTP " + String(code);
+    if (code < 0) error = connectionError(client, code, "Geocoding ");
+    else if (code != HTTP_CODE_OK) error = "Geocoding HTTP " + String(code);
     else {
       WeatherReader stream(http.getStream(), HTTP_TIMEOUT_MS, WEATHER_BODY_TIMEOUT_MS);
       const DeserializationError err = deserializeJson(doc, stream, DeserializationOption::Filter(filter), DeserializationOption::NestingLimit(16));

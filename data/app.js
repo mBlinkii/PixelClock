@@ -50,12 +50,29 @@ const wifiCountries = [
   ["US", "Vereinigte Staaten", "United States"]
 ];
 const fields = [
-  "ssid", "wifiCountry", "wifiPowerSave", "hostname", "cityName", "timezone", "weatherProvider", "weatherIntervalHalfHours", "width", "height", "dataPin",
+  "ssid", "wifiCountry", "wifiPowerSave", "hostname", "cityName", "timezone", "weatherProvider", "weatherModel", "weatherIntervalHalfHours", "width", "height", "dataPin",
   "brightness", "fullBrightnessUnlocked", "wiringMode", "origin", "displayMode", "colorOrder",
   "temperatureUnit", "weatherIconEnabled", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "timePageSeconds", "pageSeconds",
   "colorGradientMode", "autoPage", "selectedPage", "nightBrightness", "nightStart", "nightEnd"
 ];
 const pageNames = ["overview", "display", "weather", "hardware", "network", "system"];
+// Open-Meteo "models" ids, same list as src/weather_models.h; "" = best_match.
+const openMeteoModels = [
+  ["", "Automatisch (bestes Modell für den Ort)", "Automatic (best model for the location)"],
+  ["icon_seamless", "DWD ICON – Deutschland", "DWD ICON – Germany"],
+  ["ecmwf_ifs025", "ECMWF IFS – Europa/weltweit", "ECMWF IFS – Europe/worldwide"],
+  ["meteoswiss_icon_seamless", "MeteoSwiss – Schweiz", "MeteoSwiss – Switzerland"],
+  ["geosphere_seamless", "GeoSphere – Österreich", "GeoSphere – Austria"],
+  ["meteofrance_seamless", "Météo-France – Frankreich", "Météo-France – France"],
+  ["knmi_seamless", "KNMI – Niederlande", "KNMI – Netherlands"],
+  ["dmi_seamless", "DMI – Dänemark", "DMI – Denmark"],
+  ["ukmo_seamless", "UK Met Office – Großbritannien", "UK Met Office – United Kingdom"],
+  ["metno_seamless", "MET Nordic – Skandinavien", "MET Nordic – Scandinavia"],
+  ["italia_meteo_arpae_icon_2i", "ItaliaMeteo ARPAE – Italien", "ItaliaMeteo ARPAE – Italy"],
+  ["gfs_seamless", "NOAA GFS – USA/weltweit", "NOAA GFS – USA/worldwide"],
+  ["gem_seamless", "GEM – Kanada", "GEM – Canada"],
+  ["jma_seamless", "JMA – Japan", "JMA – Japan"]
+];
 // Visual settings the firmware can preview without saving (/api/display/preview).
 const previewFields = [
   "brightness", "nightBrightness", "fullBrightnessUnlocked", "displayMode", "temperatureUnit", "weatherIconEnabled",
@@ -67,8 +84,8 @@ const settingsExportFormat = "pixel-clock-settings";
 const liveIdleMs = 5 * 60 * 1000;
 
 const $ = (id) => document.getElementById(id);
-const adminReminderStorageKey = "pixelClockAdminReminderDismissed";
 const setupDismissedStorageKey = "pixelClockSetupDismissed";
+const setupCardHiddenStorageKey = "pixelClockSetupCardHidden";
 const authStorageKey = "pixelClockAuth";
 let currentLanguage = storedLanguage || ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
 let statusRefreshTimer = 0;
@@ -269,6 +286,7 @@ function applyLanguage() {
   $("loginLanguage").value = currentLanguage;
   fillWifiCountries();
   fillWeatherIntervals();
+  fillWeatherModels();
   translateTextNodes(document.body);
   translateAttributes();
   if (loginMessage) $("loginMessage").textContent = trFormat(loginMessage.text, loginMessage.values);
@@ -333,19 +351,7 @@ function messageText(text) {
   showToast(text);
 }
 
-function showAdminReminder(config) {
-  if (!config?.adminPasswordIsDefault || readStorage(adminReminderStorageKey) === "1") return;
-  $("adminReminder").hidden = false;
-  $("adminReminderGo").focus();
-}
-
-function closeAdminReminder(rememberDismissal) {
-  $("adminReminder").hidden = true;
-  if (rememberDismissal) writeStorage(adminReminderStorageKey, "1");
-}
-
 function openAdminAccess() {
-  closeAdminReminder(false);
   showPage("network");
   document.querySelector(".accessSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
   $("adminPassword").focus({ preventScroll: true });
@@ -431,6 +437,24 @@ function fillWifiCountries(selectedValue) {
     $("wifiCountry").append(option);
   }
   $("wifiCountry").value = wifiCountries.some(([code]) => code === current) ? current : defaultWifiCountry;
+}
+
+function fillWeatherModels(selectedValue) {
+  const select = $("weatherModel");
+  const current = selectedValue ?? select.value ?? "";
+  select.innerHTML = "";
+  for (const [id, deName, enName] of openMeteoModels) {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = currentLanguage === "de" ? deName : enName;
+    select.append(option);
+  }
+  select.value = openMeteoModels.some(([id]) => id === current) ? current : "";
+}
+
+function weatherModelLabel(id) {
+  const model = openMeteoModels.find(([modelId]) => modelId === id);
+  return model && id ? (currentLanguage === "de" ? model[1] : model[2]).split(" – ")[0] : "";
 }
 
 function fillPins() {
@@ -645,9 +669,17 @@ function setupIncomplete() {
   return setupChecklist().some((item) => !item.done);
 }
 
+// Only a clock without saved Wi-Fi (first start or after a factory reset)
+// opens the assistant on its own; this is decided by the device, not by the
+// browser, so a configured clock never shows it after login.
+function isFirstSetup() {
+  return Boolean(savedConfig) && !String(savedConfig.ssid || "").trim();
+}
+
 function updateSetupCard() {
   const items = setupChecklist();
-  $("setupCard").hidden = !items.some((item) => !item.done);
+  $("setupCard").hidden = !items.some((item) => !item.done) || readStorage(setupCardHiddenStorageKey) === "1";
+  $("setupCardPasswordBtn").hidden = !savedConfig?.adminPasswordIsDefault;
   const list = $("setupChecklist");
   list.replaceChildren();
   for (const item of items) {
@@ -981,7 +1013,10 @@ function renderWeather(status) {
   if (isNumber(status.temperatureMin) && isNumber(status.temperatureMax)) {
     meta.push(`↓ ${Math.round(status.temperatureMin)}° ↑ ${Math.round(status.temperatureMax)}°`);
   }
-  if (status.weatherProvider) meta.push(status.weatherProvider);
+  if (status.weatherProvider) {
+    const model = weatherModelLabel(status.weatherModel);
+    meta.push(model ? `${status.weatherProvider} · ${model}` : status.weatherProvider);
+  }
   $("weatherMeta").textContent = meta.join(" · ");
   $("weatherAge").textContent = status.weatherBusy ? tr("Wetter wird aktualisiert.") :
     status.weatherAgeMs == null ? "" : trFormat("Wetterabruf vor {min} min", { min: Math.floor(status.weatherAgeMs / 60000) });
@@ -1024,14 +1059,19 @@ function updateProviderFields() {
   $("openWeatherApiKey").closest("label").hidden = provider !== 1;
   $("weatherApiKeyField").hidden = provider !== 4;
   $("metAttribution").hidden = provider !== 3;
+  // Firmware before 0.1.19 has no model setting and ignores the field.
+  $("weatherModelField").hidden = provider !== 0 || savedConfig?.weatherModel === undefined;
   const hints = {
     0: "Weltweite Vorhersage, ohne API-Key. Tageshöchst- und Tiefsttemperatur verfügbar.",
+    // Shown together with the model selection.
+    model: "Wählt das Vorhersagemodell eines Wetterdienstes. Landesmodelle sind in ihrer Region meist am genauesten.",
     1: "Aktuelle Messwerte mit API-Key. Min/Max beziehen sich auf aktuelle Werte in der Umgebung.",
     2: "DWD-Messwerte über Bright Sky, vor allem für Deutschland. Ohne API-Key, ohne Tages-Min/Max.",
     3: "Weltweite Vorhersage von MET Norway. Ohne API-Key, ohne Tages-Min/Max. Die Cache-Zeit des Anbieters wird eingehalten.",
     4: "Aktuelles Wetter und Tages-Min/Max. Eigenen WeatherAPI-Key hinterlegen."
   };
-  $("providerHint").textContent = tr(hints[provider] || "");
+  $("providerHint").textContent = [hints[provider], $("weatherModelField").hidden ? "" : hints.model]
+    .filter(Boolean).map(tr).join(" ");
   $("providerKeyState").textContent = [1, 4].includes(provider) ?
     tr(hasProviderKeys[provider] ? "API-Key gespeichert. Leer lassen zum Beibehalten." : "Noch kein API-Key gespeichert.") : "";
 }
@@ -1292,7 +1332,7 @@ async function factoryReset() {
   const ssid = data.setupApSsid || lastStatus?.setupApSsid || "PixelClock-Setup";
   closeFactoryReset();
   writeStorage(setupDismissedStorageKey, null);
-  writeStorage(adminReminderStorageKey, null);
+  writeStorage(setupCardHiddenStorageKey, null);
   setAuthHeader("");
   showFinalOverlay("Werksreset läuft...", trFormat(
     "Die Uhr löscht alle Daten und startet im Setup-Modus. Zum Einrichten mit dem WLAN „{ssid}“ verbinden (Passwort pixelclock).",
@@ -1394,8 +1434,7 @@ async function startAuthenticatedApp() {
     previewActive = true;
     cancelPreview();
   }
-  const wizardOpened = typeof maybeOpenSetupWizard === "function" && maybeOpenSetupWizard();
-  if (!wizardOpened) showAdminReminder(savedConfig);
+  if (typeof maybeOpenSetupWizard === "function") maybeOpenSetupWizard();
 }
 
 async function login(event) {
@@ -1445,6 +1484,7 @@ function initUi() {
   fillPins();
   fillWifiCountries();
   fillWeatherIntervals();
+  fillWeatherModels();
   initPasswordReveal();
   for (const id of ["firmwareLine", "littleFsLine", "networks", "wizardNetworks", "message", "loginMessage", "firmwareSelectedVersion", "webSelectedVersion"]) $(id).dataset.noI18n = "";
   showPage(pageFromHash());
@@ -1464,8 +1504,12 @@ $("loginForm").addEventListener("submit", login);
 $("logoutBtn").addEventListener("click", logout);
 $("languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
 $("loginLanguage").addEventListener("change", (event) => setLoginLanguage(event.target.value));
-$("adminReminderGo").addEventListener("click", openAdminAccess);
-$("adminReminderDismiss").addEventListener("click", () => closeAdminReminder(true));
+$("setupCardPasswordBtn").addEventListener("click", openAdminAccess);
+$("setupCardHideBtn").addEventListener("click", () => {
+  writeStorage(setupCardHiddenStorageKey, "1");
+  updateSetupCard();
+  message("Der Assistent ist unter System jederzeit erneut verfügbar.");
+});
 $("saveBtn").addEventListener("click", saveConfig);
 bindAction("scanBtn", scanNetworks);
 $("brightnessPercent").addEventListener("input", () => syncBrightnessNumberFromSlider("brightness", "brightnessPercent", "brightnessPercentValue"));

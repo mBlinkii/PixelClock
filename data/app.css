@@ -643,6 +643,7 @@ progress {
 }
 
 .setupCard > * + * { margin-top: 0; }
+.setupCardActions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .setupCardText { display: grid; gap: 6px; }
 
 .checklist {

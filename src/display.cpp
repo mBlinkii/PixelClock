@@ -651,10 +651,12 @@ void renderDisplay() {
     else drawWeatherPage();
     if (config.displayMode != 2) drawIndicator(page);
   }
+  // Qualified calls: FastLED 3.10.5 adds fl::memcmp/fl::memcpy, which argument-
+  // dependent lookup would otherwise find for CRGB arrays (ambiguous overload).
   if (previousCount != ledCount || previousBrightness != brightness ||
-      memcmp(displayFrame, leds, ledCount * sizeof(CRGB)) != 0) {
+      ::memcmp(displayFrame, leds, ledCount * sizeof(CRGB)) != 0) {
     FastLED.show();
-    memcpy(displayFrame, leds, ledCount * sizeof(CRGB));
+    ::memcpy(displayFrame, leds, ledCount * sizeof(CRGB));
     previousBrightness = brightness;
     previousCount = ledCount;
   }

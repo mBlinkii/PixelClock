@@ -49,13 +49,25 @@ src/cooperative_reader.h
 src/diagnostics.cpp
   ESP reset reason labels for the serial boot log and authenticated status API.
 
+src/admin_auth.h
+  Portable helpers without Arduino types: base64 and Basic header parsing,
+  constant-time comparison, the per-client login throttle and the device suffix
+  formatter. Covered by the native tests in tests/firmware-tests.cpp.
+
+src/admin_auth.cpp
+  Salted PBKDF2-HMAC-SHA256 admin password hashing, `requireAdminAuth()` for API
+  routes (401/429 responses) and `isAdminAuthorized()` for upload chunks.
+
+src/maintenance.cpp
+  BOOT button countdown and the full factory reset that erases the NVS partition.
+
 src/display.cpp
   FastLED setup, matrix coordinate mapping, text/icon drawing, page rendering,
   brightness handling, and test pattern.
 
 src/web_api.cpp
-  HTTP Basic Auth, `/api/*` routes, JSON serialization, reset/restart actions,
-  and static LittleFS serving.
+  Captive-portal redirect, `/api/*` routes, JSON serialization, display preview
+  and frame mirror, reset/restart actions, and static LittleFS serving.
 
 src/web_updates.cpp
   Firmware and LittleFS OTA upload handlers used by the update routes.
@@ -103,12 +115,14 @@ partitions.csv
 2. Seed the clock from build time until NTP is available.
 3. Configure FastLED for the selected matrix pin and color order.
 4. Mount LittleFS.
-5. Connect to Wi-Fi, or start the `PixelClock-Setup` access point.
+5. Connect to Wi-Fi, or start the `PixelClock-Setup-XXXXXX` access point with its captive-portal DNS.
 6. Start mDNS and the web server.
 7. Start the network worker, resolve the city only when its cached name differs, start asynchronous SNTP, and queue weather.
 
-`loop()` checks static display pages every second and animations every 200 ms,
-switches pages, then yields for 20 ms. Unchanged frames and repeated black frames
+`loop()` services the setup access point (DNS, station retries, closing the AP)
+and the BOOT button, ends an expired display preview, checks static display pages
+every second and animations every 200 ms, switches pages, then yields for 20 ms.
+A pending factory reset erases NVS right before `ESP.restart()`. Unchanged frames and repeated black frames
 are not transmitted. Temporal LED dithering is disabled because frames are latched.
 
 `src/network_worker.cpp` serializes weather/geocoding in one 12 KB FreeRTOS task.
@@ -139,6 +153,17 @@ The config JSON may expose safe metadata about secrets, such as whether an API
 key exists or whether the admin password is still the factory default. It must
 not expose the saved secret values themselves.
 
+Visual settings listed in `DisplayPreviewFields` can be changed temporarily via
+`POST /api/display/preview`. While a preview runs, `saveConfig()` persists the
+backed-up values, `GET /api/config` reports them, and `POST /api/config` ends the
+preview with the submitted values. Add new visual settings to the struct, to
+`readDisplayParams()` in `src/web_api.cpp` and to `previewFields` in `data/app.js`.
+
+The admin password is stored as `adminSalt`/`adminHash` (auth version 2). An
+empty hash means the factory default is active. Firmware 0.1.17 and older stored
+the password in plain text (auth version 1); loading such data hashes it once.
+Older firmware reading version 2 falls back to the default login.
+
 ## Web API
 
 All API routes are registered in `setupServer()` in `src/web_api.cpp`:
@@ -150,14 +175,29 @@ GET  /api/status          live status for the header/status panel
 GET  /api/networks        Wi-Fi scan results
 POST /api/restart         restart the ESP32
 POST /api/reset/settings  reset settings but keep Wi-Fi and admin login
-POST /api/reset/factory   clear all persisted settings
+POST /api/reset/factory   erase the whole NVS partition and restart in setup mode
 POST /api/update/firmware upload a new firmware binary to the inactive OTA slot
 POST /api/update/web      upload a new LittleFS image to the web UI partition
 POST /api/weather/refresh queue a weather refresh
 POST /api/display/test    show a temporary test pattern
+GET  /api/display/frame   last LED frame (physical order, RRGGBB hex) for the live view
+POST /api/display/preview apply visual settings temporarily (reverts after 2 minutes)
+POST /api/display/preview/cancel  restore the saved visual settings
 ```
 
 Every API route requires HTTP Basic Auth. Static UI files serve the login shell publicly; credentials are sent by the browser when calling the protected API.
+The firmware verifies the password against its PBKDF2 hash only for a new
+Authorization header and remembers the SHA-256 digest of the last valid header
+until the credentials change. After five failures a client gets 429 with
+`retryAfterSeconds` (30 s doubling to 5 min). `/api/display/preview/cancel` must
+stay registered before `/api/display/preview` because routes also match subpaths.
+
+While the setup AP runs, a `CaptivePortalRedirect` handler registered first
+redirects requests for foreign host names that arrive on the AP interface to
+`http://192.168.4.1/`, so phones open the web UI after joining the AP. Station
+retries pause while a device is connected to the AP (ESP-IDF cannot scan while
+the station connects); once the saved Wi-Fi works and the AP is unused for five
+seconds, the AP and DNS server close without a restart.
 
 `GET /api/status` exposes `firmwareVersion`, sourced from `FIRMWARE_VERSION` in
 `src/app_state.h`. Bump that constant for every firmware change and keep README
@@ -189,19 +229,24 @@ fallback path when the field is missing. This prevents a separately uploaded web
 UI from showing 404 errors on devices that have not received the matching
 firmware yet.
 
-`GET /api/config` includes `adminPasswordIsDefault`. The browser uses this,
-together with an empty `ssid` or `setupMode` from `/api/status`, to open the
-setup assistant automatically, and otherwise shows the admin password reminder.
-Dismissals are stored only in browser `localStorage`; changing the actual
-password remains a normal `POST /api/config` save. Because the firmware checks
-Basic Auth against the live configuration, the browser replaces its stored
-credentials after a successful login change instead of forcing a new login.
+The setup assistant opens by itself only while the clock has no saved SSID
+(first start or after a factory reset); this is decided from `GET /api/config`,
+not from browser storage, so a configured clock never shows it after login.
+While `adminPasswordIsDefault` is set, the overview shows a non-modal setup card
+with a password shortcut instead. Because the firmware checks Basic Auth against
+the live configuration, the browser replaces its stored credentials after a
+successful login change instead of forcing a new login.
 
-While `setupMode` is active and no SSID is saved, the matrix shows its WIFI/AP
-prompt instead of the test pattern. The assistant therefore asks for Wi-Fi first
-and saves before it requests a test pattern. After the final restart it polls the
-public `favicon.svg` of the new `.local` address to tell the user when the clock
-is reachable in the home network.
+Firmware before 0.1.18 shows its WIFI/AP prompt instead of the test pattern while
+no SSID is saved; the assistant therefore asks for Wi-Fi first and saves before it
+requests a test pattern (`capabilities.setupTestPattern` hides the hint on newer
+firmware). After the final restart it polls the public `favicon.svg` of the new
+`.local` address to tell the user when the clock is reachable in the home network.
+
+`/api/status` reports `capabilities` (`captivePortal`, `setupApPassword`,
+`setupTestPattern`, `displayFrame`, `displayPreview`, `fullFactoryReset`,
+`resetButton`, `loginThrottle`) plus `setupApSsid` and `routerHostname`; the web UI
+hides the related controls when they are missing.
 
 ## Display Pipeline
 
@@ -220,9 +265,13 @@ If a matrix looks mirrored or scrambled, inspect `xy()`, `wiringMode`, and
 ## Weather And Time
 
 - Open-Meteo is the default weather provider and does not need an API key.
+  `weatherModel` (NVS `wModel`) adds `&models=<id>`; ids are allow-listed in
+  `src/weather_models.h` and mirrored by `openMeteoModels` in `data/app.js`
+  (a UI test compares both lists). Empty means Open-Meteo's best_match.
 - OpenWeatherMap needs a user-provided API key.
 - DWD weather uses the Bright Sky JSON API for DWD open weather data and does
-  not need an API key.
+  not need an API key. Its `icon` may be `wind` or null; `condition` and
+  `cloud_cover` then provide the symbol.
 - City lookup uses Open-Meteo geocoding and stores latitude, longitude,
   location label, and a POSIX-style timezone string.
 - MET Norway uses Locationforecast compact and WeatherAPI uses a one-day forecast.
@@ -231,7 +280,12 @@ If a matrix looks mirrored or scrambled, inspect `xy()`, `wiringMode`, and
 
 The firmware pins HTTPS requests to root certificates embedded in
 `src/weather.cpp`. If a provider changes its certificate chain, weather or
-geocoding can fail until the root certificate is updated.
+geocoding can fail until the root certificate is updated. Let's Encrypt hosts
+(Open-Meteo, Bright Sky, WeatherAPI) use `LETS_ENCRYPT_ROOTS`: ISRG Root X1 and
+X2 plus the 2025 roots YE and YR, so the ESP32 verifies the shorter chains of the
+2026 YE1/YR1 intermediates. Connection failures report the mbedtls error text
+(`TLS: ...`) instead of a bare `HTTP -1`. Check a chain with
+`openssl s_client -connect host:443 -servername host -CAfile roots.pem -no-CApath -no-CAstore`.
 
 ## Before Changing Behavior
 

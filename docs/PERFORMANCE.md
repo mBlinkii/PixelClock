@@ -1,6 +1,6 @@
 # Performance and validation
 
-Firmware 0.1.17 / web UI 0.1.14.
+Firmware 0.1.19 / web UI 0.1.16.
 
 The display task yields instead of busy polling. TLS requests run in one worker
 at idle priority so CPU-heavy library operations share time with the watchdog's
@@ -74,18 +74,23 @@ g++ -std=c++17 -I .pio/libdeps/esp32dev/ArduinoJson/src tests/firmware-tests.cpp
 ```
 
 The C++ tests execute production filtering, decoding and scheduling code with
-fixtures for all five providers, null/missing values, failed retries and 32-bit
-timer rollover. Slow, incomplete, disconnected and trickling network fixtures
+fixtures for all five providers, null/missing values, Bright Sky `wind`/null
+icons, failed retries and 32-bit timer rollover. They also cover Basic header
+parsing and the login throttle. Slow, incomplete, disconnected and trickling network fixtures
 verify scheduler pauses and both response deadlines, including timer rollover.
 Node tests exercise production request coalescing, visibility
-and retry scheduling, secret handling and asynchronous scan completion. These
+and retry scheduling, secret handling, asynchronous scan completion, LED order
+parity with `xy()`, live-frame mapping, settings export/import and the first-setup
+rule for the assistant. These
 checks also run in the PlatformIO CI workflow.
 
 For browser QA, run `node tests/mock-server.mjs` and open
 `http://127.0.0.1:8765`. Any synthetic login works. Add `--first-run` (and for a
 second instance `--port=8766`) to simulate a fresh clock in setup-AP mode with no
-Wi-Fi and the default login, which opens the setup assistant. This server binds only to
-loopback and never controls hardware. Stop it after testing.
+Wi-Fi and the default login, which opens the setup assistant. The mock renders a
+clock frame for the live view and simulates preview, factory reset and, for the
+password `test-throttle`, the login lock. This server binds only to loopback and
+never controls hardware. Stop it after testing.
 
 ## Hardware checks still required
 
@@ -119,6 +124,39 @@ No current-consumption percentage is claimed without a physical measurement.
 - Initial build checks did not flash a device. Subsequent on-device recovery and
   OTA validation are recorded below. An overnight run is still needed to assess
   the intermittent restart report.
+
+## Firmware 0.1.18-0.1.19 / web UI 0.1.15-0.1.16
+
+- Firmware: 1,249,389 bytes flash (82.9% of the OTA slot, +27 KB against 0.1.17)
+  and 56,724 bytes static RAM with the pinned libraries (FastLED 3.10.3,
+  ArduinoJson 7.4.3, AsyncTCP 3.5.0, ESPAsyncWebServer 3.12.1, espressif32
+  7.0.0). FastLED 3.10.5 no longer compiled the frame comparison (ambiguous
+  `fl::memcmp`) and, once fixed, produced 1,642,989 bytes, which exceeds the slot. The web assets are 212,956 bytes uncompressed /
+  54,672 bytes gzip in seven files; the LittleFS image stays 1,114,112 bytes.
+- The setup AP runs a DNS server only while it is active; `loop()` calls it
+  every iteration. Station retries run every 60 s and pause while a device is
+  connected to the AP, which also lets `/api/networks` scan reliably.
+- The live view polls `/api/display/frame` (about 1.7 KB for 32x8) every second
+  on the display page and every 3 s on the overview, only in a visible tab, and
+  pauses after 5 minutes without input. Status polling is unchanged.
+- PBKDF2 with 1000 iterations runs only for a new Authorization header or a
+  password change; other requests compare a SHA-256 digest of the header.
+- Bright Sky moved to Let's Encrypt's 2026 ECDSA chain (leaf <- YE1 <- Root YE
+  <- ISRG Root X2 <- ISRG Root X1). OpenSSL verifies it with the embedded X1 alone,
+  but with the added Root YE the ESP32 stops after two P-384 signatures instead of
+  three plus one RSA-4096 signature. The embedded roots were checked against the
+  live chains of all five providers and against the official PEMs from
+  letsencrypt.org (identical public keys).
+- Open-Meteo model selection: all 13 allow-listed models were queried live and
+  returned temperature, weather code and daily min/max in about 580 bytes, the
+  same size as best_match. BOM ACCESS-G returned no data and is not offered.
+- The Bright Sky OpenAPI schema (2.2.9) allows `icon` values `wind` and `null`,
+  which were decoded as "unknown" before; `condition` and `cloud_cover` now fill in.
+- Not yet verified on hardware: captive-portal detection on Android/iOS/Windows,
+  closing the AP after the router returns, the BOOT button reset and NVS erase,
+  the hash migration from a 0.1.17 password, preview revert and the TLS time for
+  the new chains. The native C++ tests compile (`-Wall -Wextra`) but were only
+  run in CI, because no host compiler was available locally.
 
 ## Web UI 0.1.14 (setup assistant and redesign)
 

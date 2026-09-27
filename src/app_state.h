@@ -8,6 +8,7 @@
 #include <time.h>
 #include "weather_data.h"
 #include "admin_auth.h"
+#include "weather_models.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
@@ -36,7 +37,7 @@ constexpr const char *DEFAULT_LANGUAGE = "de";
 constexpr const char *DEFAULT_WIFI_COUNTRY = "DE";
 constexpr const char *DEFAULT_SETUP_AP_PASSWORD = "pixelclock";
 constexpr const char *SETUP_AP_SSID_PREFIX = "PixelClock-Setup-";
-#define FIRMWARE_VERSION_TEXT "0.1.18"
+#define FIRMWARE_VERSION_TEXT "0.1.19"
 constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
 extern const char FIRMWARE_VERSION_BINARY_MARKER[];
 // 1: plain admin password in NVS. 2: salted PBKDF2-HMAC-SHA256 hash.
@@ -69,6 +70,8 @@ struct AppConfig {
   float longitude = 13.41;
   uint8_t weatherProvider = WEATHER_PROVIDER_OPEN_METEO;
   uint8_t weatherIntervalHalfHours = DEFAULT_WEATHER_INTERVAL_HALF_HOURS;
+  // Open-Meteo model id from weather_models.h; empty uses best_match.
+  String weatherModel;
   String openWeatherApiKey;
   String weatherApiKey;
   String resolvedCityName;

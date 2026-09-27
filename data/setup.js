@@ -50,7 +50,7 @@ function pullWizardFields(root) {
     } else if (el.type === "checkbox") {
       el.checked = source.checked;
     } else {
-      if (el.id === "wizardWifiCountry" || el.id === "wizardDataPin") el.innerHTML = source.innerHTML;
+      if (el.id === "wizardWifiCountry" || el.id === "wizardDataPin" || el.id === "wizardWeatherModel") el.innerHTML = source.innerHTML;
       el.value = source.value;
     }
   }
@@ -83,6 +83,7 @@ function updateWizardPasswordPlaceholder() {
 
 function updateWizardProviderFields() {
   const provider = Number($("weatherProvider").value);
+  $("wizardModelField").hidden = provider !== 0 || savedConfig?.weatherModel === undefined;
   $("wizardOwmKeyField").hidden = provider !== 1;
   $("wizardWaKeyField").hidden = provider !== 4;
   setPlaceholder($("wizardOwmKey"), hasProviderKeys[1] ? "Leer lassen zum Beibehalten" : "API-Key eingeben");
@@ -429,7 +430,6 @@ async function wizardNext() {
 
 function openSetupWizard() {
   if (!savedConfig) return;
-  closeAdminReminder(false);
   wizardStart = {
     ssid: savedConfig.ssid || "",
     hostname: savedConfig.hostname || "",
@@ -457,7 +457,7 @@ function closeSetupWizard(remember = true) {
 }
 
 function maybeOpenSetupWizard() {
-  if (!setupIncomplete() || readStorage(setupDismissedStorageKey) === "1") return false;
+  if (!isFirstSetup() || readStorage(setupDismissedStorageKey) === "1") return false;
   openSetupWizard();
   return true;
 }

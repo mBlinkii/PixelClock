@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark light">
     <title>Pixel Clock</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css?v=0.1.15">
+    <link rel="stylesheet" href="/app.css?v=0.1.16">
   </head>
   <body>
     <svg class="iconSprite" aria-hidden="true" focusable="false">
@@ -118,7 +118,11 @@
                 <p>Ein paar Schritte fehlen noch, damit deine Uhr vollständig eingerichtet ist.</p>
                 <ul id="setupChecklist" class="checklist" data-no-i18n></ul>
               </div>
-              <button id="setupCardBtn" class="primary" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-wand"></use></svg>Assistent starten</button>
+              <div class="setupCardActions">
+                <button id="setupCardBtn" class="primary" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-wand"></use></svg>Assistent starten</button>
+                <button id="setupCardPasswordBtn" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#icon-lock"></use></svg>Passwort ändern</button>
+                <button id="setupCardHideBtn" class="ghost small" type="button">Ausblenden</button>
+              </div>
             </div>
 
             <div class="heroGrid">
@@ -353,6 +357,10 @@
                     <option value="3" disabled>MET Norway</option>
                     <option value="4" disabled>WeatherAPI</option>
                   </select>
+                </label>
+                <label id="weatherModelField" hidden>
+                  Wettermodell
+                  <select id="weatherModel" name="weatherModel"></select>
                 </label>
                 <label>
                   Wetter-Intervall
@@ -781,6 +789,10 @@
               <label class="choice wide"><input type="radio" name="wizardProvider" value="1" data-bind="weatherProvider"><span><strong>OpenWeatherMap</strong><small>Eigener API-Key nötig</small></span></label>
               <label class="choice wide"><input type="radio" name="wizardProvider" value="4" data-bind="weatherProvider"><span><strong>WeatherAPI</strong><small>Eigener API-Key nötig</small></span></label>
             </div>
+            <label id="wizardModelField" hidden>
+              Wettermodell
+              <select id="wizardWeatherModel" data-bind="weatherModel"></select>
+            </label>
             <label id="wizardOwmKeyField" hidden>
               OpenWeatherMap API-Key
               <input id="wizardOwmKey" data-bind="openWeatherApiKey" type="password" autocomplete="off" data-reveal>
@@ -848,16 +860,6 @@
       </section>
     </div>
 
-    <div id="adminReminder" class="modalOverlay" hidden>
-      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="adminReminderTitle">
-        <h2 id="adminReminderTitle">Admin-Passwort ändern</h2>
-        <p>Der Standardzugang ist noch aktiv. Ändere das Admin-Passwort, damit niemand im Netzwerk die Uhr einfach umstellen kann.</p>
-        <div class="modalActions">
-          <button id="adminReminderGo" class="primary" type="button">Jetzt ändern</button>
-          <button id="adminReminderDismiss" class="ghost" type="button">Nicht mehr anzeigen</button>
-        </div>
-      </section>
-    </div>
     <div id="factoryResetModal" class="modalOverlay" hidden>
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="factoryResetTitle">
         <h2 id="factoryResetTitle">Uhr auf Werkszustand zurücksetzen</h2>
@@ -886,9 +888,9 @@
         <p id="restartOverlayText">Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
       </section>
     </div>
-    <script src="/i18n.js?v=0.1.15" defer></script>
-    <script src="/updates.js?v=0.1.15" defer></script>
-    <script src="/setup.js?v=0.1.15" defer></script>
-    <script src="/app.js?v=0.1.15" defer></script>
+    <script src="/i18n.js?v=0.1.16" defer></script>
+    <script src="/updates.js?v=0.1.16" defer></script>
+    <script src="/setup.js?v=0.1.16" defer></script>
+    <script src="/app.js?v=0.1.16" defer></script>
   </body>
 </html>

@@ -12,7 +12,7 @@ let setupMode = firstRun;
 const config = {
   ssid: firstRun ? '' : 'PixelClock-Test', hasPassword: !firstRun, wifiCountry: 'DE', hostname: 'pixelclock', cityName: 'Berlin',
   locationLabel: 'Berlin, Deutschland', timezone: 'CET-1CEST,M3.5.0,M10.5.0/3', language: 'de',
-  weatherProvider: 0, weatherProviderMax: 4, weatherIntervalHalfHours: 4,
+  weatherProvider: 0, weatherModel: '', weatherProviderMax: 4, weatherIntervalHalfHours: 4,
   hasOpenWeatherApiKey: false, hasWeatherApiKey: false, wifiPowerSave: true,
   width: 32, height: 8, dataPin: 18, brightness: 64, fullBrightnessUnlocked: false,
   wiringMode: 3, origin: 0, displayMode: 0, colorOrder: 'GRB', temperatureUnit: 0,
@@ -84,9 +84,9 @@ http.createServer(async (req, res) => {
         temperature: 22.4, temperatureMin: 16, temperatureMax: 25, temperatureUnit: 'C', weatherCode: 2,
         weatherProvider: ['Open-Meteo', 'OpenWeatherMap', 'DWD (Bright Sky)', 'MET Norway', 'WeatherAPI'][config.weatherProvider],
         weatherAgeMs: 360000, freeHeap: 156000, rssi: -48, wifiPowerSave: config.wifiPowerSave,
-        firmwareVersion: '0.1.18', uptimeMs: 90061000, resetReason: 'Task-Watchdog',
+        firmwareVersion: '0.1.19', uptimeMs: 90061000, resetReason: 'Task-Watchdog',
         minFreeHeap: 84000, networkStackFreeBytes: 4096, setupApSsid: config.setupApSsid,
-        routerHostname: config.routerHostname, displayPreviewActive: Boolean(preview),
+        routerHostname: config.routerHostname, displayPreviewActive: Boolean(preview), weatherModel: config.weatherModel,
         capabilities: { asyncWifiScan: true, weatherProviderMax: 4, wifiPowerSave: true, captivePortal: true,
           setupApPassword: true, setupTestPattern: true, displayFrame: true, displayPreview: true,
           fullFactoryReset: true, resetButton: true, loginThrottle: true } }); return;

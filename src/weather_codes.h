@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <cstring>
 
 inline int normalizeWeatherApiCode(int code) {
@@ -60,6 +61,20 @@ inline int normalizeBrightSkyIcon(const char *icon) {
   if (strcmp(icon, "hail") == 0) return 77;
   if (strcmp(icon, "thunderstorm") == 0) return 95;
   return -1;
+}
+
+// Bright Sky derives "icon" as a best effort: it may be null, and "wind" says
+// nothing about the sky. Precipitation from "condition" wins, otherwise the
+// cloud cover (percent) picks clear, partly cloudy or cloudy.
+inline int normalizeBrightSkyCondition(const char *condition, double cloudCover) {
+  if (condition && *condition && strcmp(condition, "dry") != 0) {
+    const int code = normalizeBrightSkyIcon(condition);
+    if (code >= 0) return code;
+  }
+  if (std::isnan(cloudCover)) return -1;
+  if (cloudCover < 25) return 0;
+  if (cloudCover < 80) return 2;
+  return 3;
 }
 
 

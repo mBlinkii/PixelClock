@@ -53,6 +53,7 @@ void loadConfig() {
   config.longitude = prefs.getFloat("lon", config.longitude);
   config.weatherProvider = prefs.getUChar("wProv", config.weatherProvider);
   config.weatherIntervalHalfHours = prefs.getUChar("wIntHalf", config.weatherIntervalHalfHours);
+  config.weatherModel = prefs.getString("wModel", "");
   config.openWeatherApiKey = prefs.getString("owmKey", "");
   config.weatherApiKey = prefs.getString("waKey", "");
   config.resolvedCityName = prefs.getString("resolvedCity", "");
@@ -103,6 +104,7 @@ void loadConfig() {
   config.timePageSeconds = constrain(config.timePageSeconds, 3, 60);
   config.weatherProvider = constrain(config.weatherProvider, 0, WEATHER_PROVIDER_MAX);
   config.weatherIntervalHalfHours = constrain(config.weatherIntervalHalfHours, 1, 48);
+  if (!isOpenMeteoModel(config.weatherModel.c_str())) config.weatherModel = "";
   config.wiringMode = constrain(config.wiringMode, 0, 3);
   config.origin = constrain(config.origin, 0, 3);
   config.displayMode = constrain(config.displayMode, 0, 2);
@@ -199,6 +201,7 @@ void saveConfig() {
   if (!prefs.isKey("lon") || prefs.getFloat("lon") != c.longitude) prefs.putFloat("lon", c.longitude);
   if (!prefs.isKey("wProv") || prefs.getUChar("wProv") != c.weatherProvider) prefs.putUChar("wProv", c.weatherProvider);
   if (!prefs.isKey("wIntHalf") || prefs.getUChar("wIntHalf") != c.weatherIntervalHalfHours) prefs.putUChar("wIntHalf", c.weatherIntervalHalfHours);
+  if (!prefs.isKey("wModel") || prefs.getString("wModel") != c.weatherModel) prefs.putString("wModel", c.weatherModel);
   if (!prefs.isKey("owmKey") || prefs.getString("owmKey") != c.openWeatherApiKey) prefs.putString("owmKey", c.openWeatherApiKey);
   if (!prefs.isKey("waKey") || prefs.getString("waKey") != c.weatherApiKey) prefs.putString("waKey", c.weatherApiKey);
   if (!prefs.isKey("resolvedCity") || prefs.getString("resolvedCity") != c.resolvedCityName) prefs.putString("resolvedCity", c.resolvedCityName);
