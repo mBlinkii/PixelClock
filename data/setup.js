@@ -429,7 +429,6 @@ async function wizardNext() {
 
 function openSetupWizard() {
   if (!savedConfig) return;
-  closeAdminReminder(false);
   wizardStart = {
     ssid: savedConfig.ssid || "",
     hostname: savedConfig.hostname || "",
@@ -457,7 +456,7 @@ function closeSetupWizard(remember = true) {
 }
 
 function maybeOpenSetupWizard() {
-  if (!setupIncomplete() || readStorage(setupDismissedStorageKey) === "1") return false;
+  if (!isFirstSetup() || readStorage(setupDismissedStorageKey) === "1") return false;
   openSetupWizard();
   return true;
 }

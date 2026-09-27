@@ -4,8 +4,21 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.17`
-Current LittleFS web interface version: `0.1.14`
+Current firmware version: `0.1.18`
+Current LittleFS web interface version: `0.1.15`
+
+Firmware 0.1.18 and web UI 0.1.15 make the first setup and handing the clock on
+easier: the setup Wi-Fi gets a per-device name and opens the web UI by itself
+(captive portal), the test pattern works before Wi-Fi is configured, the clock
+leaves setup mode on its own once the saved Wi-Fi is back, and a factory reset
+(web UI or 10 s on the BOOT button) erases all data. The admin password is stored
+as a salted hash and failed logins are throttled. The web UI adds a live view of
+the matrix, instant preview of display changes and settings export/import. DWD
+weather now also shows a symbol when Bright Sky reports `wind` or no icon, and
+the Let's Encrypt root certificates cover the new 2026 certificate chains.
+
+Downgrading to firmware 0.1.17 or older resets the admin login to
+`admin` / `pixelclock`, because older firmware cannot read the hashed password.
 
 Version 0.1.17 fixes a watchdog risk when a weather response stalls. Network
 reads now yield and have a total response deadline. The web UI shows uptime,
@@ -28,11 +41,16 @@ firmware API and does not require a firmware update.
 - Open-Meteo, DWD or MET Norway without an API key; OpenWeatherMap and WeatherAPI with your own API key
 - city-based location lookup with automatic time zone for many regions
 - bilingual web interface, German/English, with matching weekdays on the display
-- guided setup assistant: Wi-Fi scan, LED matrix with wiring diagram and test pattern, location and admin password
+- guided setup assistant on the first start: Wi-Fi scan, LED matrix with wiring diagram and test pattern, location and admin password
+- setup Wi-Fi with a per-device name; phones and laptops open the setup page automatically (captive portal)
 - modern, phone-friendly web interface with tabs, save bar and automatic light/dark mode
+- live view of the matrix in the browser and instant preview of display changes
+- settings export and import
+- full factory reset for handing the clock on, also with the BOOT button when the login is unknown
+- admin password stored as a salted hash; failed logins are throttled
 - integrated help/wiki directly inside the web interface
 - Login page before settings are loaded
-- reminder to change the default admin password
+- reminder on the overview while the default admin password is active
 
 ## Hardware
 
@@ -56,6 +74,8 @@ src/weather.cpp               Weather, geocoding, time zones, and HTTPS certific
 src/display.cpp               LED mapping, text, icons, and matrix rendering
 src/web_api.cpp               HTTP API, auth, restart/reset, and LittleFS serving
 src/web_updates.cpp           Firmware and LittleFS OTA upload handlers
+src/admin_auth.h/.cpp         Admin password hashing, Basic Auth checks and login throttling
+src/maintenance.cpp           BOOT button and full factory reset
 src/weather_icons.h           Weather icons for the matrix
 data/                         LittleFS web interface
 data/index.html               HTML for the configuration interface
@@ -86,10 +106,15 @@ The setup assistant asks for a new admin password; you can also change it later 
 If no Wi-Fi connection is possible, the clock starts a setup access point:
 
 ```text
-Wi-Fi: PixelClock-Setup
-Password: pixelclock
-Web UI: http://192.168.4.1
+Wi-Fi: PixelClock-Setup-XXXXXX
+Password: pixelclock (can be changed under Wi-Fi & access)
+Web UI: http://192.168.4.1 (usually opens automatically)
 ```
+
+`XXXXXX` are the last three bytes of the ESP32 MAC address; the matrix shows
+them in setup mode as well. If a saved Wi-Fi is only temporarily unavailable, for
+example after a power cut, the clock keeps retrying every minute and closes the
+setup Wi-Fi by itself once it is connected and no device uses the setup Wi-Fi.
 
 ## Installation with PlatformIO
 
@@ -142,8 +167,8 @@ and all persisted data. Flash firmware and the web UI again afterwards:
 ## First Setup
 
 1. Start the ESP32.
-2. If the clock does not know a Wi-Fi network yet, connect to `PixelClock-Setup` (password `pixelclock`).
-3. Open `http://192.168.4.1`.
+2. If the clock does not know a Wi-Fi network yet, connect to `PixelClock-Setup-XXXXXX` (password `pixelclock`).
+3. The setup page usually opens automatically; otherwise open `http://192.168.4.1`.
 4. Log in with `admin` / `pixelclock`.
 5. The setup assistant opens automatically and guides you through six steps:
    language, Wi-Fi (network scan, 2.4 GHz only), LED matrix with wiring diagram
@@ -152,7 +177,9 @@ and all persisted data. Flash firmware and the web UI again afterwards:
    the new address. Reconnect your phone or PC to your home Wi-Fi; the assistant
    detects when the clock is reachable again.
 
-The assistant can be started again at any time under `System`. Every setting
+The assistant only opens by itself while no Wi-Fi is saved on the clock, i.e.
+on the first start or after a factory reset. On a configured clock it never pops
+up after login; start it manually under `System` whenever you like. Every setting
 also remains available on its own tab.
 
 After a successful Wi-Fi connection, the interface is usually reachable at:
@@ -172,12 +199,12 @@ from the last three bytes of the ESP32 MAC address.
 
 ## Using the Web Interface
 
-- `Overview`: time on the clock, current weather, connection, address, and brightness. While Wi-Fi or the admin password is missing, a setup checklist is shown.
-- `Display`: layout, time and temperature format, page rotation, colors, day and night brightness, safety unlock, and Wi-Fi power saving.
+- `Overview`: time on the clock, current weather, live view of the matrix, connection, address, and brightness. While Wi-Fi or an own admin password is missing, a setup card with a checklist is shown; it can be hidden.
+- `Display`: live preview, layout, time and temperature format, page rotation, colors, day and night brightness, safety unlock, and Wi-Fi power saving. Changes appear on the clock immediately and revert after 2 minutes unless saved.
 - `Weather`: city, weather provider, interval, API keys, and an optional manual time zone.
 - `Hardware`: matrix size, data pin, color order, start corner, and wiring with a live wiring diagram and test pattern.
-- `Wi-Fi & access`: network with scan, Wi-Fi password, Wi-Fi region, browser address, admin user, and admin password.
-- `System`: firmware and web interface versions, diagnostics, setup assistant, updates, help & wiki, and reset.
+- `Wi-Fi & access`: network with scan, Wi-Fi password, Wi-Fi region, browser address, admin user, admin password, and the setup Wi-Fi password.
+- `System`: firmware and web interface versions, diagnostics, setup assistant, settings export/import, updates, help & wiki, and reset.
 
 A save bar appears as soon as something is unsaved, and tabs with unsaved changes
 are marked. After changing the admin login you stay logged in with the new
@@ -208,7 +235,7 @@ Actual power savings depend on the matrix, brightness and access point and requi
 | Provider | API key | Data |
 | --- | --- | --- |
 | Open-Meteo | No | Worldwide forecast, daily min/max |
-| DWD / Bright Sky | No | Station observations, mainly Germany; no daily min/max |
+| DWD / Bright Sky | No | Station observations, mainly Germany; no daily min/max; symbol falls back to precipitation and cloud cover |
 | MET Norway | No | Worldwide forecast; no daily min/max |
 | OpenWeatherMap | Yes | Current weather; min/max of current surrounding observations |
 | WeatherAPI | Yes | Current weather and daily min/max |
@@ -220,7 +247,11 @@ MET Norway data is provided by the [Norwegian Meteorological Institute](https://
 The default provider is Open-Meteo. It does not require an API key.
 
 The `Deutscher Wetterdienst (DWD)` provider uses the Bright Sky JSON API for
-DWD open weather data and also does not require an API key.
+DWD open weather data and also does not require an API key. Bright Sky derives
+its icon as a best effort: it can be `wind` or missing. The firmware then uses
+the reported precipitation and cloud cover instead of showing "no weather data".
+Connection problems are shown with their cause, for example `TLS: ...` for
+certificate errors or `Verbindung fehlgeschlagen (...)` for network errors.
 
 OpenWeatherMap can be used optionally:
 
@@ -250,10 +281,27 @@ The web interface is not embedded in the firmware binary. After changing anythin
 ## Security
 
 - The web interface is protected with HTTP Basic Auth.
-- The setup access point uses the password `pixelclock`.
+- The admin password is stored as a salted PBKDF2-HMAC-SHA256 hash, never in plain text.
+- After five failed logins the clock blocks further attempts from that device for 30 seconds, doubling up to 5 minutes.
+- The setup access point uses the password `pixelclock` until you set your own under `Wi-Fi & access` > `Setup Wi-Fi`.
 - Change the admin user and admin password after the first setup under `Admin access`.
-- If the default admin password is still active, the web interface shows a reminder. You can jump directly to the password field or hide the reminder for that browser.
+- While the default admin password is still active, the overview shows a setup card with a `Change password` button. It can be hidden for that browser.
 - HTTP Basic Auth is practical in a normal home network, but it is not encrypted. Do not expose the clock in public or untrusted networks.
+
+## Factory Reset and Handing the Clock On
+
+Under `System` > `Reset`, `Factory reset` erases the complete settings storage
+(NVS): Wi-Fi credentials and region, admin login, setup Wi-Fi password, location,
+API keys and all display settings. Firmware and web interface stay installed. The
+clock restarts in setup mode like a new device, so it can be handed on.
+
+Without access to the web interface, hold the ESP32 `BOOT` button (GPIO 0) for
+10 seconds while the clock is running. After 3 seconds the matrix counts down
+`RESET 7` to `RESET 1`, then erases everything and restarts. Releasing the button
+earlier cancels.
+
+Export your settings under `System` > `Back up settings` first if you want to
+restore them later. Passwords and API keys are not included in the file.
 
 ## Troubleshooting
 
@@ -261,17 +309,17 @@ The web interface is not embedded in the firmware binary. After changing anythin
 
 - Check whether the ESP32 is connected to Wi-Fi.
 - Open the IP address from your router instead of `pixelclock.local`.
-- If no Wi-Fi is saved, connect to `PixelClock-Setup` and open `http://192.168.4.1`.
+- If no Wi-Fi is saved, connect to `PixelClock-Setup-XXXXXX` and open `http://192.168.4.1`.
 - If mDNS does not work, `*.local` may not resolve in your network.
 
 ### Login does not work
 
 - The default is `admin` / `pixelclock`.
 - If you changed credentials, log in again with the new user and password.
-- After changing admin credentials, restart the clock if the interface reports that a restart is required.
-- If the admin reminder still appears after changing the password, hard reload the browser and check that `Save` succeeded.
-- If you still have access, use factory reset from the web interface.
-- Without access, erase NVS data or reflash the firmware with a reset helper.
+- After five wrong passwords, wait until the lock shown on the login page has expired.
+- If the setup card still lists the admin password after changing it, hard reload the browser and check that `Save` succeeded.
+- If you still have access, use the factory reset under `System`.
+- Without access, hold the ESP32 `BOOT` button for 10 seconds while the clock is running (see [Factory reset](#factory-reset-and-handing-the-clock-on)).
 
 ### Weather is not shown
 

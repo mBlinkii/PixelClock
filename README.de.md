@@ -4,8 +4,24 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.17`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.14`
+Aktuelle Firmware-Version: `0.1.18`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.15`
+
+Firmware 0.1.18 und Weboberfläche 0.1.15 erleichtern die erste Einrichtung und
+das Weitergeben der Uhr: Das Setup-WLAN hat einen Namen pro Gerät und öffnet die
+Weboberfläche von selbst (Captive Portal), das Testmuster funktioniert schon vor
+der WLAN-Einrichtung, die Uhr verlässt den Setup-Modus selbstständig, sobald das
+gespeicherte WLAN wieder da ist, und ein Werksreset (Weboberfläche oder 10 s
+BOOT-Taste) löscht alle Daten. Das Admin-Passwort wird als gesalzener Hash
+gespeichert, fehlgeschlagene Logins werden gebremst. Die Weboberfläche zeigt die
+Matrix live, übernimmt Anzeige-Änderungen sofort als Vorschau und kann
+Einstellungen exportieren und importieren. DWD-Wetter zeigt jetzt auch dann ein
+Symbol, wenn Bright Sky `wind` oder kein Icon meldet, und die
+Let's-Encrypt-Wurzelzertifikate decken die neuen Zertifikatsketten von 2026 ab.
+
+Ein Wechsel zurück auf Firmware 0.1.17 oder älter setzt den Admin-Login auf
+`admin` / `pixelclock` zurück, weil ältere Firmware das gehashte Passwort nicht
+lesen kann.
 
 Version 0.1.17 behebt ein Watchdog-Risiko bei stockenden Wetterantworten.
 Netzwerk-Lesevorgänge geben jetzt regelmäßig Rechenzeit frei und haben eine
@@ -30,11 +46,16 @@ Firmware-Update.
 - Open-Meteo, DWD oder MET Norway ohne API-Key; OpenWeatherMap und WeatherAPI mit eigenem API-Key
 - Standortsuche per Stadtname mit automatischer Zeitzone für viele Regionen
 - zweisprachige Weboberfläche, Deutsch/Englisch, mit passenden Wochentagen auf dem Display
-- Einrichtungsassistent: WLAN-Suche, LED-Matrix mit Verkabelungsdiagramm und Testmuster, Standort und Admin-Passwort
+- Einrichtungsassistent beim ersten Start: WLAN-Suche, LED-Matrix mit Verkabelungsdiagramm und Testmuster, Standort und Admin-Passwort
+- Setup-WLAN mit Namen pro Gerät; Handys und Laptops öffnen die Einrichtungsseite automatisch (Captive Portal)
 - moderne, handytaugliche Weboberfläche mit Tabs, Speicherleiste und automatischem Hell-/Dunkelmodus
+- Live-Ansicht der Matrix im Browser und Sofort-Vorschau von Anzeige-Änderungen
+- Einstellungen exportieren und importieren
+- vollständiger Werksreset zum Weitergeben, auch per BOOT-Taste, wenn der Login unbekannt ist
+- Admin-Passwort als gesalzener Hash gespeichert; fehlgeschlagene Logins werden gebremst
 - integrierte Hilfe/Wiki direkt in der Weboberfläche
 - Login-Seite vor dem Laden der Einstellungen
-- Erinnerung zum Ändern des Standard-Admin-Passworts
+- Hinweis auf der Übersicht, solange das Standard-Admin-Passwort aktiv ist
 
 ## Hardware
 
@@ -58,6 +79,8 @@ src/weather.cpp               Wetter, Geocoding, Zeitzonen und HTTPS-Zertifikate
 src/display.cpp               LED-Mapping, Text, Icons und Matrix-Rendering
 src/web_api.cpp               HTTP-API, Auth, Neustart/Reset und LittleFS-Serving
 src/web_updates.cpp           Firmware- und LittleFS-OTA-Upload-Handler
+src/admin_auth.h/.cpp         Admin-Passwort-Hash, Basic-Auth-Prüfung und Login-Bremse
+src/maintenance.cpp           BOOT-Taste und vollständiger Werksreset
 src/weather_icons.h           Wetter-Icons für die Matrix
 data/                         LittleFS-Weboberfläche
 data/index.html               HTML der Konfigurationsoberfläche
@@ -88,10 +111,16 @@ Der Einrichtungsassistent fragt nach einem neuen Admin-Passwort; später kannst 
 Wenn keine WLAN-Verbindung möglich ist, startet die Uhr einen Setup-Access-Point:
 
 ```text
-WLAN: PixelClock-Setup
-Passwort: pixelclock
-Web UI: http://192.168.4.1
+WLAN: PixelClock-Setup-XXXXXX
+Passwort: pixelclock (änderbar unter WLAN & Zugang)
+Web UI: http://192.168.4.1 (öffnet sich meist automatisch)
 ```
+
+`XXXXXX` sind die letzten drei Bytes der ESP32-MAC-Adresse; die Matrix zeigt sie
+im Setup-Modus ebenfalls an. Ist ein gespeichertes WLAN nur vorübergehend nicht
+erreichbar, etwa nach einem Stromausfall, versucht die Uhr es jede Minute erneut
+und schließt das Setup-WLAN selbst, sobald sie verbunden ist und kein Gerät mehr
+am Setup-WLAN hängt.
 
 ## Installation mit PlatformIO
 
@@ -144,8 +173,8 @@ OTA-Slots und alle gespeicherten Daten verloren. Danach Firmware und Weboberflae
 ## Erste Einrichtung
 
 1. ESP32 starten.
-2. Falls die Uhr noch kein WLAN kennt, mit `PixelClock-Setup` verbinden (Passwort `pixelclock`).
-3. `http://192.168.4.1` öffnen.
+2. Falls die Uhr noch kein WLAN kennt, mit `PixelClock-Setup-XXXXXX` verbinden (Passwort `pixelclock`).
+3. Die Einrichtungsseite öffnet sich meist automatisch, sonst `http://192.168.4.1` öffnen.
 4. Mit `admin` / `pixelclock` anmelden.
 5. Der Einrichtungsassistent öffnet sich automatisch und führt durch sechs Schritte:
    Sprache, WLAN (Netzwerksuche, nur 2,4 GHz), LED-Matrix mit Verkabelungsdiagramm
@@ -154,8 +183,11 @@ OTA-Slots und alle gespeicherten Daten verloren. Danach Firmware und Weboberflae
    Assistent zeigt die neue Adresse. Handy oder PC wieder mit dem eigenen WLAN
    verbinden; der Assistent erkennt, sobald die Uhr erreichbar ist.
 
-Der Assistent lässt sich unter `System` jederzeit erneut starten. Alle
-Einstellungen bleiben zusätzlich einzeln in den Tabs erreichbar.
+Der Assistent öffnet sich nur von selbst, solange auf der Uhr kein WLAN
+gespeichert ist, also beim ersten Start oder nach einem Werksreset. Bei einer
+eingerichteten Uhr erscheint er nach dem Login nie; du kannst ihn jederzeit
+manuell unter `System` starten. Alle Einstellungen bleiben zusätzlich einzeln in
+den Tabs erreichbar.
 
 Nach erfolgreicher WLAN-Verbindung ist die Oberfläche normalerweise erreichbar unter:
 
@@ -174,12 +206,12 @@ entsteht `xxxxxx` aus den letzten drei Bytes der ESP32-MAC-Adresse.
 
 ## Bedienung der Weboberfläche
 
-- `Übersicht`: Uhrzeit der Uhr, aktuelles Wetter, Verbindung, Adresse und Helligkeit. Solange WLAN oder eigenes Admin-Passwort fehlen, erscheint eine Einrichtungs-Checkliste.
-- `Anzeige`: Layout, Zeit- und Temperaturformat, Seitenwechsel, Farben, Tages- und Nacht-Helligkeit, Sicherheits-Freischalter und WLAN-Energiesparen.
+- `Übersicht`: Uhrzeit der Uhr, aktuelles Wetter, Live-Ansicht der Matrix, Verbindung, Adresse und Helligkeit. Solange WLAN oder ein eigenes Admin-Passwort fehlen, erscheint eine ausblendbare Einrichtungskarte mit Checkliste.
+- `Anzeige`: Live-Vorschau, Layout, Zeit- und Temperaturformat, Seitenwechsel, Farben, Tages- und Nacht-Helligkeit, Sicherheits-Freischalter und WLAN-Energiesparen. Änderungen erscheinen sofort auf der Uhr und werden ohne Speichern nach 2 Minuten zurückgesetzt.
 - `Wetter`: Stadt, Wetteranbieter, Intervall, API-Keys und optional eine manuelle Zeitzone.
 - `Hardware`: Matrixgröße, Datenpin, Farbreihenfolge, Start-Ecke und Verkabelung mit Live-Verkabelungsdiagramm und Testmuster.
-- `WLAN & Zugang`: Netzwerk mit Suche, WLAN-Passwort, WLAN-Region, Browser-Adresse, Admin-Benutzer und Admin-Passwort.
-- `System`: Firmware- und Weboberflächen-Version, Diagnose, Einrichtungsassistent, Updates, Hilfe & Wiki und Zurücksetzen.
+- `WLAN & Zugang`: Netzwerk mit Suche, WLAN-Passwort, WLAN-Region, Browser-Adresse, Admin-Benutzer, Admin-Passwort und Setup-WLAN-Passwort.
+- `System`: Firmware- und Weboberflächen-Version, Diagnose, Einrichtungsassistent, Einstellungen exportieren/importieren, Updates, Hilfe & Wiki und Zurücksetzen.
 
 Sobald etwas ungespeichert ist, erscheint eine Speicherleiste; Tabs mit
 ungespeicherten Änderungen sind markiert. Nach einer Änderung des Admin-Logins
@@ -212,7 +244,7 @@ Die tatsächliche Stromersparnis hängt von Matrix, Helligkeit und Access Point 
 | Anbieter | API-Key | Daten |
 | --- | --- | --- |
 | Open-Meteo | Nein | Weltweite Vorhersage, Tages-Min/Max |
-| DWD / Bright Sky | Nein | Stationsdaten, hauptsächlich Deutschland; kein Tages-Min/Max |
+| DWD / Bright Sky | Nein | Stationsdaten, hauptsächlich Deutschland; kein Tages-Min/Max; Symbol notfalls aus Niederschlag und Bewölkung |
 | MET Norway | Nein | Weltweite Vorhersage; kein Tages-Min/Max |
 | OpenWeatherMap | Ja | Aktuelles Wetter; Min/Max der aktuellen Umgebung |
 | WeatherAPI | Ja | Aktuelles Wetter und Tages-Min/Max |
@@ -224,7 +256,12 @@ MET-Norway-Daten stammen vom [Norwegischen Meteorologischen Institut](https://ww
 Standard ist Open-Meteo. Dafür ist kein API-Key nötig.
 
 Der Anbieter `Deutscher Wetterdienst (DWD)` nutzt die Bright-Sky-JSON-API
-für offene DWD-Wetterdaten und braucht ebenfalls keinen API-Key.
+für offene DWD-Wetterdaten und braucht ebenfalls keinen API-Key. Bright Sky
+leitet sein Icon nach bestem Wissen ab: Es kann `wind` sein oder fehlen. Die
+Firmware nutzt dann den gemeldeten Niederschlag und die Bewölkung, statt „Noch
+keine Wetterdaten“ anzuzeigen. Verbindungsprobleme erscheinen mit Ursache, etwa
+`TLS: ...` bei Zertifikatsfehlern oder `Verbindung fehlgeschlagen (...)` bei
+Netzwerkfehlern.
 
 Optional kann OpenWeatherMap genutzt werden:
 
@@ -254,10 +291,29 @@ Die Weboberfläche liegt nicht im Firmware-Binary. Nach Änderungen an `data/` m
 ## Sicherheit
 
 - Die Weboberfläche ist per HTTP Basic Auth geschützt.
-- Der Setup-AP nutzt das Passwort `pixelclock`.
+- Das Admin-Passwort wird als gesalzener PBKDF2-HMAC-SHA256-Hash gespeichert, nie im Klartext.
+- Nach fünf fehlgeschlagenen Logins sperrt die Uhr weitere Versuche dieses Geräts für 30 Sekunden, verdoppelt bis maximal 5 Minuten.
+- Der Setup-AP nutzt das Passwort `pixelclock`, bis du unter `WLAN & Zugang` > `Setup-WLAN` ein eigenes festlegst.
 - Ändere nach der ersten Einrichtung den Admin-Benutzer und das Admin-Passwort unter `Admin-Zugriff`.
-- Bei aktivem Standard-Admin-Passwort zeigt die Weboberfläche eine Erinnerung an. Du kannst direkt zum Passwortfeld springen oder die Erinnerung für diesen Browser ausblenden.
+- Solange das Standard-Admin-Passwort aktiv ist, zeigt die Übersicht eine Einrichtungskarte mit `Passwort ändern`. Sie lässt sich für diesen Browser ausblenden.
 - HTTP Basic Auth ist in einem normalen Heimnetz praktisch, aber nicht verschlüsselt. Nutze die Uhr nicht ungeschützt in öffentlichen oder fremden Netzwerken.
+
+## Werksreset und Uhr weitergeben
+
+Unter `System` > `Zurücksetzen` löscht `Werksreset` den kompletten
+Einstellungsspeicher (NVS): WLAN-Zugangsdaten und Region, Admin-Login,
+Setup-WLAN-Passwort, Standort, API-Keys und alle Anzeige-Einstellungen. Firmware
+und Weboberfläche bleiben installiert. Die Uhr startet danach im Setup-Modus wie
+ein neues Gerät und kann weitergegeben werden.
+
+Ohne Zugang zur Weboberfläche die `BOOT`-Taste des ESP32 (GPIO 0) bei laufender
+Uhr 10 Sekunden gedrückt halten. Nach 3 Sekunden zählt die Matrix `RESET 7` bis
+`RESET 1` herunter, dann wird alles gelöscht und die Uhr startet neu. Früheres
+Loslassen bricht ab.
+
+Wer die Einstellungen später wiederherstellen möchte, exportiert sie vorher unter
+`System` > `Einstellungen sichern`. Passwörter und API-Keys sind in der Datei
+nicht enthalten.
 
 ## Problembehandlung
 
@@ -265,17 +321,17 @@ Die Weboberfläche liegt nicht im Firmware-Binary. Nach Änderungen an `data/` m
 
 - Prüfe, ob der ESP32 im WLAN verbunden ist.
 - Öffne die IP-Adresse aus dem Router statt `pixelclock.local`.
-- Falls kein WLAN gespeichert ist, mit `PixelClock-Setup` verbinden und `http://192.168.4.1` öffnen.
+- Falls kein WLAN gespeichert ist, mit `PixelClock-Setup-XXXXXX` verbinden und `http://192.168.4.1` öffnen.
 - Wenn mDNS nicht funktioniert, ist `*.local` im Netzwerk eventuell nicht auflösbar.
 
 ### Login funktioniert nicht
 
 - Standard ist `admin` / `pixelclock`.
 - Wenn du Login-Daten geändert hast, melde dich mit Benutzer und Passwort neu an.
-- Starte die Uhr nach geänderten Login-Daten neu, wenn die Oberfläche einen Neustart meldet.
-- Wenn die Admin-Erinnerung trotz geändertem Passwort erneut erscheint, Browser-Cache hart neu laden und prüfen, ob `Speichern` erfolgreich war.
-- Bei komplett verlorenen Daten hilft ein Werksreset über die Weboberfläche, solange du noch eingeloggt bist.
-- Ohne Zugriff musst du die NVS-Daten löschen oder die Firmware mit einem Reset-Hilfsweg neu flashen.
+- Nach fünf falschen Passwörtern warten, bis die auf der Login-Seite angezeigte Sperre abgelaufen ist.
+- Wenn die Einrichtungskarte trotz geändertem Passwort noch das Admin-Passwort auflistet, Browser-Cache hart neu laden und prüfen, ob `Speichern` erfolgreich war.
+- Solange du noch eingeloggt bist, hilft der Werksreset unter `System`.
+- Ohne Zugriff die `BOOT`-Taste am ESP32 bei laufender Uhr 10 Sekunden gedrückt halten (siehe [Werksreset](#werksreset-und-uhr-weitergeben)).
 
 ### Wetter wird nicht angezeigt
 

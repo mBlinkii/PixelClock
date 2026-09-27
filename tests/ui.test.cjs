@@ -209,3 +209,14 @@ test('a locked login shows the remaining wait time', async () => {
   await h.run('login({ preventDefault() {} })');
   assert.equal(h.element('loginMessage').textContent, 'Zu viele Fehlversuche. Bitte in 42 Sekunden erneut versuchen.');
 });
+
+test('the assistant opens on its own only while the clock has no saved Wi-Fi', () => {
+  const h = harness();
+  h.run('savedConfig = { ssid: "", adminPasswordIsDefault: true }');
+  assert.equal(h.run('isFirstSetup()'), true);
+  h.run('savedConfig = { ssid: "Home", adminPasswordIsDefault: true }; lastStatus = { setupMode: true }');
+  assert.equal(h.run('isFirstSetup()'), false);
+  h.run('savedConfig = { ssid: "Home", adminPasswordIsDefault: false }; lastStatus = { setupMode: false }');
+  assert.equal(h.run('isFirstSetup()'), false);
+  assert.equal(h.run('setupIncomplete()'), false);
+});

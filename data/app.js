@@ -67,8 +67,8 @@ const settingsExportFormat = "pixel-clock-settings";
 const liveIdleMs = 5 * 60 * 1000;
 
 const $ = (id) => document.getElementById(id);
-const adminReminderStorageKey = "pixelClockAdminReminderDismissed";
 const setupDismissedStorageKey = "pixelClockSetupDismissed";
+const setupCardHiddenStorageKey = "pixelClockSetupCardHidden";
 const authStorageKey = "pixelClockAuth";
 let currentLanguage = storedLanguage || ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
 let statusRefreshTimer = 0;
@@ -333,19 +333,7 @@ function messageText(text) {
   showToast(text);
 }
 
-function showAdminReminder(config) {
-  if (!config?.adminPasswordIsDefault || readStorage(adminReminderStorageKey) === "1") return;
-  $("adminReminder").hidden = false;
-  $("adminReminderGo").focus();
-}
-
-function closeAdminReminder(rememberDismissal) {
-  $("adminReminder").hidden = true;
-  if (rememberDismissal) writeStorage(adminReminderStorageKey, "1");
-}
-
 function openAdminAccess() {
-  closeAdminReminder(false);
   showPage("network");
   document.querySelector(".accessSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
   $("adminPassword").focus({ preventScroll: true });
@@ -645,9 +633,17 @@ function setupIncomplete() {
   return setupChecklist().some((item) => !item.done);
 }
 
+// Only a clock without saved Wi-Fi (first start or after a factory reset)
+// opens the assistant on its own; this is decided by the device, not by the
+// browser, so a configured clock never shows it after login.
+function isFirstSetup() {
+  return Boolean(savedConfig) && !String(savedConfig.ssid || "").trim();
+}
+
 function updateSetupCard() {
   const items = setupChecklist();
-  $("setupCard").hidden = !items.some((item) => !item.done);
+  $("setupCard").hidden = !items.some((item) => !item.done) || readStorage(setupCardHiddenStorageKey) === "1";
+  $("setupCardPasswordBtn").hidden = !savedConfig?.adminPasswordIsDefault;
   const list = $("setupChecklist");
   list.replaceChildren();
   for (const item of items) {
@@ -1292,7 +1288,7 @@ async function factoryReset() {
   const ssid = data.setupApSsid || lastStatus?.setupApSsid || "PixelClock-Setup";
   closeFactoryReset();
   writeStorage(setupDismissedStorageKey, null);
-  writeStorage(adminReminderStorageKey, null);
+  writeStorage(setupCardHiddenStorageKey, null);
   setAuthHeader("");
   showFinalOverlay("Werksreset läuft...", trFormat(
     "Die Uhr löscht alle Daten und startet im Setup-Modus. Zum Einrichten mit dem WLAN „{ssid}“ verbinden (Passwort pixelclock).",
@@ -1394,8 +1390,7 @@ async function startAuthenticatedApp() {
     previewActive = true;
     cancelPreview();
   }
-  const wizardOpened = typeof maybeOpenSetupWizard === "function" && maybeOpenSetupWizard();
-  if (!wizardOpened) showAdminReminder(savedConfig);
+  if (typeof maybeOpenSetupWizard === "function") maybeOpenSetupWizard();
 }
 
 async function login(event) {
@@ -1464,8 +1459,12 @@ $("loginForm").addEventListener("submit", login);
 $("logoutBtn").addEventListener("click", logout);
 $("languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
 $("loginLanguage").addEventListener("change", (event) => setLoginLanguage(event.target.value));
-$("adminReminderGo").addEventListener("click", openAdminAccess);
-$("adminReminderDismiss").addEventListener("click", () => closeAdminReminder(true));
+$("setupCardPasswordBtn").addEventListener("click", openAdminAccess);
+$("setupCardHideBtn").addEventListener("click", () => {
+  writeStorage(setupCardHiddenStorageKey, "1");
+  updateSetupCard();
+  message("Der Assistent ist unter System jederzeit erneut verfügbar.");
+});
 $("saveBtn").addEventListener("click", saveConfig);
 bindAction("scanBtn", scanNetworks);
 $("brightnessPercent").addEventListener("input", () => syncBrightnessNumberFromSlider("brightness", "brightnessPercent", "brightnessPercentValue"));
