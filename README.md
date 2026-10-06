@@ -5,12 +5,13 @@
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
 Current firmware version: `0.1.19`
-Current LittleFS web interface version: `0.1.16`
+Current LittleFS web interface version: `0.1.17`
 
 ### New in this version
 
-- **Easy first setup:** After joining the setup Wi-Fi the setup page opens by itself and an
-  assistant guides you through every step.
+- **Easy first setup:** After joining the setup Wi-Fi the setup page opens by itself. The
+  assistant only asks for Wi-Fi, location and password; the LED matrix can be adjusted in
+  the advanced setup when needed.
 - **Hand the clock on:** A factory reset in the web interface or with the BOOT button erases all data.
 - **Modern web interface** with tabs, live view of the matrix, instant preview, light/dark mode
   and settings export/import.
@@ -206,18 +207,22 @@ Later updates do not need USB, see [Install updates](#5-install-updates).
 2. **Open the setup page.** It usually opens automatically ("Sign in to network"). If not,
    enter `http://192.168.4.1` in the browser. A "No internet" notice is normal here.
 3. **Log in** with user `admin` and password `pixelclock`.
-4. **Follow the assistant.** It opens by itself and has six steps:
+4. **Follow the assistant.** It opens by itself and has five steps:
    - **Language:** German or English. The weekdays on the clock follow this choice.
    - **Wi-Fi:** Tap your network in the list and enter the Wi-Fi password. If it is missing,
      tap `Search` or type the name yourself.
-   - **LED matrix:** The defaults fit most 32×8 matrices. `Apply and show test pattern`
-     shows a rainbow starting with red on the left. Mirrored? Change the start corner.
-     Fragmented? Change the wiring. The diagram shows how the signal runs through the LEDs.
    - **Location and weather:** Enter your city and choose a weather service without an API
      key; Open-Meteo is recommended. Also choose °C or °F and the 12 or 24-hour format.
    - **Secure access:** Set your own admin password with at least 8 characters. This is
      strongly recommended; if needed, choose `Change later`.
    - **Summary:** Check everything and tap `Save and finish`.
+
+   A ready-built or preconfigured clock needs no hardware settings. If you built the clock
+   yourself or the display looks mirrored, scrambled or dark, switch on **Advanced setup:
+   configure the LED matrix** in the summary. An extra step follows: the defaults fit most
+   32×8 matrices. `Apply and show test pattern` shows a rainbow starting with red on the
+   left. Mirrored? Change the start corner. Fragmented? Change the wiring. The diagram shows
+   how the signal runs through the LEDs. The same settings are on the `Hardware` tab later.
 5. **Back to your own Wi-Fi.** The clock restarts and joins your Wi-Fi; the setup Wi-Fi
    disappears. Reconnect your phone to your normal Wi-Fi. The assistant reports
    `Clock found!` as soon as the clock is reachable and offers a link.
@@ -458,7 +463,9 @@ Firmware 0.1.19 fixes DWD weather: Bright Sky may report the icon `wind` or none
 at all, which showed as "no weather data"; precipitation and cloud cover now
 provide the symbol. The Let's Encrypt root certificates now cover the 2026
 certificate chains, and connection errors name their cause. Open-Meteo can use
-the forecast model of a specific weather service (e.g. DWD ICON). Web UI 0.1.16 opens
+the forecast model of a specific weather service (e.g. DWD ICON). Web UI 0.1.17
+reduces the assistant to Wi-Fi, location and password; the LED matrix is an optional
+step of the advanced setup. Web UI 0.1.16 opens
 the setup assistant only while no Wi-Fi is saved on the clock and replaces the
 admin password popup with the setup card on the overview.
 

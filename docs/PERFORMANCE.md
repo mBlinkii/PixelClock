@@ -1,6 +1,6 @@
 # Performance and validation
 
-Firmware 0.1.19 / web UI 0.1.16.
+Firmware 0.1.19 / web UI 0.1.17.
 
 The display task yields instead of busy polling. TLS requests run in one worker
 at idle priority so CPU-heavy library operations share time with the watchdog's

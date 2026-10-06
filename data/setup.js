@@ -2,7 +2,14 @@
 // data-bind="<field id>", so saving reuses formBody(), validation, secret
 // handling and the normal /api/config request. Only existing endpoints are used,
 // which keeps this web UI compatible with already installed firmware.
-const wizardSteps = ["welcome", "wifi", "display", "location", "security", "summary"];
+// The basic setup covers what every user needs. The LED matrix step is only
+// added when the advanced setup is switched on in the summary.
+const wizardBasicSteps = ["welcome", "wifi", "location", "security", "summary"];
+let wizardAdvanced = false;
+
+function wizardSteps() {
+  return wizardAdvanced ? ["welcome", "wifi", "location", "security", "display", "summary"] : wizardBasicSteps;
+}
 const matrixPresets = { "32x8": [32, 8], "32x16": [32, 16], "64x8": [64, 8] };
 const providerNames = { 0: "Open-Meteo", 1: "OpenWeatherMap", 2: "DWD (Bright Sky)", 3: "MET Norway", 4: "WeatherAPI" };
 let wizardStepIndex = 0;
@@ -139,12 +146,14 @@ function renderWizardSummary() {
   const rows = [
     ["WLAN", ssid ? `${ssid} · ${$("wifiCountry").value}` : tr("Nicht festgelegt"), "wifi", !ssid],
     ["Browser-Adresse", `http://${sanitizeName($("hostname").value)}.local`, "wifi"],
-    ["Display", `${$("width").value} × ${$("height").value} · GPIO ${$("dataPin").value} · ${$("colorOrder").value} · ` +
-      `${selectedOptionText("origin")} · ${selectedOptionText("wiringMode")}`, "display"],
     ["Standort", `${$("cityName").value.trim()} · ${providerNames[$("weatherProvider").value] || ""}`, "location"],
     ["Format", `${$("hourFormat").value} h · °${$("temperatureUnit").value === "1" ? "F" : "C"}`, "location"],
     ["Admin-Passwort", tr(password[0]), "security", password[1]]
   ];
+  if (wizardAdvanced) {
+    rows.splice(2, 0, ["Display", `${$("width").value} × ${$("height").value} · GPIO ${$("dataPin").value} · ` +
+      `${$("colorOrder").value} · ${selectedOptionText("origin")} · ${selectedOptionText("wiringMode")}`, "display"]);
+  }
   const list = $("wizardSummary");
   list.replaceChildren();
   for (const [label, value, step, warn] of rows) {
@@ -158,7 +167,7 @@ function renderWizardSummary() {
     edit.type = "button";
     edit.className = "ghost small";
     edit.textContent = tr("Ändern");
-    edit.addEventListener("click", () => showWizardStep(wizardSteps.indexOf(step)));
+    edit.addEventListener("click", () => showWizardStep(wizardSteps().indexOf(step)));
     row.append(term, detail, edit);
     list.append(row);
   }
@@ -190,14 +199,15 @@ function prepareWizardStep(name) {
     $("wizardSkipPassword").hidden = !isDefault;
     $("wizardAdminUser").textContent = $("adminUsername").value || "admin";
   } else if (name === "summary") {
+    $("wizardAdvancedToggle").checked = wizardAdvanced;
     renderWizardSummary();
   }
 }
 
 function renderWizardChrome() {
-  const name = wizardSteps[wizardStepIndex];
-  $("wizardStepLabel").textContent = trFormat("Schritt {n} von {total}", { n: wizardStepIndex + 1, total: wizardSteps.length });
-  $("wizardProgressBar").style.width = `${((wizardStepIndex + 1) / wizardSteps.length) * 100}%`;
+  const name = wizardSteps()[wizardStepIndex];
+  $("wizardStepLabel").textContent = trFormat("Schritt {n} von {total}", { n: wizardStepIndex + 1, total: wizardSteps().length });
+  $("wizardProgressBar").style.width = `${((wizardStepIndex + 1) / wizardSteps().length) * 100}%`;
   $("wizardBack").hidden = wizardStepIndex === 0;
   $("wizardNext").className = "primary";
   $("wizardNext").textContent = tr(name === "welcome" ? "Los geht's" : name === "summary" ? "Speichern und abschließen" : "Weiter");
@@ -205,8 +215,8 @@ function renderWizardChrome() {
 
 function showWizardStep(index) {
   wizardFinished = false;
-  wizardStepIndex = Math.max(0, Math.min(index, wizardSteps.length - 1));
-  const name = wizardSteps[wizardStepIndex];
+  wizardStepIndex = Math.max(0, Math.min(index, wizardSteps().length - 1));
+  const name = wizardSteps()[wizardStepIndex];
   for (const step of document.querySelectorAll(".wizardStep")) step.hidden = step.dataset.step !== name;
   setWizardError("");
   prepareWizardStep(name);
@@ -418,7 +428,7 @@ async function wizardNext() {
     showPage("overview");
     return;
   }
-  const name = wizardSteps[wizardStepIndex];
+  const name = wizardSteps()[wizardStepIndex];
   const error = validateWizardStep(name);
   if (error) {
     setWizardError(error);
@@ -437,6 +447,7 @@ function openSetupWizard() {
     wifiPasswordEntered: false
   };
   wizardScanned = false;
+  wizardAdvanced = false;
   $("wizardAdminPassword").value = "";
   $("wizardAdminPassword2").value = "";
   $("setupWizard").hidden = false;
@@ -464,7 +475,7 @@ function maybeOpenSetupWizard() {
 
 function refreshSetupWizardText() {
   if ($("setupWizard").hidden || wizardFinished) return;
-  prepareWizardStep(wizardSteps[wizardStepIndex]);
+  prepareWizardStep(wizardSteps()[wizardStepIndex]);
   renderWizardChrome();
 }
 
@@ -496,6 +507,12 @@ function initSetupWizard() {
     radio.addEventListener("change", () => { if (radio.checked) applySizeChoice(radio.value); });
   }
   $("wizardScanBtn").addEventListener("click", wizardScan);
+  // Switching the advanced setup on continues with the LED matrix step.
+  $("wizardAdvancedToggle").addEventListener("change", () => {
+    wizardAdvanced = $("wizardAdvancedToggle").checked;
+    if (wizardAdvanced) showWizardStep(wizardSteps().indexOf("display"));
+    else showWizardStep(wizardSteps().indexOf("summary"));
+  });
   $("wizardTestBtn").addEventListener("click", wizardApplyAndTest);
   $("wizardBack").addEventListener("click", () => showWizardStep(wizardStepIndex - 1));
   $("wizardNext").addEventListener("click", wizardNext);

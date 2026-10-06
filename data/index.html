@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark light">
     <title>Pixel Clock</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css?v=0.1.16">
+    <link rel="stylesheet" href="/app.css?v=0.1.17">
   </head>
   <body>
     <svg class="iconSprite" aria-hidden="true" focusable="false">
@@ -667,7 +667,7 @@
           <div class="wizardStep" data-step="welcome">
             <div class="wizardHero"><img src="/favicon.svg" alt="" aria-hidden="true"></div>
             <h3>Willkommen bei Pixel Clock</h3>
-            <p>In wenigen Schritten ist deine Uhr bereit: WLAN verbinden, Display prüfen, Standort wählen und den Zugang absichern.</p>
+            <p>In wenigen Schritten ist deine Uhr bereit: WLAN verbinden, Standort wählen und den Zugang absichern.</p>
             <div class="choiceGrid two" role="radiogroup" aria-label="Sprache" data-no-i18n>
               <label class="choice"><input type="radio" name="wizardLanguage" value="de"><span><strong lang="de">Deutsch</strong></span></label>
               <label class="choice"><input type="radio" name="wizardLanguage" value="en"><span><strong lang="en">English</strong></span></label>
@@ -713,6 +713,7 @@
           </div>
 
           <div class="wizardStep" data-step="display" hidden>
+            <span class="eyebrow">Erweiterte Einrichtung</span>
             <h3>LED-Matrix einrichten</h3>
             <p>Wähle die Größe deiner Matrix und wie die LEDs verkabelt sind. Für die meisten 32×8-Matrizen passen die Vorgaben.</p>
             <span class="fieldLabel">Matrixgröße</span>
@@ -841,6 +842,13 @@
             <h3>Alles bereit</h3>
             <p>Prüfe deine Angaben. Wenn nötig, startet die Uhr danach neu, damit alle Einstellungen aktiv werden.</p>
             <dl id="wizardSummary" class="summaryList" data-no-i18n></dl>
+            <div class="switchList advancedSetup">
+              <label class="check">
+                <input id="wizardAdvancedToggle" type="checkbox">
+                Erweiterte Einrichtung: LED-Matrix einrichten
+              </label>
+            </div>
+            <p class="hint">Nur nötig, wenn du die Uhr selbst gebaut hast oder die Anzeige gespiegelt, verdreht oder dunkel ist: Matrixgröße, Daten-Pin, Verkabelung und Testmuster. Alles lässt sich später auch im Tab „Hardware“ ändern.</p>
           </div>
 
           <div class="wizardStep" data-step="done" hidden>
@@ -888,9 +896,9 @@
         <p id="restartOverlayText">Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
       </section>
     </div>
-    <script src="/i18n.js?v=0.1.16" defer></script>
-    <script src="/updates.js?v=0.1.16" defer></script>
-    <script src="/setup.js?v=0.1.16" defer></script>
-    <script src="/app.js?v=0.1.16" defer></script>
+    <script src="/i18n.js?v=0.1.17" defer></script>
+    <script src="/updates.js?v=0.1.17" defer></script>
+    <script src="/setup.js?v=0.1.17" defer></script>
+    <script src="/app.js?v=0.1.17" defer></script>
   </body>
 </html>

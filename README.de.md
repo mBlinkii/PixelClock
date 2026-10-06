@@ -5,12 +5,13 @@ Deutsch | [English](README.md)
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
 Aktuelle Firmware-Version: `0.1.19`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.16`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.17`
 
 ### Neu in dieser Version
 
 - **Einfache Ersteinrichtung:** Nach dem Verbinden mit dem Setup-WLAN öffnet sich die
-  Einrichtungsseite von selbst, ein Assistent führt durch alle Schritte.
+  Einrichtungsseite von selbst. Der Assistent fragt nur WLAN, Standort und Passwort ab;
+  die LED-Matrix lässt sich bei Bedarf über die erweiterte Einrichtung anpassen.
 - **Uhr weitergeben:** Werksreset in der Weboberfläche oder per BOOT-Taste löscht alle Daten.
 - **Moderne Weboberfläche** mit Tabs, Live-Ansicht der Matrix, Sofort-Vorschau,
   Hell-/Dunkelmodus und Export/Import der Einstellungen.
@@ -210,19 +211,24 @@ Spätere Updates brauchen kein USB mehr, siehe [Updates einspielen](#5-updates-e
    anmelden“). Falls nicht, im Browser `http://192.168.4.1` eingeben. Die Meldung
    „Kein Internet“ ist hier normal.
 3. **Anmelden** mit Benutzer `admin` und Passwort `pixelclock`.
-4. **Dem Assistenten folgen.** Er öffnet sich von selbst und hat sechs Schritte:
+4. **Dem Assistenten folgen.** Er öffnet sich von selbst und hat fünf Schritte:
    - **Sprache:** Deutsch oder Englisch. Auch die Wochentage auf der Uhr folgen dieser Wahl.
    - **WLAN:** Dein Netz aus der Liste antippen und das WLAN-Passwort eingeben.
      Steht dein Netz nicht in der Liste, auf `Suchen` tippen oder den Namen selbst eintragen.
-   - **LED-Matrix:** Die Vorgaben passen für die meisten 32×8-Matrizen. Mit
-     `Übernehmen und Testmuster zeigen` erscheint ein Regenbogen, links beginnend mit Rot.
-     Ist er gespiegelt, die Start-Ecke ändern; ist er zerstückelt, die Verkabelung ändern.
-     Das Diagramm zeigt, wie das Signal durch die LEDs läuft.
    - **Standort und Wetter:** Deine Stadt eintragen. Wetterdienst ohne API-Key wählen,
      empfohlen ist Open-Meteo. Dazu Temperatur in °C oder °F und 12- oder 24-Stunden-Format.
    - **Zugang absichern:** Ein eigenes Admin-Passwort mit mindestens 8 Zeichen festlegen.
      Das empfehlen wir dringend; notfalls geht es später über `Später ändern`.
    - **Zusammenfassung:** Alles prüfen und `Speichern und abschließen` tippen.
+
+   Bei einer fertig gekauften oder vorkonfigurierten Uhr ist an der Hardware nichts zu tun.
+   Hast du die Uhr selbst gebaut oder sieht die Anzeige gespiegelt, verdreht oder dunkel aus,
+   schalte in der Zusammenfassung **Erweiterte Einrichtung: LED-Matrix einrichten** ein.
+   Dann folgt ein zusätzlicher Schritt: Die Vorgaben passen für die meisten 32×8-Matrizen.
+   Mit `Übernehmen und Testmuster zeigen` erscheint ein Regenbogen, links beginnend mit Rot.
+   Ist er gespiegelt, die Start-Ecke ändern; ist er zerstückelt, die Verkabelung ändern.
+   Das Diagramm zeigt, wie das Signal durch die LEDs läuft. Dieselben Einstellungen gibt es
+   auch später im Tab `Hardware`.
 5. **Zurück ins eigene WLAN.** Die Uhr startet neu und verbindet sich mit deinem WLAN. Das
    Setup-WLAN verschwindet. Verbinde dein Handy wieder mit deinem normalen WLAN. Der
    Assistent meldet `Uhr gefunden!`, sobald die Uhr erreichbar ist, und bietet einen Link an.
@@ -472,6 +478,8 @@ und Bewölkung das Symbol. Die Let's-Encrypt-Wurzelzertifikate decken die neuen
 Zertifikatsketten von 2026 ab, und Verbindungsfehler nennen ihre Ursache.
 Open-Meteo kann das Vorhersagemodell eines bestimmten Wetterdienstes nutzen
 (z. B. DWD ICON).
+Weboberfläche 0.1.17 vereinfacht den Assistenten auf WLAN, Standort und Passwort;
+die LED-Matrix ist ein optionaler Schritt der erweiterten Einrichtung.
 Weboberfläche 0.1.16 öffnet den Einrichtungsassistenten nur, solange auf der Uhr
 kein WLAN gespeichert ist, und ersetzt das Admin-Passwort-Popup durch die
 Einrichtungskarte auf der Übersicht.
