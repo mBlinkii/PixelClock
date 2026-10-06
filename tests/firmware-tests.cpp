@@ -7,6 +7,7 @@
 #include "../src/cooperative_reader.h"
 #include "../src/admin_auth.h"
 #include "../src/weather_models.h"
+#include "../src/location_query.h"
 
 struct TestClock {
   static inline uint32_t time = 0, pauses = 0;
@@ -185,7 +186,26 @@ static void testLoginThrottle() {
   assert(wrapped.retryAfterMs(0x0b000000 + LoginThrottle::SLOTS + 2, 20100) == 0);
 }
 
+static void testPostalQuery() {
+  PostalQuery q;
+  assert(parsePostalQuery("01067", q) && std::string(q.code) == "01067" && !q.country[0]);
+  assert(parsePostalQuery(" 01067 Dresden", q) && std::string(q.code) == "01067");
+  assert(parsePostalQuery("Dresden, 01067", q) && std::string(q.code) == "01067");
+  assert(parsePostalQuery("D-01067", q) && std::string(q.country) == "de");
+  assert(parsePostalQuery("DE 10115", q) && std::string(q.code) == "10115" && std::string(q.country) == "de");
+  assert(parsePostalQuery("AT-1010", q) && std::string(q.code) == "1010" && std::string(q.country) == "at");
+  assert(parsePostalQuery("A-1010 Wien", q) && std::string(q.country) == "at");
+  assert(parsePostalQuery("CH 3011", q) && std::string(q.country) == "ch");
+  assert(parsePostalQuery("Ulm 89073", q) && !q.country[0]);
+  assert(!parsePostalQuery("Berlin", q));
+  assert(!parsePostalQuery("Frankfurt am Main", q));
+  assert(!parsePostalQuery("123", q));
+  assert(!parsePostalQuery("123456", q));
+  assert(!parsePostalQuery("Ort-12345x", q));
+}
+
 int main() {
+  testPostalQuery();
   testNetworkReader();
   testBasicAuthorization();
   testLoginThrottle();

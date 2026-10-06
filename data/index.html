@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark light">
     <title>Pixel Clock</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css?v=0.1.19">
+    <link rel="stylesheet" href="/app.css?v=0.1.20">
   </head>
   <body>
     <svg class="iconSprite" aria-hidden="true" focusable="false">
@@ -355,11 +355,11 @@
               <h2><svg class="sectionIcon" aria-hidden="true"><use href="#icon-location"></use></svg>Standort</h2>
               <div class="grid">
                 <label>
-                  Stadt
-                  <input minlength="2" maxlength="100" required id="cityName" name="cityName" autocomplete="address-level2" placeholder="z. B. Berlin">
+                  Stadt oder PLZ
+                  <input minlength="2" maxlength="100" required id="cityName" name="cityName" autocomplete="address-level2" placeholder="z. B. Berlin oder 10115">
                 </label>
               </div>
-              <p class="hint">Koordinaten und Zeitzone werden nach dem Speichern automatisch aus der Stadt ermittelt.</p>
+              <p class="hint">Stadt oder Postleitzahl. Koordinaten und Zeitzone werden nach dem Speichern automatisch ermittelt. Postleitzahlen anderer Länder mit Kürzel, z. B. AT-1010.</p>
               <details class="advanced">
                 <summary>Zeitzone manuell festlegen</summary>
                 <label>
@@ -802,10 +802,10 @@
 
           <div class="wizardStep" data-step="location" hidden>
             <h3>Standort und Wetter</h3>
-            <p>Die Stadt bestimmt Wetter und Zeitzone. Beides wird nach dem Neustart automatisch ermittelt.</p>
+            <p>Stadt oder Postleitzahl bestimmen Wetter und Zeitzone. Beides wird nach dem Neustart automatisch ermittelt.</p>
             <label>
-              Stadt
-              <input id="wizardCity" data-bind="cityName" minlength="2" maxlength="100" required autocomplete="address-level2" placeholder="z. B. Berlin">
+              Stadt oder PLZ
+              <input id="wizardCity" data-bind="cityName" minlength="2" maxlength="100" required autocomplete="address-level2" placeholder="z. B. Berlin oder 10115">
             </label>
             <span class="fieldLabel">Wetterdienst</span>
             <div class="choiceList" role="radiogroup" aria-label="Wetterdienst">
@@ -920,9 +920,9 @@
         <p id="restartOverlayText">Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
       </section>
     </div>
-    <script src="/i18n.js?v=0.1.19" defer></script>
-    <script src="/updates.js?v=0.1.19" defer></script>
-    <script src="/setup.js?v=0.1.19" defer></script>
-    <script src="/app.js?v=0.1.19" defer></script>
+    <script src="/i18n.js?v=0.1.20" defer></script>
+    <script src="/updates.js?v=0.1.20" defer></script>
+    <script src="/setup.js?v=0.1.20" defer></script>
+    <script src="/app.js?v=0.1.20" defer></script>
   </body>
 </html>

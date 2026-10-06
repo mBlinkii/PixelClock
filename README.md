@@ -4,8 +4,8 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.21`
-Current LittleFS web interface version: `0.1.19`
+Current firmware version: `0.1.22`
+Current LittleFS web interface version: `0.1.20`
 
 ### New in this version
 
@@ -46,7 +46,7 @@ The detailed guide is under [First Setup](#first-setup).
 - day and night brightness in percent, limited to 40% by default
 - automatic page rotation or fixed page
 - Open-Meteo, DWD or MET Norway without an API key; OpenWeatherMap and WeatherAPI with your own API key
-- city-based location lookup with automatic time zone for many regions
+- location lookup by city or postal code (e.g. `10115`, `01067`, `AT-1010`) with automatic time zone for many regions
 - bilingual web interface, German/English, with matching weekdays on the display
 - guided setup assistant on the first start: Wi-Fi scan, LED matrix with wiring diagram and test pattern, location and admin password
 - setup Wi-Fi with a per-device name; phones and laptops open the setup page automatically (captive portal)
@@ -218,7 +218,7 @@ Later updates do not need USB, see [Install updates](#5-install-updates).
    - **Language:** German or English. The weekdays on the clock follow this choice.
    - **Wi-Fi:** Tap your network in the list and enter the Wi-Fi password. If it is missing,
      tap `Search` or type the name yourself.
-   - **Location and weather:** Enter your city and choose a weather service without an API
+   - **Location and weather:** Enter your city or postal code and choose a weather service without an API
      key; Open-Meteo is recommended. Also choose °C or °F and the 12 or 24-hour format.
    - **Secure access:** Set your own admin password with at least 8 characters. This step
      is required: from now on you log in with user `admin` and this password.
@@ -403,7 +403,9 @@ than 0.1.21 does not support this; hold the `BOOT` button for 10 seconds instead
 - Check Wi-Fi connection and internet access.
 - Check the weather card under `Overview` for an error message.
 - If using OpenWeatherMap, make sure the API key is valid and active.
-- If the city is ambiguous, enter a more specific name.
+- If the city is ambiguous, enter a more specific name or the postal code.
+- Postal codes are searched in the Wi-Fi region's country (default Germany). For other
+  countries add the country, e.g. `AT-1010` or `CH 3011`.
 - After changes, press `Save` and then `Refresh weather`.
 
 ### Time is wrong
@@ -475,6 +477,12 @@ pio run --target uploadfs
 ```
 
 ## Release Notes
+
+Firmware 0.1.22 and web UI 0.1.20 find the location by postal code as well. German
+codes with a leading zero such as `01067` work; for other countries add the
+country, e.g. `AT-1010`. Postal codes are looked up with OpenStreetMap Nominatim,
+place names still with Open-Meteo. In the setup assistant the Wi-Fi list collapses
+to the chosen network, so the password field stays visible above the phone keyboard.
 
 Firmware 0.1.21 and web UI 0.1.19 make the first setup easier: the setup Wi-Fi is
 open and a new clock opens the assistant without a login. Setting your own admin
@@ -565,7 +573,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for pull request guidance.
 
 ## Credits
 
-This project was designed, implemented, and documented together with Codex, an AI coding assistant from OpenAI.
+This project was designed, implemented, and documented with the help of AI.
+
+Weather data from the configured provider; place names via Open-Meteo geocoding,
+postal codes via [OpenStreetMap Nominatim](https://nominatim.org/)
+(data © OpenStreetMap contributors, ODbL).
 
 ## License
 

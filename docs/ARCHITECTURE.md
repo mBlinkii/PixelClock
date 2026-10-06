@@ -276,7 +276,14 @@ If a matrix looks mirrored or scrambled, inspect `xy()`, `wiringMode`, and
   not need an API key. Its `icon` may be `wind` or null; `condition` and
   `cloud_cover` then provide the symbol.
 - City lookup uses Open-Meteo geocoding and stores latitude, longitude,
-  location label, and a POSIX-style timezone string.
+  location label, and a POSIX-style timezone string. Input that contains a
+  4–5 digit postal code (`parsePostalQuery()` in `location_query.h`, optional
+  country prefix like `D-`, `AT-`, `CH `) goes to OpenStreetMap Nominatim
+  (`postalcode` + `countrycodes`, default: the Wi-Fi country), because
+  Open-Meteo misses many German codes or matches them abroad. A country-limited
+  Open-Meteo name search for the found place then supplies the time zone.
+  Nominatim uses a Let's Encrypt chain and allows 1 request/s with an
+  identifying User-Agent; lookups only run after the location changes.
 - MET Norway uses Locationforecast compact and WeatherAPI uses a one-day forecast.
 - Provider filters and decoders live in `weather_decode.h`; normalized symbols in `weather_codes.h`.
 - NTP uses asynchronous `configTzTime()` with the configured POSIX timezone.

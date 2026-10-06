@@ -103,7 +103,7 @@ function updateWizardTestHint() {
     !(lastStatus?.setupMode && !String(savedConfig?.ssid || "").trim() && !$("ssid").value.trim());
 }
 
-function renderWizardNetworks() {
+function renderWizardNetworks(collapsed = true) {
   renderNetworks($("wizardNetworks"), wizardNetworks, (network) => {
     $("wizardSsid").value = network.ssid;
     pushWizardField($("wizardSsid"));
@@ -111,7 +111,7 @@ function renderWizardNetworks() {
     updateWizardTestHint();
     setWizardError("");
     $("wizardWifiPassword").focus();
-  }, $("ssid").value);
+  }, $("ssid").value, collapsed);
 }
 
 async function wizardScan() {
@@ -122,7 +122,7 @@ async function wizardScan() {
   try {
     wizardNetworks = await fetchNetworks();
     wizardScanned = true;
-    renderWizardNetworks();
+    renderWizardNetworks(false);
   } catch (error) {
     if (error.message !== "Unauthorized") {
       $("wizardNetworks").textContent = tr(error.message === "Failed to fetch" || error.name === "AbortError" ? "Uhr nicht erreichbar" : error.message);
@@ -254,7 +254,7 @@ function validateWizardStep(name) {
       if (!$(id).checkValidity()) return invalidFieldMessage($(id));
     }
   } else if (name === "location") {
-    if ($("cityName").value.trim().length < 2) return tr("Bitte eine Stadt mit mindestens 2 Zeichen eingeben.");
+    if ($("cityName").value.trim().length < 2) return tr("Bitte eine Stadt oder Postleitzahl eingeben.");
     const provider = Number($("weatherProvider").value);
     const keyField = provider === 1 ? $("openWeatherApiKey") : provider === 4 ? $("weatherApiKey") : null;
     if (keyField && !hasProviderKeys[provider] && !keyField.value.trim()) return tr("Für diesen Wetterdienst wird ein API-Key benötigt.");
@@ -487,7 +487,7 @@ function onWizardInput(el) {
   if (el.id === "wizardSsid") {
     updateWizardPasswordPlaceholder();
     updateWizardTestHint();
-    if (wizardScanned) renderWizardNetworks();
+    if (wizardScanned) renderWizardNetworks(false);
   } else if (el.id === "wizardWifiPassword" && el.value && wizardStart) {
     wizardStart.wifiPasswordEntered = true;
   } else if (el.id === "wizardOrigin" || el.id === "wizardWiring") {

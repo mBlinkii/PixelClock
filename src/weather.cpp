@@ -6,6 +6,7 @@
 #include "app_state.h"
 #include "weather_decode.h"
 #include "cooperative_reader.h"
+#include "location_query.h"
 
 struct WeatherReaderClock {
   static uint32_t now() { return millis(); }
@@ -402,6 +403,104 @@ void fetchWeather() {
   lastRender = 0;
 }
 
+struct GeoResult {
+  float latitude = NAN;
+  float longitude = NAN;
+  String label;
+  String timezone;
+};
+
+// GETs a JSON document through the shared TLS/HTTP setup. Returns false with
+// `error` set on connection, HTTP or parse errors.
+static bool getGeocodingJson(const String &url, JsonDocument &doc, JsonDocument &filter, String &error) {
+  WiFiClientSecure client;
+  configureWeatherClient(client, WEATHER_PROVIDER_OPEN_METEO);
+  HTTPClient http;
+  prepareHttp(http);
+  if (!http.begin(client, url)) {
+    error = "Geocoding begin failed";
+    return false;
+  }
+  http.addHeader("Accept-Encoding", "identity");
+  const int code = http.GET();
+  if (code < 0) error = connectionError(client, code, "Geocoding ");
+  else if (code != HTTP_CODE_OK) error = "Geocoding HTTP " + String(code);
+  else {
+    WeatherReader stream(http.getStream(), HTTP_TIMEOUT_MS, WEATHER_BODY_TIMEOUT_MS);
+    const DeserializationError err = deserializeJson(doc, stream, DeserializationOption::Filter(filter), DeserializationOption::NestingLimit(16));
+    if (err) error = String("Geocoding JSON ") + err.c_str();
+  }
+  http.end();
+  return error.isEmpty();
+}
+
+// Open-Meteo name search, optionally limited to one country (ISO, upper case).
+static bool geocodeByName(const String &name, const String &language, const String &country, GeoResult &result, String &error) {
+  String url = "https://geocoding-api.open-meteo.com/v1/search?name=" + urlEncode(name) +
+    "&count=1&language=" + language + "&format=json";
+  if (!country.isEmpty()) url += "&countryCode=" + country;
+  JsonDocument doc, filter;
+  for (const char *key : {"latitude", "longitude", "name", "country", "timezone"}) filter["results"][0][key] = true;
+  if (!getGeocodingJson(url, doc, filter, error)) return false;
+  JsonObject first = doc["results"][0];
+  result.latitude = first["latitude"] | NAN;
+  result.longitude = first["longitude"] | NAN;
+  if (!isfinite(result.latitude) || !isfinite(result.longitude)) {
+    error = "Stadt nicht gefunden";
+    return false;
+  }
+  result.label = first["name"] | name.c_str();
+  const char *countryName = first["country"] | "";
+  if (*countryName) result.label += String(", ") + countryName;
+  result.timezone = first["timezone"] | "";
+  return true;
+}
+
+// Postal codes go to OpenStreetMap Nominatim: Open-Meteo misses many German
+// codes or matches them abroad (10115 -> New York). Without a country prefix
+// the Wi-Fi country limits the search. Nominatim has no time zone, so a name
+// search for the found place supplies it.
+static bool geocodeByPostalCode(const PostalQuery &query, const AppConfig &source, GeoResult &result, String &error) {
+  String country = query.country;
+  if (country.isEmpty() && source.wifiCountry != "01") {
+    country = source.wifiCountry;
+    country.toLowerCase();
+  }
+  String url = String("https://nominatim.openstreetmap.org/search?postalcode=") + query.code +
+    "&format=jsonv2&limit=1&addressdetails=1&accept-language=" + source.language;
+  if (!country.isEmpty()) url += "&countrycodes=" + country;
+  JsonDocument doc, filter;
+  filter[0]["lat"] = true;
+  filter[0]["lon"] = true;
+  for (const char *key : {"city", "town", "village", "suburb", "municipality", "country", "country_code"}) filter[0]["address"][key] = true;
+  if (!getGeocodingJson(url, doc, filter, error)) return false;
+  JsonObject first = doc[0];
+  const char *lat = first["lat"] | "";
+  const char *lon = first["lon"] | "";
+  if (!*lat || !*lon) {
+    error = "Postleitzahl nicht gefunden";
+    return false;
+  }
+  result.latitude = atof(lat);
+  result.longitude = atof(lon);
+  JsonObject address = first["address"];
+  String place;
+  for (const char *key : {"city", "town", "village", "suburb", "municipality"}) {
+    place = address[key] | "";
+    if (!place.isEmpty()) break;
+  }
+  result.label = String(query.code);
+  if (!place.isEmpty()) result.label += " " + place;
+  const char *countryName = address["country"] | "";
+  if (*countryName) result.label += String(", ") + countryName;
+  String countryCode = address["country_code"] | country.c_str();
+  countryCode.toUpperCase();
+  GeoResult zone;
+  String zoneError;
+  if (!place.isEmpty() && geocodeByName(place, source.language, countryCode, zone, zoneError)) result.timezone = zone.timezone;
+  return true;
+}
+
 bool resolveCity() {
   AppConfig source;
   uint32_t revision;
@@ -411,46 +510,23 @@ bool resolveCity() {
     source = config;
     revision = weatherRevision;
   }
-  WiFiClientSecure client;
-  configureWeatherClient(client, WEATHER_PROVIDER_OPEN_METEO);
-  HTTPClient http;
-  prepareHttp(http);
-  const String url = "https://geocoding-api.open-meteo.com/v1/search?name=" + urlEncode(source.cityName) +
-    "&count=1&language=" + source.language + "&format=json";
+  GeoResult result;
   String error;
-  JsonDocument doc, filter;
-  for (const char *key : {"latitude", "longitude", "name", "country", "timezone"}) filter["results"][0][key] = true;
-  if (!http.begin(client, url)) error = "Geocoding begin failed";
-  else {
-    http.addHeader("Accept-Encoding", "identity");
-    const int code = http.GET();
-    if (code < 0) error = connectionError(client, code, "Geocoding ");
-    else if (code != HTTP_CODE_OK) error = "Geocoding HTTP " + String(code);
-    else {
-      WeatherReader stream(http.getStream(), HTTP_TIMEOUT_MS, WEATHER_BODY_TIMEOUT_MS);
-      const DeserializationError err = deserializeJson(doc, stream, DeserializationOption::Filter(filter), DeserializationOption::NestingLimit(16));
-      if (err) error = String("Geocoding JSON ") + err.c_str();
-    }
-    http.end();
-  }
-  JsonObject first = doc["results"][0];
-  const float latitude = first["latitude"] | NAN;
-  const float longitude = first["longitude"] | NAN;
-  if (error.isEmpty() && (!isfinite(latitude) || !isfinite(longitude))) error = "Stadt nicht gefunden";
+  PostalQuery postal;
+  if (parsePostalQuery(source.cityName.c_str(), postal)) geocodeByPostalCode(postal, source, result, error);
+  else geocodeByName(source.cityName, source.language, "", result, error);
   StateLock lock;
   if (revision != weatherRevision || pendingRestart) return false;
   if (!error.isEmpty()) {
     weather.lastError = error;
     return false;
   }
-  config.latitude = latitude;
-  config.longitude = longitude;
+  config.latitude = result.latitude;
+  config.longitude = result.longitude;
   config.resolvedCityName = source.cityName;
-  config.locationLabel = first["name"] | source.cityName.c_str();
-  const char *country = first["country"] | "";
-  if (*country) config.locationLabel += String(", ") + country;
+  config.locationLabel = result.label;
   // Preserve a timezone explicitly edited while geocoding was in flight.
-  const String timezone = timezoneFromIana(first["timezone"] | "");
+  const String timezone = timezoneFromIana(result.timezone);
   if (!timezone.isEmpty() && config.timezone == source.timezone) config.timezone = timezone;
   weather = WeatherState();
   ++weatherRevision;

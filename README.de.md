@@ -4,8 +4,8 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.21`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.19`
+Aktuelle Firmware-Version: `0.1.22`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.20`
 
 ### Neu in dieser Version
 
@@ -46,7 +46,7 @@ Die ausführliche Anleitung steht unter [Erste Einrichtung](#erste-einrichtung).
 - Helligkeit und Nacht-Helligkeit in Prozent, standardmäßig auf 40% begrenzt
 - automatische Seitenrotation oder feste Seite
 - Open-Meteo, DWD oder MET Norway ohne API-Key; OpenWeatherMap und WeatherAPI mit eigenem API-Key
-- Standortsuche per Stadtname mit automatischer Zeitzone für viele Regionen
+- Standortsuche per Stadt oder Postleitzahl (z. B. `10115`, `01067`, `AT-1010`) mit automatischer Zeitzone für viele Regionen
 - zweisprachige Weboberfläche, Deutsch/Englisch, mit passenden Wochentagen auf dem Display
 - Einrichtungsassistent beim ersten Start: WLAN-Suche, LED-Matrix mit Verkabelungsdiagramm und Testmuster, Standort und Admin-Passwort
 - Setup-WLAN mit Namen pro Gerät; Handys und Laptops öffnen die Einrichtungsseite automatisch (Captive Portal)
@@ -222,7 +222,7 @@ Spätere Updates brauchen kein USB mehr, siehe [Updates einspielen](#5-updates-e
    - **Sprache:** Deutsch oder Englisch. Auch die Wochentage auf der Uhr folgen dieser Wahl.
    - **WLAN:** Dein Netz aus der Liste antippen und das WLAN-Passwort eingeben.
      Steht dein Netz nicht in der Liste, auf `Suchen` tippen oder den Namen selbst eintragen.
-   - **Standort und Wetter:** Deine Stadt eintragen. Wetterdienst ohne API-Key wählen,
+   - **Standort und Wetter:** Deine Stadt oder Postleitzahl eintragen. Wetterdienst ohne API-Key wählen,
      empfohlen ist Open-Meteo. Dazu Temperatur in °C oder °F und 12- oder 24-Stunden-Format.
    - **Zugang absichern:** Ein eigenes Admin-Passwort mit mindestens 8 Zeichen festlegen.
      Dieser Schritt ist Pflicht: Künftig meldest du dich mit `admin` und diesem Passwort an.
@@ -416,7 +416,9 @@ gedrückt halten (siehe [Werksreset](#werksreset-und-uhr-weitergeben)).
 - Prüfe WLAN-Verbindung und Internetzugriff.
 - Prüfe in der Wetterkarte unter `Übersicht`, ob ein Fehler angezeigt wird.
 - Bei OpenWeatherMap prüfen, ob der API-Key gültig und aktiv ist.
-- Bei falscher Stadt einen eindeutigeren Namen eingeben.
+- Bei falscher Stadt einen eindeutigeren Namen oder die Postleitzahl eingeben.
+- Postleitzahlen werden im Land der WLAN-Region gesucht (Standard Deutschland). Für andere
+  Länder das Land davor schreiben, z. B. `AT-1010` oder `CH 3011`.
 - Nach Änderungen `Speichern` und danach `Wetter aktualisieren` drücken.
 
 ### Uhrzeit stimmt nicht
@@ -488,6 +490,13 @@ pio run --target uploadfs
 ```
 
 ## Versionshinweise
+
+Firmware 0.1.22 und Weboberfläche 0.1.20 finden den Standort auch per Postleitzahl.
+Deutsche PLZ mit führender Null wie `01067` funktionieren; für andere Länder das
+Land davor schreiben, z. B. `AT-1010`. PLZ werden über OpenStreetMap Nominatim
+gesucht, Ortsnamen weiter über Open-Meteo. Im Einrichtungsassistenten klappt die
+WLAN-Liste nach der Auswahl auf das gewählte Netz zusammen, damit das Passwortfeld
+über der Handytastatur sichtbar bleibt.
 
 Firmware 0.1.21 und Weboberfläche 0.1.19 vereinfachen die Ersteinrichtung: Das
 Setup-WLAN ist offen und eine neue Uhr öffnet den Assistenten ohne Anmeldung. Ein
@@ -586,7 +595,11 @@ Siehe auch [CONTRIBUTING.md](CONTRIBUTING.md) für Hinweise zu Pull Requests.
 
 ## Credits
 
-Dieses Projekt wurde gemeinsam mit Codex, einem KI-Coding-Assistenten von OpenAI, entworfen, implementiert und dokumentiert.
+Dieses Projekt wurde mit Unterstützung von KI entworfen, implementiert und dokumentiert.
+
+Wetterdaten vom jeweils gewählten Dienst; Ortsnamen über Open-Meteo Geocoding,
+Postleitzahlen über [OpenStreetMap Nominatim](https://nominatim.org/)
+(Daten © OpenStreetMap-Mitwirkende, ODbL).
 
 ## Lizenz
 

@@ -1225,12 +1225,24 @@ function signalLevel(rssi) {
 }
 
 // SSIDs are untrusted text: only ever assign them through textContent.
-function renderNetworks(container, networks, onPick, selectedSsid) {
+// After a pick the list shrinks to the chosen network, so on a phone the
+// password field stays visible above the on-screen keyboard.
+function setNetworkListCollapsed(container, more, collapsed, others) {
+  container.classList.toggle("isCollapsed", collapsed);
+  more.hidden = !collapsed || !others;
+  more.textContent = trFormat("Andere Netzwerke anzeigen ({count})", { count: others });
+}
+
+function renderNetworks(container, networks, onPick, selectedSsid, collapsed = false) {
   container.replaceChildren();
   if (!networks.length) {
     container.textContent = tr("Keine Netzwerke gefunden.");
     return;
   }
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = "networkMore linkButton";
+  const othersThan = (ssid) => networks.filter((network) => network.ssid !== ssid).length;
   for (const network of networks) {
     const button = document.createElement("button");
     button.type = "button";
@@ -1244,10 +1256,15 @@ function renderNetworks(container, networks, onPick, selectedSsid) {
     button.append(name, meta);
     button.addEventListener("click", () => {
       for (const item of container.children) item.classList.toggle("isSelected", item === button);
+      setNetworkListCollapsed(container, more, true, networks.length - 1);
       onPick(network);
     });
     container.append(button);
   }
+  more.addEventListener("click", () => setNetworkListCollapsed(container, more, false, 0));
+  container.append(more);
+  const selected = networks.some((network) => network.ssid === selectedSsid);
+  setNetworkListCollapsed(container, more, collapsed && selected, othersThan(selectedSsid));
 }
 
 async function scanNetworks() {

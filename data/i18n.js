@@ -420,7 +420,14 @@ const translations = {
     "Bitte in {seconds} Sekunden erneut versuchen.": "Please try again in {seconds} seconds.",
     "Bitte kurz warten, bevor du einen neuen Code anforderst.": "Please wait a moment before requesting a new code.",
     "Kein gültiger Code. Bitte einen neuen Code anfordern.": "No valid code. Please request a new code.",
-    "Der Code stimmt nicht.": "The code is not correct."
+    "Der Code stimmt nicht.": "The code is not correct.",
+    "Andere Netzwerke anzeigen ({count})": "Show other networks ({count})",
+    "Stadt oder PLZ": "City or postal code",
+    "z. B. Berlin oder 10115": "e.g. Berlin or 10115",
+    "Stadt oder Postleitzahl. Koordinaten und Zeitzone werden nach dem Speichern automatisch ermittelt. Postleitzahlen anderer Länder mit Kürzel, z. B. AT-1010.": "City or postal code. Coordinates and time zone are determined automatically after saving. Postal codes of other countries with prefix, e.g. AT-1010.",
+    "Stadt oder Postleitzahl bestimmen Wetter und Zeitzone. Beides wird nach dem Neustart automatisch ermittelt.": "City or postal code determine weather and time zone. Both are determined automatically after the restart.",
+    "Postleitzahl nicht gefunden": "Postal code not found",
+    "Bitte eine Stadt oder Postleitzahl eingeben.": "Please enter a city or postal code."
   }
 };
 

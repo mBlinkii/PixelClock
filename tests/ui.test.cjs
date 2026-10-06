@@ -109,7 +109,7 @@ test('async scan polls to completion, sorts, deduplicates and treats SSIDs as te
     setTimeout = (fn) => { fn(); return 1; };`);
   await h.run('scanNetworks()');
   assert.equal(h.run('scans'), 2);
-  const items = h.element('networks').children;
+  const items = h.element('networks').children.filter((item) => item.className.startsWith('networkItem'));
   assert.equal(items.length, 2);
   assert.equal(items[0].children[0].textContent, 'Network');
   assert.equal(items[0].children[1].textContent, '-40 dBm');

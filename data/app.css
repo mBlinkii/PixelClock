@@ -823,6 +823,8 @@ progress {
 }
 
 .networkItem.isSelected { border-color: var(--accent); background: var(--accent-soft); }
+.networkList.isCollapsed .networkItem:not(.isSelected) { display: none; }
+.networkMore { padding: 4px 2px; font-size: 14px; }
 .networkName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .networkMeta {
