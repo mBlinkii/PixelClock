@@ -37,7 +37,7 @@ constexpr const char *DEFAULT_LANGUAGE = "de";
 constexpr const char *DEFAULT_WIFI_COUNTRY = "DE";
 constexpr const char *DEFAULT_SETUP_AP_PASSWORD = "pixelclock";
 constexpr const char *SETUP_AP_SSID_PREFIX = "PixelClock-Setup-";
-#define FIRMWARE_VERSION_TEXT "0.1.20"
+#define FIRMWARE_VERSION_TEXT "0.1.21"
 constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
 extern const char FIRMWARE_VERSION_BINARY_MARKER[];
 // 1: plain admin password in NVS. 2: salted PBKDF2-HMAC-SHA256 hash.
@@ -228,6 +228,10 @@ bool migratePlainAdminPassword(const String &password);
 void invalidateAdminAuthCache();
 bool isAdminAuthorized(AsyncWebServerRequest *request);
 bool requireAdminAuth(AsyncWebServerRequest *request);
+bool recoveryCodeActive();
+String recoveryCodeText();
+void handleRecoveryStart(AsyncWebServerRequest *request);
+void handleRecoveryFinish(AsyncWebServerRequest *request);
 void serviceResetButton();
 void performFactoryWipe();
 void sendJsonError(AsyncWebServerRequest *request, int code, const String &message);

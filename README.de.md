@@ -4,8 +4,8 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.20`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.17`
+Aktuelle Firmware-Version: `0.1.21`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.19`
 
 ### Neu in dieser Version
 
@@ -17,6 +17,10 @@ Aktuelle LittleFS-Weboberflächen-Version: `0.1.17`
   Hell-/Dunkelmodus und Export/Import der Einstellungen.
 - **Wetter:** Open-Meteo mit wählbarem Wettermodell (z. B. DWD ICON); DWD / Bright Sky
   zeigt wieder zuverlässig ein Wettersymbol.
+- **Kein Login bei neuen Uhren:** Das Setup-WLAN ist offen und der Assistent startet ohne
+  Anmeldung; ein eigenes Admin-Passwort legst du dabei fest.
+- **Passwort vergessen?** Die Uhr zeigt einen Code auf der Matrix; damit setzt du ein neues
+  Passwort, WLAN und Einstellungen bleiben erhalten.
 - **Sicherheit:** Admin-Passwort nur noch als Hash gespeichert, Login-Sperre nach Fehlversuchen.
 
 Wichtig: Ein Wechsel zurück auf Firmware 0.1.17 oder älter setzt den Admin-Login auf
@@ -27,9 +31,9 @@ Wichtig: Ein Wechsel zurück auf Firmware 0.1.17 oder älter setzt den Admin-Log
 1. **Einmalig per USB aufspielen:** Firmware und Weboberfläche mit PlatformIO auf den ESP32
    laden, siehe [Software aufspielen](#2-software-aufspielen-einmalig-per-usb).
 2. **Mit der Uhr verbinden:** Am Handy das WLAN `PixelClock-Setup-XXXXXX` wählen
-   (Passwort `pixelclock`). Die Einrichtungsseite öffnet sich automatisch.
-3. **Assistent durchklicken:** Mit `admin` / `pixelclock` anmelden und den Schritten folgen.
-   Danach läuft die Uhr in deinem WLAN unter `http://pixelclock.local`.
+   (ohne Passwort). Die Einrichtungsseite öffnet sich automatisch.
+3. **Assistent durchklicken:** Eine Anmeldung ist nicht nötig. WLAN, Standort und ein eigenes
+   Admin-Passwort wählen. Danach läuft die Uhr in deinem WLAN unter `http://pixelclock.local`.
 
 Die ausführliche Anleitung steht unter [Erste Einrichtung](#erste-einrichtung).
 
@@ -97,20 +101,24 @@ Für neue Entwickler gibt es eine kompakte technische Übersicht in
 
 ## Standardzugang
 
-Beim Zugriff auf die Weboberfläche erscheint eine eigene Login-Seite.
+Eine neue Uhr (kein WLAN gespeichert, Standardpasswort) öffnet den Einrichtungsassistenten
+ohne Anmeldung. Der Assistent verlangt ein eigenes Admin-Passwort; danach erscheint beim
+Öffnen der Weboberfläche die Login-Seite:
 
 ```text
 Benutzer: admin
-Passwort: pixelclock
+Passwort: das im Assistenten festgelegte
 ```
 
-Der Einrichtungsassistent fragt nach einem neuen Admin-Passwort; später kannst du es unter `WLAN & Zugang` > `Admin-Zugriff` ändern. Solange das Standardpasswort aktiv ist, erinnert dich die Weboberfläche beim Öffnen daran.
+Der Werkszugang `admin` / `pixelclock` gilt nur für neue Uhren und wird als neues Passwort
+nicht akzeptiert. Ändern lässt sich das Passwort später unter `WLAN & Zugang` >
+`Admin-Zugriff`. Vergessen? Siehe [Passwort vergessen](#passwort-vergessen).
 
 Wenn keine WLAN-Verbindung möglich ist, startet die Uhr einen Setup-Access-Point:
 
 ```text
 WLAN: PixelClock-Setup-XXXXXX
-Passwort: pixelclock (änderbar unter WLAN & Zugang)
+Passwort: keins (offen), oder ein eigenes unter WLAN & Zugang > Setup-WLAN
 Web UI: http://192.168.4.1 (öffnet sich meist automatisch)
 ```
 
@@ -206,19 +214,18 @@ Spätere Updates brauchen kein USB mehr, siehe [Updates einspielen](#5-updates-e
 
 1. **Mit dem Setup-WLAN verbinden.** Am Handy oder Notebook in den WLAN-Einstellungen
    `PixelClock-Setup-XXXXXX` wählen. `XXXXXX` ist die Kennung von der Matrix.
-   Das Passwort lautet `pixelclock`.
+   Ein Passwort ist nicht nötig.
 2. **Einrichtungsseite öffnen.** Meist öffnet sich die Seite automatisch („Im Netzwerk
    anmelden“). Falls nicht, im Browser `http://192.168.4.1` eingeben. Die Meldung
    „Kein Internet“ ist hier normal.
-3. **Anmelden** mit Benutzer `admin` und Passwort `pixelclock`.
-4. **Dem Assistenten folgen.** Er öffnet sich von selbst und hat fünf Schritte:
+3. **Dem Assistenten folgen.** Er öffnet sich von selbst ohne Anmeldung und hat fünf Schritte:
    - **Sprache:** Deutsch oder Englisch. Auch die Wochentage auf der Uhr folgen dieser Wahl.
    - **WLAN:** Dein Netz aus der Liste antippen und das WLAN-Passwort eingeben.
      Steht dein Netz nicht in der Liste, auf `Suchen` tippen oder den Namen selbst eintragen.
    - **Standort und Wetter:** Deine Stadt eintragen. Wetterdienst ohne API-Key wählen,
      empfohlen ist Open-Meteo. Dazu Temperatur in °C oder °F und 12- oder 24-Stunden-Format.
    - **Zugang absichern:** Ein eigenes Admin-Passwort mit mindestens 8 Zeichen festlegen.
-     Das empfehlen wir dringend; notfalls geht es später über `Später ändern`.
+     Dieser Schritt ist Pflicht: Künftig meldest du dich mit `admin` und diesem Passwort an.
    - **Zusammenfassung:** Alles prüfen und `Speichern und abschließen` tippen.
 
    Bei einer fertig gekauften oder vorkonfigurierten Uhr ist an der Hardware nichts zu tun.
@@ -354,8 +361,9 @@ Die Weboberfläche liegt nicht im Firmware-Binary. Nach Änderungen an `data/` m
 - Die Weboberfläche ist per HTTP Basic Auth geschützt.
 - Das Admin-Passwort wird als gesalzener PBKDF2-HMAC-SHA256-Hash gespeichert, nie im Klartext.
 - Nach fünf fehlgeschlagenen Logins sperrt die Uhr weitere Versuche dieses Geräts für 30 Sekunden, verdoppelt bis maximal 5 Minuten.
-- Der Setup-AP nutzt das Passwort `pixelclock`, bis du unter `WLAN & Zugang` > `Setup-WLAN` ein eigenes festlegst.
-- Ändere nach der ersten Einrichtung den Admin-Benutzer und das Admin-Passwort unter `Admin-Zugriff`.
+- Der Setup-AP ist offen, bis du unter `WLAN & Zugang` > `Setup-WLAN` ein eigenes Passwort festlegst. Er läuft nur, solange die Uhr kein funktionierendes WLAN hat.
+- Ohne Anmeldung geht es nur bei einer neuen Uhr (kein WLAN gespeichert, Standardpasswort); der Assistent verlangt dann ein eigenes Admin-Passwort.
+- Das Zurücksetzen des Passworts braucht den Code von der Matrix, also Zugang zur Uhr. Ein Code gilt 5 Minuten und 5 Versuche; falsche Codes zählen zur Login-Sperre.
 - Solange das Standard-Admin-Passwort aktiv ist, zeigt die Übersicht eine Einrichtungskarte mit `Passwort ändern`. Sie lässt sich für diesen Browser ausblenden.
 - HTTP Basic Auth ist in einem normalen Heimnetz praktisch, aber nicht verschlüsselt. Nutze die Uhr nicht ungeschützt in öffentlichen oder fremden Netzwerken.
 
@@ -376,6 +384,16 @@ Wer die Einstellungen später wiederherstellen möchte, exportiert sie vorher un
 `System` > `Einstellungen sichern`. Passwörter und API-Keys sind in der Datei
 nicht enthalten.
 
+## Passwort vergessen
+
+1. Auf der Login-Seite `Passwort vergessen?` antippen.
+2. `Code auf der Uhr anzeigen` antippen. Die Matrix zeigt 5 Minuten lang einen 6-stelligen Code.
+3. Code und zweimal das neue Admin-Passwort eingeben, dann `Passwort speichern` tippen.
+
+WLAN und alle Einstellungen bleiben erhalten, du bist danach direkt angemeldet.
+Firmware vor 0.1.21 kennt das noch nicht; dann die `BOOT`-Taste 10 Sekunden
+gedrückt halten (siehe [Werksreset](#werksreset-und-uhr-weitergeben)).
+
 ## Problembehandlung
 
 ### Weboberfläche ist nicht erreichbar
@@ -387,12 +405,11 @@ nicht enthalten.
 
 ### Login funktioniert nicht
 
-- Standard ist `admin` / `pixelclock`.
-- Wenn du Login-Daten geändert hast, melde dich mit Benutzer und Passwort neu an.
+- Mit `admin` und dem Passwort aus dem Einrichtungsassistenten anmelden.
+- Passwort vergessen? `Passwort vergessen?` auf der Login-Seite nutzen (siehe [Passwort vergessen](#passwort-vergessen)).
 - Nach fünf falschen Passwörtern warten, bis die auf der Login-Seite angezeigte Sperre abgelaufen ist.
 - Wenn die Einrichtungskarte trotz geändertem Passwort noch das Admin-Passwort auflistet, Browser-Cache hart neu laden und prüfen, ob `Speichern` erfolgreich war.
-- Solange du noch eingeloggt bist, hilft der Werksreset unter `System`.
-- Ohne Zugriff die `BOOT`-Taste am ESP32 bei laufender Uhr 10 Sekunden gedrückt halten (siehe [Werksreset](#werksreset-und-uhr-weitergeben)).
+- Ohne Zugriff und ohne Code auf der Matrix die `BOOT`-Taste am ESP32 bei laufender Uhr 10 Sekunden gedrückt halten (siehe [Werksreset](#werksreset-und-uhr-weitergeben)).
 
 ### Wetter wird nicht angezeigt
 
@@ -471,6 +488,12 @@ pio run --target uploadfs
 ```
 
 ## Versionshinweise
+
+Firmware 0.1.21 und Weboberfläche 0.1.19 vereinfachen die Ersteinrichtung: Das
+Setup-WLAN ist offen und eine neue Uhr öffnet den Assistenten ohne Anmeldung. Ein
+eigenes Admin-Passwort ist jetzt Pflicht. `Passwort vergessen?` auf der Login-Seite
+setzt mit einem Code von der Matrix ein neues Passwort; WLAN und Einstellungen
+bleiben erhalten. Ein bereits eigenes Setup-WLAN-Passwort bleibt bestehen.
 
 Firmware 0.1.20 zeigt die Uhrzeit standardmäßig doppelt so lange wie Datum und Wetter
 (16 statt 8 Sekunden). Bestehende Uhren behalten ihren Wert; er lässt sich unter

@@ -337,6 +337,8 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   capabilities["resetButton"] = true;
   capabilities["loginThrottle"] = true;
   capabilities["weatherModel"] = true;
+  capabilities["openSetup"] = true;
+  capabilities["passwordRecovery"] = true;
   if (isnan(weather.temperature)) {
     doc["temperature"] = nullptr;
   } else {
@@ -543,9 +545,27 @@ class CaptivePortalRedirect : public AsyncWebHandler {
   }
 };
 
+// Public: tells the web UI whether the clock is new (no Wi-Fi saved and the
+// default admin password), so it can start the assistant without a login.
+void sendSetupState(AsyncWebServerRequest *request) {
+  StateLock lock;
+  JsonDocument doc;
+  const bool firstSetup = config.ssid.isEmpty() && adminPasswordIsDefault();
+  doc["firstSetup"] = firstSetup;
+  if (firstSetup) doc["adminUsername"] = config.adminUsername;
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
+}
+
 void setupServer() {
   // Must stay the first handler so it sees captive-portal checks before the file server.
   server.addHandler(new CaptivePortalRedirect());
+  server.on("/api/setup", HTTP_GET, sendSetupState);
+  // Public, guarded by the code on the matrix and the login throttle.
+  server.on("/api/recovery/start", HTTP_POST, handleRecoveryStart);
+  server.on("/api/recovery/finish", HTTP_POST, handleRecoveryFinish);
   server.on("/api/config", HTTP_GET, sendConfigJson);
   server.on("/api/config", HTTP_POST, handleConfigPost);
   server.on("/api/language", HTTP_POST, handleLanguagePost);

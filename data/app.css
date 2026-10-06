@@ -486,7 +486,8 @@ progress {
 
 .loginTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .loginPanel h2 { margin-top: 6px; font-size: 18px; }
-#loginMessage { min-height: 20px; font-size: 14px; }
+#loginMessage, #recoveryMessage { min-height: 20px; font-size: 14px; }
+#recoveryCode { font-variant-numeric: tabular-nums; letter-spacing: 0.2em; }
 .loginHelp { background: transparent; }
 
 .brand {

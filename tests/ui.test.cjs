@@ -233,3 +233,23 @@ test('the Open-Meteo model is saved with the form and named in the weather card'
   const firmwareIds = [...firmware.matchAll(/^\s*"([a-z0-9_]+)",/gm)].map((match) => match[1]);
   assert.deepEqual(ids.split(',').slice(1), firmwareIds);
 });
+
+test('a new clock logs in with the default credentials; others keep the login page', async () => {
+  const fresh = harness(async () => ({ ok: true, json: async () => ({ firstSetup: true, adminUsername: 'admin' }) }));
+  assert.equal(await fresh.run('tryFirstSetupLogin()'), true);
+  assert.deepEqual({ ...fresh.run('decodeBasicAuth(authHeaderValue())') }, { username: 'admin', password: 'pixelclock' });
+  const configured = harness(async () => ({ ok: true, json: async () => ({ firstSetup: false }) }));
+  assert.equal(await configured.run('tryFirstSetupLogin()'), false);
+  assert.equal(configured.run('authHeaderValue()'), '');
+  const oldFirmware = harness(async () => ({ ok: false, status: 401 }));
+  assert.equal(await oldFirmware.run('tryFirstSetupLogin()'), false);
+});
+
+test('password recovery checks code and new password before sending', () => {
+  const { run } = harness(async () => ({ ok: true, json: async () => ({}) }));
+  assert.match(run('recoveryInputError("12345", "longenough", "longenough")'), /6-stelligen Code/);
+  assert.match(run('recoveryInputError("123456", "short", "short")'), /mindestens 8/);
+  assert.match(run('recoveryInputError("123456", "pixelclock", "pixelclock")'), /Standardpasswort/);
+  assert.match(run('recoveryInputError("123456", "longenough", "different1")'), /nicht überein/);
+  assert.equal(run('recoveryInputError("123456", "longenough", "longenough")'), '');
+});

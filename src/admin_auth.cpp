@@ -5,6 +5,7 @@
 #include <mbedtls/sha256.h>
 
 #include "app_state.h"
+#include "runtime_policy.h"
 
 // Admin passwords are stored as salted PBKDF2-HMAC-SHA256. The browser sends
 // Basic credentials with every API request, so the digest of the last verified
@@ -156,22 +157,26 @@ bool isAdminAuthorized(AsyncWebServerRequest *request) {
   return authorizationValid(authorizationHeader(request));
 }
 
+static void sendRetryLater(AsyncWebServerRequest *request, uint32_t retryMs, const char *message) {
+  const uint32_t seconds = (retryMs + 999) / 1000;
+  JsonDocument doc;
+  doc["ok"] = false;
+  doc["error"] = message;
+  doc["retryAfterSeconds"] = seconds;
+  String body;
+  serializeJson(doc, body);
+  AsyncWebServerResponse *response = request->beginResponse(429, "application/json", body);
+  response->addHeader("Retry-After", String(seconds));
+  request->send(response);
+}
+
 bool requireAdminAuth(AsyncWebServerRequest *request) {
   StateLock lock;
   const uint32_t client = clientAddress(request);
   const uint32_t now = millis();
   const uint32_t retryMs = loginThrottle.retryAfterMs(client, now);
   if (retryMs) {
-    const uint32_t seconds = (retryMs + 999) / 1000;
-    JsonDocument doc;
-    doc["ok"] = false;
-    doc["error"] = "Zu viele Fehlversuche. Bitte später erneut versuchen.";
-    doc["retryAfterSeconds"] = seconds;
-    String body;
-    serializeJson(doc, body);
-    AsyncWebServerResponse *response = request->beginResponse(429, "application/json", body);
-    response->addHeader("Retry-After", String(seconds));
-    request->send(response);
+    sendRetryLater(request, retryMs, "Zu viele Fehlversuche. Bitte später erneut versuchen.");
     return false;
   }
   const String header = authorizationHeader(request);
@@ -182,4 +187,123 @@ bool requireAdminAuth(AsyncWebServerRequest *request) {
   if (!header.isEmpty()) loginThrottle.recordFailure(client, now);
   sendJsonError(request, 401, "Admin-Anmeldung erforderlich.");
   return false;
+}
+
+// Password recovery without login. Knowing the code shown on the matrix proves
+// physical access to the clock; Wi-Fi and settings stay untouched. Wrong codes
+// count towards the login throttle, a code allows five attempts and expires
+// after five minutes, and a new code can be requested every 30 seconds.
+constexpr uint32_t RECOVERY_CODE_MS = 300000;
+constexpr uint32_t RECOVERY_REQUEST_GAP_MS = 30000;
+constexpr uint8_t RECOVERY_MAX_FAILURES = 5;
+static uint32_t recoveryCode = 0;
+static uint32_t recoveryUntil = 0;
+static uint32_t recoveryRequestedAt = 0;
+static bool recoveryRequested = false;
+static uint8_t recoveryFailures = 0;
+
+bool recoveryCodeActive() {
+  StateLock lock;
+  if (recoveryCode && deadlineReached(millis(), recoveryUntil)) {
+    recoveryCode = 0;
+    lastRender = 0;
+  }
+  return recoveryCode != 0;
+}
+
+String recoveryCodeText() {
+  StateLock lock;
+  char text[8];
+  snprintf(text, sizeof(text), "%06lu", static_cast<unsigned long>(recoveryCode));
+  return String(text);
+}
+
+static String postParam(AsyncWebServerRequest *request, const char *name) {
+  return request->hasParam(name, true) ? request->getParam(name, true)->value() : String();
+}
+
+static void sendRecoveryJson(AsyncWebServerRequest *request, JsonDocument &doc) {
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
+}
+
+void handleRecoveryStart(AsyncWebServerRequest *request) {
+  StateLock lock;
+  const uint32_t now = millis();
+  const uint32_t retryMs = loginThrottle.retryAfterMs(clientAddress(request), now);
+  if (retryMs) {
+    sendRetryLater(request, retryMs, "Zu viele Fehlversuche. Bitte später erneut versuchen.");
+    return;
+  }
+  if (!recoveryCodeActive()) {
+    if (recoveryRequested && now - recoveryRequestedAt < RECOVERY_REQUEST_GAP_MS) {
+      sendRetryLater(request, RECOVERY_REQUEST_GAP_MS - (now - recoveryRequestedAt), "Bitte kurz warten, bevor du einen neuen Code anforderst.");
+      return;
+    }
+    recoveryCode = 100000 + esp_random() % 900000;
+    recoveryUntil = now + RECOVERY_CODE_MS;
+    recoveryRequestedAt = now;
+    recoveryRequested = true;
+    recoveryFailures = 0;
+    lastRender = 0;
+    Serial.println("Password recovery code shown on the matrix");
+  }
+  JsonDocument doc;
+  doc["ok"] = true;
+  doc["expiresInSeconds"] = (recoveryUntil - now) / 1000;
+  sendRecoveryJson(request, doc);
+}
+
+void handleRecoveryFinish(AsyncWebServerRequest *request) {
+  StateLock lock;
+  const uint32_t client = clientAddress(request);
+  const uint32_t now = millis();
+  const uint32_t retryMs = loginThrottle.retryAfterMs(client, now);
+  if (retryMs) {
+    sendRetryLater(request, retryMs, "Zu viele Fehlversuche. Bitte später erneut versuchen.");
+    return;
+  }
+  if (!recoveryCodeActive()) {
+    sendJsonError(request, 400, "Kein gültiger Code. Bitte einen neuen Code anfordern.");
+    return;
+  }
+  const String password = postParam(request, "adminPassword");
+  if (password.length() < MIN_ADMIN_PASSWORD_LENGTH) {
+    sendJsonError(request, 400, "Das Admin-Passwort muss mindestens 8 Zeichen lang sein.");
+    return;
+  }
+  if (password.length() > MAX_ADMIN_PASSWORD_LENGTH) {
+    sendJsonError(request, 400, "Das Admin-Passwort darf höchstens 64 Zeichen lang sein.");
+    return;
+  }
+  if (password == DEFAULT_ADMIN_PASSWORD) {
+    sendJsonError(request, 400, "Bitte ein anderes Passwort als das Standardpasswort wählen.");
+    return;
+  }
+  String code = postParam(request, "code");
+  code.trim();
+  const String expected = recoveryCodeText();
+  if (code.length() != expected.length() || !constantTimeEquals(code.c_str(), expected.c_str(), expected.length())) {
+    loginThrottle.recordFailure(client, now);
+    if (++recoveryFailures >= RECOVERY_MAX_FAILURES) {
+      recoveryCode = 0;
+      lastRender = 0;
+    }
+    sendJsonError(request, 403, "Der Code stimmt nicht.");
+    return;
+  }
+  if (!setAdminPassword(password)) {
+    sendJsonError(request, 500, "Admin-Passwort konnte nicht gespeichert werden.");
+    return;
+  }
+  saveConfig();
+  recoveryCode = 0;
+  lastRender = 0;
+  loginThrottle.recordSuccess(client);
+  JsonDocument doc;
+  doc["ok"] = true;
+  doc["adminUsername"] = config.adminUsername;
+  sendRecoveryJson(request, doc);
 }

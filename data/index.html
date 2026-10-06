@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark light">
     <title>Pixel Clock</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css?v=0.1.17">
+    <link rel="stylesheet" href="/app.css?v=0.1.19">
   </head>
   <body>
     <svg class="iconSprite" aria-hidden="true" focusable="false">
@@ -66,10 +66,35 @@
         </label>
         <button id="loginBtn" class="primary" type="submit">Anmelden</button>
         <p id="loginMessage" role="status" aria-live="polite"></p>
+        <button id="recoveryOpenBtn" class="linkButton" type="button">Passwort vergessen?</button>
         <details class="loginHelp">
           <summary>Erste Einrichtung?</summary>
-          <p>Der Standardzugang lautet admin / pixelclock. Nach der Anmeldung führt dich ein Assistent durch die Einrichtung.</p>
-          <p>Neue Uhren öffnen das WLAN „PixelClock-Setup-…“ (Passwort pixelclock). Nach dem Verbinden erscheint diese Seite meist automatisch.</p>
+          <p>Neue Uhren brauchen keine Anmeldung, der Assistent startet direkt. Danach meldest du dich mit admin und dem Passwort aus dem Assistenten an.</p>
+          <p>Neue Uhren öffnen das WLAN „PixelClock-Setup-…“ ohne Passwort. Nach dem Verbinden erscheint diese Seite meist automatisch.</p>
+        </details>
+      </form>
+      <form id="recoveryForm" class="loginPanel" hidden>
+        <h2>Passwort zurücksetzen</h2>
+        <p class="hint">Die Uhr zeigt einen 6-stelligen Code auf der Matrix. Mit diesem Code legst du ein neues Admin-Passwort fest. WLAN und Einstellungen bleiben erhalten.</p>
+        <button id="recoveryStartBtn" type="button">Code auf der Uhr anzeigen</button>
+        <label>
+          Code von der Uhr
+          <input id="recoveryCode" name="recoveryCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" data-no-i18n>
+        </label>
+        <label>
+          Neues Admin-Passwort
+          <input id="recoveryPassword" name="recoveryPassword" type="password" autocomplete="new-password" maxlength="64" data-reveal>
+        </label>
+        <label>
+          Passwort wiederholen
+          <input id="recoveryPassword2" name="recoveryPassword2" type="password" autocomplete="new-password" maxlength="64" data-reveal>
+        </label>
+        <button id="recoverySaveBtn" class="primary" type="submit">Passwort speichern</button>
+        <p id="recoveryMessage" role="status" aria-live="polite"></p>
+        <button id="recoveryBackBtn" class="linkButton" type="button">Zurück zur Anmeldung</button>
+        <details class="loginHelp">
+          <summary>Kein Code auf der Uhr?</summary>
+          <p>Ältere Firmware kennt diese Funktion noch nicht. Halte dann die BOOT-Taste der Uhr 10 Sekunden gedrückt: Die Uhr wird komplett auf Werkseinstellungen zurückgesetzt und startet wieder das Setup-WLAN.</p>
         </details>
       </form>
     </section>
@@ -508,7 +533,7 @@
                   <input id="setupApPassword" name="setupApPassword" type="password" minlength="8" maxlength="63" autocomplete="new-password" placeholder="Leer lassen zum Beibehalten" data-reveal>
                 </label>
               </div>
-              <p class="hint">8 bis 63 Zeichen. Notiere es dir: Ohne WLAN-Verbindung erreichst du die Uhr nur über dieses Netz. Im Notfall setzt die BOOT-Taste alles zurück.</p>
+              <p class="hint">Ohne eigenes Passwort ist das Setup-WLAN offen. Ein eigenes Passwort hat 8 bis 63 Zeichen; notiere es dir, denn ohne WLAN-Verbindung erreichst du die Uhr nur über dieses Netz. Im Notfall setzt die BOOT-Taste alles zurück.</p>
             </section>
           </section>
 
@@ -583,8 +608,8 @@
                 <details open>
                   <summary>Schnellstart</summary>
                   <ol>
-                    <li>Mit dem WLAN PixelClock-Setup-… verbinden (Passwort pixelclock), wenn noch kein WLAN eingerichtet ist. Die Endung steht auch auf der Matrix.</li>
-                    <li>Die Einrichtungsseite öffnet sich meist automatisch, sonst http://192.168.4.1 öffnen. Mit admin / pixelclock anmelden.</li>
+                    <li>Mit dem WLAN PixelClock-Setup-… verbinden, wenn noch kein WLAN eingerichtet ist. Ein Passwort ist nicht nötig, die Endung steht auch auf der Matrix.</li>
+                    <li>Die Einrichtungsseite öffnet sich meist automatisch, sonst http://192.168.4.1 öffnen. Der Assistent startet ohne Anmeldung.</li>
                     <li>Der Einrichtungsassistent führt durch WLAN, Display, Standort und Admin-Passwort.</li>
                     <li>Nach dem Neustart die Uhr im eigenen WLAN unter http://pixelclock.local öffnen.</li>
                   </ol>
@@ -822,7 +847,7 @@
 
           <div class="wizardStep" data-step="security" hidden>
             <h3>Zugang absichern</h3>
-            <p>Lege ein eigenes Admin-Passwort fest, damit niemand im Netzwerk die Uhr einfach umstellen kann.</p>
+            <p>Lege ein eigenes Admin-Passwort fest. Damit meldest du dich künftig an, und niemand im Netzwerk kann die Uhr einfach umstellen.</p>
             <p id="wizardDefaultPwNote" class="banner warn small" hidden>Der Standardzugang admin / pixelclock ist noch aktiv.</p>
             <div class="grid">
               <label>
@@ -835,7 +860,6 @@
               </label>
             </div>
             <p class="hint">Mindestens 8 Zeichen. Der Benutzername bleibt <strong id="wizardAdminUser" data-no-i18n>admin</strong>.</p>
-            <button id="wizardSkipPassword" class="linkButton" type="button" hidden>Später ändern</button>
           </div>
 
           <div class="wizardStep" data-step="summary" hidden>
@@ -896,9 +920,9 @@
         <p id="restartOverlayText">Die Uhr startet neu. Die Weboberfläche lädt danach automatisch neu.</p>
       </section>
     </div>
-    <script src="/i18n.js?v=0.1.17" defer></script>
-    <script src="/updates.js?v=0.1.17" defer></script>
-    <script src="/setup.js?v=0.1.17" defer></script>
-    <script src="/app.js?v=0.1.17" defer></script>
+    <script src="/i18n.js?v=0.1.19" defer></script>
+    <script src="/updates.js?v=0.1.19" defer></script>
+    <script src="/setup.js?v=0.1.19" defer></script>
+    <script src="/app.js?v=0.1.19" defer></script>
   </body>
 </html>

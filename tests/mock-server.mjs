@@ -71,6 +71,20 @@ function renderFrame() {
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const reply = (code, value) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(value)); };
+  if (url.pathname === '/api/recovery/start' && req.method === 'POST') {
+    reply(200, { ok: true, expiresInSeconds: 300 }); return;
+  }
+  if (url.pathname === '/api/recovery/finish' && req.method === 'POST') {
+    let body = ''; for await (const chunk of req) body += chunk;
+    // The mock always shows code 123456.
+    if (new URLSearchParams(body).get('code') !== '123456') { reply(403, { ok: false, error: 'Der Code stimmt nicht.' }); return; }
+    config.adminPasswordIsDefault = false;
+    reply(200, { ok: true, adminUsername: config.adminUsername }); return;
+  }
+  if (url.pathname === '/api/setup') {
+    const firstSetup = !config.ssid && config.adminPasswordIsDefault;
+    reply(200, firstSetup ? { firstSetup, adminUsername: config.adminUsername } : { firstSetup }); return;
+  }
   if (url.pathname.startsWith('/api/')) {
     if (!req.headers.authorization) { reply(401, { error: 'Admin-Anmeldung erforderlich.' }); return; }
     // A login with password "test-throttle" simulates the firmware's failed-login lock.
@@ -84,7 +98,7 @@ http.createServer(async (req, res) => {
         temperature: 22.4, temperatureMin: 16, temperatureMax: 25, temperatureUnit: 'C', weatherCode: 2,
         weatherProvider: ['Open-Meteo', 'OpenWeatherMap', 'DWD (Bright Sky)', 'MET Norway', 'WeatherAPI'][config.weatherProvider],
         weatherAgeMs: 360000, freeHeap: 156000, rssi: -48, wifiPowerSave: config.wifiPowerSave,
-        firmwareVersion: '0.1.20', uptimeMs: 90061000, resetReason: 'Task-Watchdog',
+        firmwareVersion: '0.1.21', uptimeMs: 90061000, resetReason: 'Task-Watchdog',
         minFreeHeap: 84000, networkStackFreeBytes: 4096, setupApSsid: config.setupApSsid,
         routerHostname: config.routerHostname, displayPreviewActive: Boolean(preview), weatherModel: config.weatherModel,
         capabilities: { asyncWifiScan: true, weatherProviderMax: 4, wifiPowerSave: true, captivePortal: true,

@@ -626,8 +626,9 @@ void renderDisplay() {
   static uint16_t previousCount = 0;
   updateBrightnessForTime();
   const bool resetNotice = pendingFactoryWipe || resetCountdownSeconds > 0;
-  // Keep the reset countdown readable even when the display is dimmed or off.
-  if (resetNotice && FastLED.getBrightness() < 48) FastLED.setBrightness(48);
+  const bool recoveryNotice = !resetNotice && recoveryCodeActive();
+  // Keep reset countdown and recovery code readable even when dimmed or off.
+  if ((resetNotice || recoveryNotice) && FastLED.getBrightness() < 48) FastLED.setBrightness(48);
   const uint8_t brightness = FastLED.getBrightness();
   if (brightness == 0 && previousBrightness == 0) return;
   fill_solid(leds, ledCount, CRGB::Black);
@@ -635,6 +636,8 @@ void renderDisplay() {
     // Send black once; leave the matrix latched off without further transfers.
   } else if (resetNotice) {
     drawResetNotice();
+  } else if (recoveryNotice) {
+    drawCenteredText3x5(1, recoveryCodeText(), CRGB(255, 190, 20));
   } else if (millis() - bootStarted < BOOT_GREETING_MS) {
     drawBootGreeting();
   } else if (displayTest && static_cast<int32_t>(millis() - displayTestUntil) < 0) {

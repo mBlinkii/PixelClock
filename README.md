@@ -4,8 +4,8 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.20`
-Current LittleFS web interface version: `0.1.17`
+Current firmware version: `0.1.21`
+Current LittleFS web interface version: `0.1.19`
 
 ### New in this version
 
@@ -17,6 +17,10 @@ Current LittleFS web interface version: `0.1.17`
   and settings export/import.
 - **Weather:** Open-Meteo with a selectable weather model (e.g. DWD ICON); DWD / Bright Sky
   reliably shows a weather symbol again.
+- **No login on a new clock:** The setup Wi-Fi is open and the assistant starts without a login;
+  setting your own admin password is part of it.
+- **Forgot password?** The clock shows a code on the matrix; with it you set a new password
+  without losing Wi-Fi or settings.
 - **Security:** The admin password is stored only as a hash, logins lock after failed attempts.
 
 Important: Going back to firmware 0.1.17 or older resets the admin login to
@@ -27,9 +31,9 @@ Important: Going back to firmware 0.1.17 or older resets the admin login to
 1. **Flash once over USB:** Upload firmware and web interface with PlatformIO, see
    [Install the software](#2-install-the-software-once-over-usb).
 2. **Connect to the clock:** On your phone choose the Wi-Fi `PixelClock-Setup-XXXXXX`
-   (password `pixelclock`). The setup page opens automatically.
-3. **Follow the assistant:** Log in with `admin` / `pixelclock` and follow the steps.
-   Afterwards the clock runs in your Wi-Fi at `http://pixelclock.local`.
+   (no password). The setup page opens automatically.
+3. **Follow the assistant:** No login is needed. Choose Wi-Fi, location and your own admin
+   password. Afterwards the clock runs in your Wi-Fi at `http://pixelclock.local`.
 
 The detailed guide is under [First Setup](#first-setup).
 
@@ -97,20 +101,24 @@ New contributors can start with the compact technical overview in
 
 ## Default Login
 
-The web interface shows its own login page before settings are loaded.
+A new clock (no Wi-Fi saved, default password) opens the setup assistant without a
+login. The assistant requires your own admin password; from then on the web interface
+shows its login page:
 
 ```text
 User: admin
-Password: pixelclock
+Password: the one you set in the assistant
 ```
 
-The setup assistant asks for a new admin password; you can also change it later under `Wi-Fi & access` > `Admin access`. While the default password is still active, the web interface reminds you when it opens.
+The factory default `admin` / `pixelclock` only applies to a new clock and is no longer
+accepted as a new password. You can change the password later under `Wi-Fi & access` >
+`Admin access`. Forgot it? See [Forgot password](#forgot-password).
 
 If no Wi-Fi connection is possible, the clock starts a setup access point:
 
 ```text
 Wi-Fi: PixelClock-Setup-XXXXXX
-Password: pixelclock (can be changed under Wi-Fi & access)
+Password: none (open), or your own under Wi-Fi & access > Setup Wi-Fi
 Web UI: http://192.168.4.1 (usually opens automatically)
 ```
 
@@ -203,18 +211,17 @@ Later updates do not need USB, see [Install updates](#5-install-updates).
 ### 3. Set up the clock
 
 1. **Join the setup Wi-Fi.** In the Wi-Fi settings of your phone or laptop choose
-   `PixelClock-Setup-XXXXXX`, where `XXXXXX` is the id on the matrix. The password is `pixelclock`.
+   `PixelClock-Setup-XXXXXX`, where `XXXXXX` is the id on the matrix. No password is needed.
 2. **Open the setup page.** It usually opens automatically ("Sign in to network"). If not,
    enter `http://192.168.4.1` in the browser. A "No internet" notice is normal here.
-3. **Log in** with user `admin` and password `pixelclock`.
-4. **Follow the assistant.** It opens by itself and has five steps:
+3. **Follow the assistant.** It opens by itself without a login and has five steps:
    - **Language:** German or English. The weekdays on the clock follow this choice.
    - **Wi-Fi:** Tap your network in the list and enter the Wi-Fi password. If it is missing,
      tap `Search` or type the name yourself.
    - **Location and weather:** Enter your city and choose a weather service without an API
      key; Open-Meteo is recommended. Also choose °C or °F and the 12 or 24-hour format.
-   - **Secure access:** Set your own admin password with at least 8 characters. This is
-     strongly recommended; if needed, choose `Change later`.
+   - **Secure access:** Set your own admin password with at least 8 characters. This step
+     is required: from now on you log in with user `admin` and this password.
    - **Summary:** Check everything and tap `Save and finish`.
 
    A ready-built or preconfigured clock needs no hardware settings. If you built the clock
@@ -343,8 +350,9 @@ The web interface is not embedded in the firmware binary. After changing anythin
 - The web interface is protected with HTTP Basic Auth.
 - The admin password is stored as a salted PBKDF2-HMAC-SHA256 hash, never in plain text.
 - After five failed logins the clock blocks further attempts from that device for 30 seconds, doubling up to 5 minutes.
-- The setup access point uses the password `pixelclock` until you set your own under `Wi-Fi & access` > `Setup Wi-Fi`.
-- Change the admin user and admin password after the first setup under `Admin access`.
+- The setup access point is open until you set your own password under `Wi-Fi & access` > `Setup Wi-Fi`. It only runs while the clock has no working Wi-Fi.
+- A new clock needs no login only while no Wi-Fi is saved and the default password is active; the assistant then requires an own admin password.
+- Password recovery requires the code shown on the matrix, i.e. physical access. A code is valid for 5 minutes and 5 attempts, and wrong codes count towards the login lock.
 - While the default admin password is still active, the overview shows a setup card with a `Change password` button. It can be hidden for that browser.
 - HTTP Basic Auth is practical in a normal home network, but it is not encrypted. Do not expose the clock in public or untrusted networks.
 
@@ -363,6 +371,16 @@ earlier cancels.
 Export your settings under `System` > `Back up settings` first if you want to
 restore them later. Passwords and API keys are not included in the file.
 
+## Forgot Password
+
+1. On the login page tap `Forgot password?`.
+2. Tap `Show code on the clock`. The matrix shows a 6-digit code for 5 minutes.
+3. Enter the code and a new admin password twice, then tap `Save password`.
+
+Wi-Fi and all settings are kept, and you are logged in right away. Firmware older
+than 0.1.21 does not support this; hold the `BOOT` button for 10 seconds instead
+(see [Factory reset](#factory-reset-and-handing-the-clock-on)).
+
 ## Troubleshooting
 
 ### Web interface is not reachable
@@ -374,12 +392,11 @@ restore them later. Passwords and API keys are not included in the file.
 
 ### Login does not work
 
-- The default is `admin` / `pixelclock`.
-- If you changed credentials, log in again with the new user and password.
+- Log in with `admin` and the password from the setup assistant.
+- Forgot the password? Use `Forgot password?` on the login page (see [Forgot password](#forgot-password)).
 - After five wrong passwords, wait until the lock shown on the login page has expired.
 - If the setup card still lists the admin password after changing it, hard reload the browser and check that `Save` succeeded.
-- If you still have access, use the factory reset under `System`.
-- Without access, hold the ESP32 `BOOT` button for 10 seconds while the clock is running (see [Factory reset](#factory-reset-and-handing-the-clock-on)).
+- Without access and without a code on the matrix, hold the ESP32 `BOOT` button for 10 seconds while the clock is running (see [Factory reset](#factory-reset-and-handing-the-clock-on)).
 
 ### Weather is not shown
 
@@ -458,6 +475,12 @@ pio run --target uploadfs
 ```
 
 ## Release Notes
+
+Firmware 0.1.21 and web UI 0.1.19 make the first setup easier: the setup Wi-Fi is
+open and a new clock opens the assistant without a login. Setting your own admin
+password is now required. `Forgot password?` on the login page sets a new password
+with a code shown on the matrix; Wi-Fi and settings are kept. Clocks that already
+use your own setup Wi-Fi password keep it.
 
 Firmware 0.1.20 shows the time page twice as long as date and weather by default
 (16 instead of 8 seconds). Existing clocks keep their value; change it under

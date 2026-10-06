@@ -196,7 +196,6 @@ function prepareWizardStep(name) {
   } else if (name === "security") {
     const isDefault = Boolean(savedConfig?.adminPasswordIsDefault);
     $("wizardDefaultPwNote").hidden = !isDefault;
-    $("wizardSkipPassword").hidden = !isDefault;
     $("wizardAdminUser").textContent = $("adminUsername").value || "admin";
   } else if (name === "summary") {
     $("wizardAdvancedToggle").checked = wizardAdvanced;
@@ -225,14 +224,17 @@ function showWizardStep(index) {
   wizardStepElement(name).querySelector("h3")?.focus({ preventScroll: true });
 }
 
-function applyWizardPassword(skip = false) {
+// A new clock is opened without a login, so an own admin password is mandatory
+// while the default is active; the default itself is not accepted again.
+function applyWizardPassword() {
   const first = $("wizardAdminPassword").value;
   const second = $("wizardAdminPassword2").value;
   if (!first && !second) {
-    if (savedConfig?.adminPasswordIsDefault && !skip) return tr("Bitte ein eigenes Passwort festlegen oder „Später ändern“ wählen.");
+    if (savedConfig?.adminPasswordIsDefault) return tr("Bitte ein eigenes Admin-Passwort festlegen.");
     setFormField("adminPassword", "");
     return "";
   }
+  if (first === defaultAdminPassword) return tr("Bitte ein anderes Passwort als das Standardpasswort wählen.");
   if (first.length < (savedConfig?.minAdminPasswordLength || 8)) return tr("Das Admin-Passwort muss mindestens 8 Zeichen lang sein.");
   if (first !== second) return tr("Die Passwörter stimmen nicht überein.");
   setFormField("adminPassword", first);
@@ -517,12 +519,6 @@ function initSetupWizard() {
   $("wizardBack").addEventListener("click", () => showWizardStep(wizardStepIndex - 1));
   $("wizardNext").addEventListener("click", wizardNext);
   $("wizardClose").addEventListener("click", () => closeSetupWizard(true));
-  $("wizardSkipPassword").addEventListener("click", () => {
-    $("wizardAdminPassword").value = "";
-    $("wizardAdminPassword2").value = "";
-    applyWizardPassword(true);
-    showWizardStep(wizardStepIndex + 1);
-  });
   $("setupCardBtn").addEventListener("click", openSetupWizard);
   $("wizardStartBtn").addEventListener("click", openSetupWizard);
   $("setupWizard").addEventListener("keydown", (event) => {

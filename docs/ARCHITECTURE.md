@@ -169,6 +169,9 @@ Older firmware reading version 2 falls back to the default login.
 All API routes are registered in `setupServer()` in `src/web_api.cpp`:
 
 ```text
+GET  /api/setup           public: firstSetup flag so a new clock needs no login
+POST /api/recovery/start  public: show a 6-digit recovery code on the matrix
+POST /api/recovery/finish public: code + adminPassword sets a new admin password
 GET  /api/config          current configuration for the form
 POST /api/config          save configuration
 GET  /api/status          live status for the header/status panel
@@ -245,7 +248,7 @@ firmware). After the final restart it polls the public `favicon.svg` of the new
 
 `/api/status` reports `capabilities` (`captivePortal`, `setupApPassword`,
 `setupTestPattern`, `displayFrame`, `displayPreview`, `fullFactoryReset`,
-`resetButton`, `loginThrottle`) plus `setupApSsid` and `routerHostname`; the web UI
+`resetButton`, `loginThrottle`, `openSetup`, `passwordRecovery`) plus `setupApSsid` and `routerHostname`; the web UI
 hides the related controls when they are missing.
 
 ## Display Pipeline

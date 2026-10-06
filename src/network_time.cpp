@@ -84,7 +84,10 @@ void startSetupAp() {
   WiFi.mode(WIFI_AP_STA);
   applyWifiCountry();
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
-  WiFi.softAP(setupApSsid().c_str(), config.setupApPassword.c_str());
+  // Without an own setup password the AP is open, so phones join without a
+  // prompt; the documented default password protected nothing.
+  const bool openAp = config.setupApPassword == DEFAULT_SETUP_AP_PASSWORD;
+  WiFi.softAP(setupApSsid().c_str(), openAp ? nullptr : config.setupApPassword.c_str());
   dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
   dnsServer.start(53, "*", WiFi.softAPIP());
   lastStationRetry = millis();

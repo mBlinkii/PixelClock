@@ -87,6 +87,7 @@ const $ = (id) => document.getElementById(id);
 const setupDismissedStorageKey = "pixelClockSetupDismissed";
 const setupCardHiddenStorageKey = "pixelClockSetupCardHidden";
 const authStorageKey = "pixelClockAuth";
+const defaultAdminPassword = "pixelclock";
 let currentLanguage = storedLanguage || ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
 let statusRefreshTimer = 0;
 let statusInFlight = null;
@@ -104,6 +105,7 @@ let clockTimer = 0;
 let toastTimer = 0;
 let languageChosenBeforeLogin = "";
 let loginMessage = null;
+let recoveryMessage = null;
 let previewTimer = 0;
 let previewKeepAlive = 0;
 let previewActive = false;
@@ -182,6 +184,7 @@ function setLoginMessage(text, values = {}) {
 function showLogin(text = "Bitte anmelden.") {
   setAuthHeader("");
   setAuthenticatedView(false);
+  showRecovery(false);
   $("setupWizard").hidden = true;
   document.documentElement?.classList.remove("noScroll");
   setLoginMessage(text);
@@ -290,6 +293,7 @@ function applyLanguage() {
   translateTextNodes(document.body);
   translateAttributes();
   if (loginMessage) $("loginMessage").textContent = trFormat(loginMessage.text, loginMessage.values);
+  if (recoveryMessage) $("recoveryMessage").textContent = trFormat(recoveryMessage.text, recoveryMessage.values);
   updateAdminPasswordPlaceholder();
   updateProviderFields();
   updateHardwareInfo();
@@ -712,7 +716,7 @@ function updateSetupApSection() {
   $("setupApSection").hidden = !supported;
   if (!supported) return;
   $("setupApSsidLine").textContent = savedConfig.setupApSsid || "PixelClock-Setup";
-  $("setupApPasswordState").textContent = tr(savedConfig.setupApPasswordIsDefault ? "Standard (pixelclock)" : "Eigenes Passwort");
+  $("setupApPasswordState").textContent = tr(savedConfig.setupApPasswordIsDefault ? "Keins (offenes WLAN)" : "Eigenes Passwort");
 }
 
 function setForm(config) {
@@ -1335,7 +1339,7 @@ async function factoryReset() {
   writeStorage(setupCardHiddenStorageKey, null);
   setAuthHeader("");
   showFinalOverlay("Werksreset läuft...", trFormat(
-    "Die Uhr löscht alle Daten und startet im Setup-Modus. Zum Einrichten mit dem WLAN „{ssid}“ verbinden (Passwort pixelclock).",
+    "Die Uhr löscht alle Daten und startet im Setup-Modus. Zum Einrichten mit dem WLAN „{ssid}“ verbinden; ein Passwort ist nicht nötig.",
     { ssid }));
 }
 
@@ -1475,6 +1479,110 @@ async function login(event) {
   }
 }
 
+// A new clock (no Wi-Fi, default password) needs no login: the firmware says
+// so on the public /api/setup and the default credentials are used. Older
+// firmware answers 401 there, which keeps the normal login page.
+async function tryFirstSetupLogin() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch("/api/setup", { cache: "no-store", signal: controller.signal });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data.firstSetup) return false;
+    setAuthHeader(basicAuthValue(sanitizeName(data.adminUsername, "admin"), defaultAdminPassword));
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Password recovery without login: the firmware shows a code on the matrix,
+// so only someone standing at the clock can set a new admin password.
+function setRecoveryMessage(text, values = {}) {
+  recoveryMessage = { text, values };
+  $("recoveryMessage").textContent = trFormat(text, values);
+}
+
+function showRecovery(show) {
+  $("loginForm").hidden = show;
+  $("recoveryForm").hidden = !show;
+  if (!show) return;
+  for (const id of ["recoveryCode", "recoveryPassword", "recoveryPassword2"]) $(id).value = "";
+  setRecoveryMessage("Tippe auf „Code auf der Uhr anzeigen“.");
+  $("recoveryStartBtn").focus();
+}
+
+function recoveryInputError(code, first, second) {
+  if (!/^\d{6}$/.test(code)) return "Bitte den 6-stelligen Code von der Uhr eingeben.";
+  if (first.length < 8) return "Das Admin-Passwort muss mindestens 8 Zeichen lang sein.";
+  if (first.length > 64) return "Das Admin-Passwort darf höchstens 64 Zeichen lang sein.";
+  if (first === defaultAdminPassword) return "Bitte ein anderes Passwort als das Standardpasswort wählen.";
+  if (first !== second) return "Die Passwörter stimmen nicht überein.";
+  return "";
+}
+
+async function postRecovery(path, params) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(path, { method: "POST", body: new URLSearchParams(params), cache: "no-store", signal: controller.signal });
+    return { status: res.status, ok: res.ok, data: await res.json().catch(() => ({})) };
+  } catch (_) {
+    return { status: 0, ok: false, data: {} };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function showRecoveryFailure({ status, data }) {
+  if (!status) setRecoveryMessage("Die Uhr ist nicht erreichbar.");
+  else if (status === 401 || status === 404 || status === 405) {
+    setRecoveryMessage("Diese Firmware kann das Passwort noch nicht zurücksetzen. Halte die BOOT-Taste 10 Sekunden gedrückt, um die Uhr zurückzusetzen.");
+  } else if (status === 429 && data.retryAfterSeconds) {
+    setRecoveryMessage("Bitte in {seconds} Sekunden erneut versuchen.", { seconds: data.retryAfterSeconds });
+  } else setRecoveryMessage(data.error || "Admin-Passwort konnte nicht gespeichert werden.");
+}
+
+async function startRecovery() {
+  $("recoveryStartBtn").disabled = true;
+  setRecoveryMessage("Code wird angefordert...");
+  const result = await postRecovery("/api/recovery/start", {});
+  $("recoveryStartBtn").disabled = false;
+  if (!result.ok) {
+    showRecoveryFailure(result);
+    return;
+  }
+  setRecoveryMessage("Die Uhr zeigt jetzt {minutes} Minuten lang einen Code.", { minutes: Math.max(1, Math.round((result.data.expiresInSeconds || 300) / 60)) });
+  $("recoveryCode").focus();
+}
+
+async function finishRecovery(event) {
+  event.preventDefault();
+  if ($("recoverySaveBtn").disabled) return;
+  const code = $("recoveryCode").value.trim();
+  const password = $("recoveryPassword").value;
+  const error = recoveryInputError(code, password, $("recoveryPassword2").value);
+  if (error) {
+    setRecoveryMessage(error);
+    return;
+  }
+  $("recoverySaveBtn").disabled = true;
+  setRecoveryMessage("Passwort wird gespeichert...");
+  const result = await postRecovery("/api/recovery/finish", { code, adminPassword: password });
+  $("recoverySaveBtn").disabled = false;
+  if (!result.ok) {
+    showRecoveryFailure(result);
+    return;
+  }
+  setAuthHeader(basicAuthValue(sanitizeName(result.data.adminUsername || $("loginUsername").value, "admin"), password));
+  showRecovery(false);
+  setLoginMessage("Angemeldet.");
+  await startAuthenticatedApp();
+}
+
 async function logout() {
   await cancelPreview();
   showLogin("Bitte anmelden.");
@@ -1486,7 +1594,7 @@ function initUi() {
   fillWeatherIntervals();
   fillWeatherModels();
   initPasswordReveal();
-  for (const id of ["firmwareLine", "littleFsLine", "networks", "wizardNetworks", "message", "loginMessage", "firmwareSelectedVersion", "webSelectedVersion"]) $(id).dataset.noI18n = "";
+  for (const id of ["firmwareLine", "littleFsLine", "networks", "wizardNetworks", "message", "loginMessage", "recoveryMessage", "firmwareSelectedVersion", "webSelectedVersion"]) $(id).dataset.noI18n = "";
   showPage(pageFromHash());
   if (typeof initSetupWizard === "function") initSetupWizard();
 }
@@ -1497,10 +1605,14 @@ updateStaticVersionLines();
 if (authHeaderValue()) {
   startAuthenticatedApp();
 } else {
-  showLogin();
+  tryFirstSetupLogin().then((firstSetup) => (firstSetup ? startAuthenticatedApp() : showLogin()));
 }
 
 $("loginForm").addEventListener("submit", login);
+$("recoveryForm").addEventListener("submit", finishRecovery);
+$("recoveryOpenBtn").addEventListener("click", () => showRecovery(true));
+$("recoveryBackBtn").addEventListener("click", () => showRecovery(false));
+$("recoveryStartBtn").addEventListener("click", startRecovery);
 $("logoutBtn").addEventListener("click", logout);
 $("languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
 $("loginLanguage").addEventListener("change", (event) => setLoginLanguage(event.target.value));
