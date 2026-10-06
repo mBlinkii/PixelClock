@@ -37,7 +37,7 @@ constexpr const char *DEFAULT_LANGUAGE = "de";
 constexpr const char *DEFAULT_WIFI_COUNTRY = "DE";
 constexpr const char *DEFAULT_SETUP_AP_PASSWORD = "pixelclock";
 constexpr const char *SETUP_AP_SSID_PREFIX = "PixelClock-Setup-";
-#define FIRMWARE_VERSION_TEXT "0.1.19"
+#define FIRMWARE_VERSION_TEXT "0.1.20"
 constexpr const char *FIRMWARE_VERSION = FIRMWARE_VERSION_TEXT;
 extern const char FIRMWARE_VERSION_BINARY_MARKER[];
 // 1: plain admin password in NVS. 2: salted PBKDF2-HMAC-SHA256 hash.
@@ -89,7 +89,8 @@ struct AppConfig {
   uint8_t hourFormat = 24;
   bool colorRgb = false;
   uint8_t pageSeconds = 8;
-  uint8_t timePageSeconds = 8;
+  // The time page stays twice as long as the date and weather pages by default.
+  uint8_t timePageSeconds = 16;
   bool autoPage = true;
   uint8_t selectedPage = 0;
   uint8_t nightBrightness = 16;

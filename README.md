@@ -4,7 +4,7 @@
 
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
-Current firmware version: `0.1.19`
+Current firmware version: `0.1.20`
 Current LittleFS web interface version: `0.1.17`
 
 ### New in this version
@@ -458,6 +458,10 @@ pio run --target uploadfs
 ```
 
 ## Release Notes
+
+Firmware 0.1.20 shows the time page twice as long as date and weather by default
+(16 instead of 8 seconds). Existing clocks keep their value; change it under
+`Display` > `Time duration (s)`.
 
 Firmware 0.1.19 fixes DWD weather: Bright Sky may report the icon `wind` or none
 at all, which showed as "no weather data"; precipitation and cloud cover now

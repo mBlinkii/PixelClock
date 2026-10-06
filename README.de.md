@@ -4,7 +4,7 @@ Deutsch | [English](README.md)
 
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
-Aktuelle Firmware-Version: `0.1.19`
+Aktuelle Firmware-Version: `0.1.20`
 Aktuelle LittleFS-Weboberflächen-Version: `0.1.17`
 
 ### Neu in dieser Version
@@ -471,6 +471,10 @@ pio run --target uploadfs
 ```
 
 ## Versionshinweise
+
+Firmware 0.1.20 zeigt die Uhrzeit standardmäßig doppelt so lange wie Datum und Wetter
+(16 statt 8 Sekunden). Bestehende Uhren behalten ihren Wert; er lässt sich unter
+`Anzeige` > `Uhrzeit-Dauer (s)` ändern.
 
 Firmware 0.1.19 behebt DWD-Wetter: Bright Sky meldet als Icon teils `wind` oder
 gar keines, was als „Noch keine Wetterdaten“ erschien; jetzt liefern Niederschlag
