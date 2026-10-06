@@ -302,6 +302,9 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   doc["url"] = "http://" + config.hostname + ".local";
   doc["cityName"] = config.cityName;
   doc["locationLabel"] = config.locationLabel;
+  // Lets the web UI show the found place (or why the lookup failed) next to the input.
+  doc["locationPending"] = pendingCityResolve;
+  if (pendingCityResolve && !weather.lastError.isEmpty()) doc["locationError"] = weather.lastError;
   doc["language"] = config.language;
   doc["firmwareVersion"] = FIRMWARE_VERSION;
   doc["weatherProvider"] = weatherProviderName();
@@ -339,6 +342,7 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   capabilities["weatherModel"] = true;
   capabilities["openSetup"] = true;
   capabilities["passwordRecovery"] = true;
+  capabilities["locationResult"] = true;
   if (isnan(weather.temperature)) {
     doc["temperature"] = nullptr;
   } else {

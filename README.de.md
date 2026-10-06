@@ -5,7 +5,7 @@ Deutsch | [English](README.md)
 ESP32-basierte Pixeluhr für WS2812B/NeoPixel-Matrizen. Die Uhr zeigt Zeit, Datum und Wetter auf einer LED-Matrix an und wird über eine geschützte Weboberfläche eingerichtet.
 
 Aktuelle Firmware-Version: `0.1.22`
-Aktuelle LittleFS-Weboberflächen-Version: `0.1.20`
+Aktuelle LittleFS-Weboberflächen-Version: `0.1.21`
 
 ### Neu in dieser Version
 
@@ -491,10 +491,10 @@ pio run --target uploadfs
 
 ## Versionshinweise
 
-Firmware 0.1.22 und Weboberfläche 0.1.20 finden den Standort auch per Postleitzahl.
+Firmware 0.1.22 und Weboberfläche 0.1.21 finden den Standort auch per Postleitzahl.
 Deutsche PLZ mit führender Null wie `01067` funktionieren; für andere Länder das
 Land davor schreiben, z. B. `AT-1010`. PLZ werden über OpenStreetMap Nominatim
-gesucht, Ortsnamen weiter über Open-Meteo. Im Einrichtungsassistenten klappt die
+gesucht, Ortsnamen weiter über Open-Meteo. Unter dem Eingabefeld zeigt die Weboberfläche den gefundenen Ort (z. B. `Gefunden: 01067 Dresden, Deutschland`) oder warum die Suche fehlschlug. Im Einrichtungsassistenten klappt die
 WLAN-Liste nach der Auswahl auf das gewählte Netz zusammen, damit das Passwortfeld
 über der Handytastatur sichtbar bleibt.
 

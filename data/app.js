@@ -106,6 +106,7 @@ let toastTimer = 0;
 let languageChosenBeforeLogin = "";
 let loginMessage = null;
 let recoveryMessage = null;
+let locationWatchUntil = 0;
 let previewTimer = 0;
 let previewKeepAlive = 0;
 let previewActive = false;
@@ -226,10 +227,36 @@ async function apiFetch(url, options = {}) {
 function scheduleStatusRefresh() {
   clearTimeout(statusRefreshTimer);
   if (document.hidden || !authHeaderValue() || !$("restartOverlay").hidden) return;
+  // Poll quickly right after a location change until the clock has found it.
+  const watching = Date.now() < locationWatchUntil;
   statusRefreshTimer = setTimeout(async () => {
     try { await loadStatus(); } catch (_) { /* Connection state is shown in the header. */ }
     scheduleStatusRefresh();
-  }, Math.min(60000, 15000 * 2 ** Math.min(statusFailures, 2)));
+  }, watching ? 2500 : Math.min(60000, 15000 * 2 ** Math.min(statusFailures, 2)));
+}
+
+// What the clock found for the entered city or postal code. Firmware before
+// 0.1.22 reports no locationPending; its label is shown as found.
+function locationResult(status, typed, saved) {
+  if (String(typed || "").trim() !== String(saved || "").trim()) return { text: "Der Ort wird nach dem Speichern gesucht.", state: "pending" };
+  if (!status) return null;
+  if (status.locationPending) {
+    if (!status.locationError) return { text: "Ort wird gesucht...", state: "pending" };
+    if (/nicht gefunden/.test(status.locationError)) return { text: "{error}. Bitte Eingabe prüfen.", values: { error: tr(status.locationError) }, state: "error" };
+    return { text: "Ortssuche fehlgeschlagen: {error}", values: { error: status.locationError }, state: "error" };
+  }
+  return status.locationLabel ? { text: "Gefunden: {label}", values: { label: status.locationLabel }, state: "ok" } : null;
+}
+
+function renderLocationResult() {
+  const result = locationResult(lastStatus, $("cityName").value, savedConfig?.cityName);
+  const el = $("locationResult");
+  el.hidden = !result;
+  if (!result) return;
+  el.textContent = trFormat(result.text, result.values || {});
+  el.classList.toggle("isPending", result.state === "pending");
+  el.classList.toggle("isError", result.state === "error");
+  if (result.state !== "pending" && lastStatus?.locationPending === false) locationWatchUntil = 0;
 }
 
 function showRestartNotice(visible) {
@@ -1044,6 +1071,7 @@ async function fetchStatus() {
   updateStaticVersionLines();
   renderFirmwareSelectionVersion(selectedFirmwareVersion);
   if (status.locationLabel || status.cityName) $("locationLine").textContent = status.locationLabel || status.cityName;
+  renderLocationResult();
   updateSetupCard();
 }
 
@@ -1187,6 +1215,12 @@ async function saveConfig() {
     updateSetupApSection();
     renderDeviceClock();
     scheduleLiveMatrix(200);
+    if (data.cityResolutionPending) {
+      if (lastStatus) lastStatus = { ...lastStatus, locationPending: true, locationError: "" };
+      locationWatchUntil = Date.now() + 60000;
+      scheduleStatusRefresh();
+    }
+    renderLocationResult();
     messageText(["Gespeichert.", data.cityResolutionPending ? "Ort wird im Hintergrund aktualisiert." : "",
       data.weatherRefreshPending ? "Wetter wird aktualisiert." : "",
       data.restartRequired ? "Neustart erforderlich" : "Sofort aktiv."].filter(Boolean).map(tr).join(" "));
@@ -1611,7 +1645,7 @@ function initUi() {
   fillWeatherIntervals();
   fillWeatherModels();
   initPasswordReveal();
-  for (const id of ["firmwareLine", "littleFsLine", "networks", "wizardNetworks", "message", "loginMessage", "recoveryMessage", "firmwareSelectedVersion", "webSelectedVersion"]) $(id).dataset.noI18n = "";
+  for (const id of ["firmwareLine", "littleFsLine", "networks", "wizardNetworks", "message", "loginMessage", "recoveryMessage", "locationResult", "firmwareSelectedVersion", "webSelectedVersion"]) $(id).dataset.noI18n = "";
   showPage(pageFromHash());
   if (typeof initSetupWizard === "function") initSetupWizard();
 }
@@ -1653,6 +1687,7 @@ for (const id of ["nightStartDisplay", "nightStartPeriod", "nightEndDisplay", "n
 for (const id of ["width", "height", "origin", "wiringMode"]) {
   for (const eventName of ["input", "change"]) $(id).addEventListener(eventName, updateHardwareInfo);
 }
+$("cityName").addEventListener("input", renderLocationResult);
 $("setupApPassword").addEventListener("input", () => {
   const length = $("setupApPassword").value.length;
   $("setupApPassword").setCustomValidity(length && (length < 8 || length > 63) ? tr("Das Setup-WLAN-Passwort muss 8 bis 63 Zeichen lang sein.") : "");

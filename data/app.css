@@ -825,6 +825,10 @@ progress {
 .networkItem.isSelected { border-color: var(--accent); background: var(--accent-soft); }
 .networkList.isCollapsed .networkItem:not(.isSelected) { display: none; }
 .networkMore { padding: 4px 2px; font-size: 14px; }
+
+.locationResult { margin: 0; font-size: 14px; font-weight: 600; color: var(--accent); }
+.locationResult.isPending { color: var(--muted); font-weight: 500; }
+.locationResult.isError { color: var(--danger); }
 .networkName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .networkMeta {

@@ -253,3 +253,19 @@ test('password recovery checks code and new password before sending', () => {
   assert.match(run('recoveryInputError("123456", "longenough", "different1")'), /nicht überein/);
   assert.equal(run('recoveryInputError("123456", "longenough", "longenough")'), '');
 });
+
+test('the location field tells whether the place was found', () => {
+  const { run } = harness();
+  const result = (status, typed, saved) => {
+    const value = run(`locationResult(${JSON.stringify(status)}, ${JSON.stringify(typed)}, ${JSON.stringify(saved)})`);
+    return value && { text: run(`trFormat(${JSON.stringify(value.text)}, ${JSON.stringify(value.values || {})})`), state: value.state };
+  };
+  assert.deepEqual(result({ locationLabel: 'Berlin, Deutschland' }, '01067', 'Berlin'), { text: 'Der Ort wird nach dem Speichern gesucht.', state: 'pending' });
+  assert.equal(result({ locationPending: true }, '01067', '01067').state, 'pending');
+  assert.deepEqual(result({ locationPending: false, locationLabel: '01067 Dresden, Deutschland' }, '01067', '01067'),
+    { text: 'Gefunden: 01067 Dresden, Deutschland', state: 'ok' });
+  assert.deepEqual(result({ locationPending: true, locationError: 'Postleitzahl nicht gefunden' }, '00000', '00000'),
+    { text: 'Postleitzahl nicht gefunden. Bitte Eingabe prüfen.', state: 'error' });
+  assert.equal(result({ locationPending: true, locationError: 'Geocoding HTTP 503' }, 'Ulm', 'Ulm').text, 'Ortssuche fehlgeschlagen: Geocoding HTTP 503');
+  assert.equal(result(null, 'Ulm', 'Ulm'), null);
+});

@@ -68,6 +68,7 @@ function renderFrame() {
   return { width, height, count, origin: Number(c.origin), wiring: Number(c.wiringMode), brightness: Number(c.brightness),
     preview: Boolean(preview), pixels: pixels.join('') };
 }
+let locationPending = false, locationError = '';
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const reply = (code, value) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(value)); };
@@ -94,7 +95,7 @@ http.createServer(async (req, res) => {
     if (url.pathname === '/api/config' && req.method === 'GET') { reply(200, config); return; }
     if (url.pathname === '/api/status') {
       reply(200, { wifiConnected: !setupMode, setupMode, ip: setupMode ? '192.168.4.1' : '192.0.2.10', url: config.url, lastNtpMs: setupMode ? 0 : 1000,
-        localTime: '2026-09-11 15:45:00', cityName: config.cityName, locationLabel: config.locationLabel,
+        localTime: '2026-09-11 15:45:00', cityName: config.cityName, locationLabel: config.locationLabel, locationPending, ...(locationError ? { locationError } : {}),
         temperature: 22.4, temperatureMin: 16, temperatureMax: 25, temperatureUnit: 'C', weatherCode: 2,
         weatherProvider: ['Open-Meteo', 'OpenWeatherMap', 'DWD (Bright Sky)', 'MET Norway', 'WeatherAPI'][config.weatherProvider],
         weatherAgeMs: 360000, freeHeap: 156000, rssi: -48, wifiPowerSave: config.wifiPowerSave,
@@ -122,6 +123,7 @@ http.createServer(async (req, res) => {
     if (url.pathname === '/api/config') {
       preview = null;
       let authChanged = false;
+      const oldCity = config.cityName;
       for (const [key, value] of new URLSearchParams(body)) {
         const changed = String(config[key]) !== value;
         if (key === 'adminPassword') { config.adminPasswordIsDefault = false; authChanged = true; }
@@ -135,7 +137,17 @@ http.createServer(async (req, res) => {
         config[key] = typeof config[key] === 'boolean' ? value === '1' : typeof config[key] === 'number' ? Number(value) : value;
       }
       config.url = `http://${config.hostname}.local`;
-      reply(200, { ok: true, weatherRefreshPending: true, restartRequired: config.restartRequired, authChanged,
+      const cityChanged = config.cityName !== oldCity;
+      if (cityChanged) {
+        locationPending = true; locationError = '';
+        setTimeout(() => {
+          const code = config.cityName.match(/\b\d{4,5}\b/)?.[0];
+          if (code === '00000') { locationError = 'Postleitzahl nicht gefunden'; return; }
+          config.locationLabel = code ? `${code} Teststadt, Deutschland` : `${config.cityName}, Deutschland`;
+          locationPending = false;
+        }, 3000);
+      }
+      reply(200, { ok: true, weatherRefreshPending: true, cityResolutionPending: cityChanged, restartRequired: config.restartRequired, authChanged,
         hostname: config.hostname, url: config.url, locationLabel: config.locationLabel,
         adminPasswordIsDefault: config.adminPasswordIsDefault, setupApPasswordIsDefault: config.setupApPasswordIsDefault }); return;
     }

@@ -5,7 +5,7 @@
 ESP32-based pixel clock for WS2812B/NeoPixel matrices. The clock shows time, date, and weather on an LED matrix and is configured through a protected web interface.
 
 Current firmware version: `0.1.22`
-Current LittleFS web interface version: `0.1.20`
+Current LittleFS web interface version: `0.1.21`
 
 ### New in this version
 
@@ -478,10 +478,10 @@ pio run --target uploadfs
 
 ## Release Notes
 
-Firmware 0.1.22 and web UI 0.1.20 find the location by postal code as well. German
+Firmware 0.1.22 and web UI 0.1.21 find the location by postal code as well. German
 codes with a leading zero such as `01067` work; for other countries add the
 country, e.g. `AT-1010`. Postal codes are looked up with OpenStreetMap Nominatim,
-place names still with Open-Meteo. In the setup assistant the Wi-Fi list collapses
+place names still with Open-Meteo. Below the input the web UI shows the place found (e.g. `Found: 01067 Dresden, Germany`) or why the lookup failed. In the setup assistant the Wi-Fi list collapses
 to the chosen network, so the password field stays visible above the phone keyboard.
 
 Firmware 0.1.21 and web UI 0.1.19 make the first setup easier: the setup Wi-Fi is

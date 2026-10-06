@@ -427,7 +427,12 @@ const translations = {
     "Stadt oder Postleitzahl. Koordinaten und Zeitzone werden nach dem Speichern automatisch ermittelt. Postleitzahlen anderer Länder mit Kürzel, z. B. AT-1010.": "City or postal code. Coordinates and time zone are determined automatically after saving. Postal codes of other countries with prefix, e.g. AT-1010.",
     "Stadt oder Postleitzahl bestimmen Wetter und Zeitzone. Beides wird nach dem Neustart automatisch ermittelt.": "City or postal code determine weather and time zone. Both are determined automatically after the restart.",
     "Postleitzahl nicht gefunden": "Postal code not found",
-    "Bitte eine Stadt oder Postleitzahl eingeben.": "Please enter a city or postal code."
+    "Bitte eine Stadt oder Postleitzahl eingeben.": "Please enter a city or postal code.",
+    "Der Ort wird nach dem Speichern gesucht.": "The place is looked up after saving.",
+    "Ort wird gesucht...": "Looking up the place...",
+    "{error}. Bitte Eingabe prüfen.": "{error}. Please check the input.",
+    "Ortssuche fehlgeschlagen: {error}": "Place lookup failed: {error}",
+    "Gefunden: {label}": "Found: {label}"
   }
 };
 
