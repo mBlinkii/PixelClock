@@ -269,3 +269,37 @@ test('the location field tells whether the place was found', () => {
   assert.equal(result({ locationPending: true, locationError: 'Geocoding HTTP 503' }, 'Ulm', 'Ulm').text, 'Ortssuche fehlgeschlagen: Geocoding HTTP 503');
   assert.equal(result(null, 'Ulm', 'Ulm'), null);
 });
+
+test('appointments list upcoming days first and repeat yearly ones', () => {
+  const { run } = harness();
+  const next = (event, today) => run(`nextEventDate(${JSON.stringify(event)}, ${JSON.stringify(today)})`);
+  assert.equal(next({ date: '2026-12-24', yearly: false }, '2026-09-11'), '2026-12-24');
+  assert.equal(next({ date: '2026-03-01', yearly: false }, '2026-09-11'), '2026-03-01');
+  assert.equal(next({ date: '1958-09-20', yearly: true }, '2026-09-11'), '2026-09-20');
+  assert.equal(next({ date: '1958-09-11', yearly: true }, '2026-09-11'), '2026-09-11');
+  assert.equal(next({ date: '1958-03-01', yearly: true }, '2026-09-11'), '2027-03-01');
+  // 29 February falls on 28 February outside leap years, as on the clock.
+  assert.equal(next({ date: '2024-02-29', yearly: true }, '2026-01-10'), '2026-02-28');
+  assert.equal(next({ date: '2024-02-29', yearly: true }, '2027-03-01'), '2028-02-29');
+  assert.equal(next({ date: '2030-05-01', yearly: true }, '2026-09-11'), '2030-05-01');
+  const events = [
+    { id: 1, date: '2026-08-01', time: '', yearly: false, text: 'past old' },
+    { id: 2, date: '2026-09-11', time: '18:00', yearly: false, text: 'today late' },
+    { id: 3, date: '1958-09-20', time: '', yearly: true, text: 'birthday' },
+    { id: 4, date: '2026-09-11', time: '', yearly: false, text: 'today all day' },
+    { id: 5, date: '2026-09-10', time: '', yearly: false, text: 'past recent' }
+  ];
+  assert.deepEqual(Array.from(run(`sortEventsForList(${JSON.stringify(events)}, "2026-09-11").map((event) => event.text)`)),
+    ['today all day', 'today late', 'birthday', 'past recent', 'past old']);
+});
+
+test('appointment form checks date, text and the limit before sending', () => {
+  const { run } = harness();
+  assert.match(run('eventInputError("", "Zahnarzt")'), /Datum/);
+  assert.match(run('eventInputError("2026-09-11", "")'), /Text/);
+  assert.equal(run('eventInputError("2026-09-11", "Zahnarzt")'), '');
+  run('calendarEvents = Array.from({ length: 24 }, (_, id) => ({ id })); calendarEventsMax = 24');
+  assert.match(run('eventInputError("2026-09-11", "Zahnarzt")'), /höchstens/);
+  run('editingEventId = 3');
+  assert.equal(run('eventInputError("2026-09-11", "Zahnarzt")'), '');
+});

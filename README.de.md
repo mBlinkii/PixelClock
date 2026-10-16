@@ -40,6 +40,7 @@ Die ausführliche Anleitung steht unter [Erste Einrichtung](#erste-einrichtung).
 ## Funktionen
 
 - Uhrzeit, Datum und Wetter auf einer 32x8-LED-Matrix
+- eigene Termine und jährliche Geburtstage ohne iCal, als zusätzliche Seite am jeweiligen Tag
 - konfigurierbare Matrixgröße bis 64x16, maximal 512 LEDs
 - Reihen- oder Spaltenverkabelung, gerade oder Serpentine
 - Start-Ecke, Datenpin und Farbreihenfolge einstellbar
@@ -270,6 +271,7 @@ Während eines Updates die Stromversorgung nicht trennen. Einstellungen bleiben 
 
 - `Übersicht`: Uhrzeit der Uhr, aktuelles Wetter, Live-Ansicht der Matrix, Verbindung, Adresse und Helligkeit. Solange WLAN oder ein eigenes Admin-Passwort fehlen, erscheint eine ausblendbare Einrichtungskarte mit Checkliste.
 - `Anzeige`: Live-Vorschau, Layout, Zeit- und Temperaturformat, Seitenwechsel, Farben, Tages- und Nacht-Helligkeit, Sicherheits-Freischalter und WLAN-Energiesparen. Änderungen erscheinen sofort auf der Uhr und werden ohne Speichern nach 2 Minuten zurückgesetzt.
+- `Termine`: eigene Termine mit Datum, optionaler Uhrzeit und Text anlegen, bearbeiten und löschen, auf Wunsch jährlich wiederholt. Am Tag des Termins zeigt die Uhr eine Seite mit Kalender-Symbol; langer Text läuft durch. Bis zu 24 Termine; sie bleiben beim Zurücksetzen der Einstellungen erhalten.
 - `Wetter`: Stadt, Wetteranbieter, Intervall, API-Keys und optional eine manuelle Zeitzone.
 - `Hardware`: Matrixgröße, Datenpin, Farbreihenfolge, Start-Ecke und Verkabelung mit Live-Verkabelungsdiagramm und Testmuster.
 - `WLAN & Zugang`: Netzwerk mit Suche, WLAN-Passwort, WLAN-Region, Browser-Adresse, Admin-Benutzer, Admin-Passwort und Setup-WLAN-Passwort.

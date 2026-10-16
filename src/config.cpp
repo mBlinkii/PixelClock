@@ -112,7 +112,7 @@ void loadConfig() {
   config.colorGradientMode = constrain(config.colorGradientMode, 0, 2);
   if (config.hourFormat != 12) config.hourFormat = 24;
   config.language = normalizeLanguage(config.language);
-  config.selectedPage = constrain(config.selectedPage, 0, 2);
+  config.selectedPage = constrain(config.selectedPage, 0, EVENTS_PAGE);
   config.hostname = sanitizeHostname(config.hostname);
   config.adminUsername = sanitizeHostname(config.adminUsername);
   config.wifiCountry = normalizeWifiCountry(config.wifiCountry);

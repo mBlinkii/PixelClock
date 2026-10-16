@@ -55,7 +55,7 @@ const fields = [
   "temperatureUnit", "weatherIconEnabled", "hourFormat", "colorWeekday", "colorText", "colorPoint", "colorColon", "timePageSeconds", "pageSeconds",
   "colorGradientMode", "autoPage", "selectedPage", "nightBrightness", "nightStart", "nightEnd"
 ];
-const pageNames = ["overview", "display", "weather", "hardware", "network", "system"];
+const pageNames = ["overview", "display", "events", "weather", "hardware", "network", "system"];
 // Open-Meteo "models" ids, same list as src/weather_models.h; "" = best_match.
 const openMeteoModels = [
   ["", "Automatisch (bestes Modell für den Ort)", "Automatic (best model for the location)"],
@@ -115,6 +115,11 @@ let liveInFlight = false;
 let livePaused = false;
 let lastFrame = null;
 let lastInteraction = Date.now();
+let calendarEvents = [];
+let calendarEventsMax = 24;
+let calendarEventsLoaded = false;
+let calendarEventsLoading = null;
+let editingEventId = null;
 
 // Browser storage can be unavailable (private windows, blocked site data).
 function readStorage(key) {
@@ -334,6 +339,8 @@ function applyLanguage() {
     updateRestartDiagnostics(lastStatus);
   }
   renderDeviceClock();
+  if (calendarEventsLoaded) renderEvents();
+  updateEventFormMode();
   updateDirtyState();
   if (typeof refreshSetupWizardText === "function") refreshSetupWizardText();
 }
@@ -417,6 +424,7 @@ function showPage(name) {
   if (changed) window.scrollTo(0, 0);
   scheduleClockTick();
   scheduleLiveMatrix();
+  if (name === "events" && capabilities.calendarEvents && authHeaderValue()) loadEvents();
 }
 
 function markDirtyTabs(body) {
@@ -965,11 +973,208 @@ function noteInteraction() {
   if (livePaused) scheduleLiveMatrix();
 }
 
+// Own appointments (no iCal), stored on the clock through /api/events.
+// "Today" follows the clock's local date, not the browser's.
+function todayIso() {
+  const local = lastStatus?.localTime || "";
+  if (/^\d{4}-\d{2}-\d{2}/.test(local)) return local.slice(0, 10);
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+// The day an event is next due, on or after today ("YYYY-MM-DD"). Yearly
+// events from 29 February fall on 28 February in other years, as on the clock.
+function nextEventDate(event, today) {
+  if (!event.yearly) return event.date;
+  const monthDay = event.date.slice(5);
+  const on = (year) => `${year}-${monthDay === "02-29" && !isLeapYear(year) ? "02-28" : monthDay}`;
+  const year = Math.max(Number(today.slice(0, 4)), Number(event.date.slice(0, 4)));
+  return on(year) >= today ? on(year) : on(year + 1);
+}
+
+// Upcoming events first (soonest on top), past one-time events last.
+function sortEventsForList(events, today) {
+  return events.map((event) => ({ ...event, next: nextEventDate(event, today) })).sort((a, b) => {
+    const pastA = a.next < today;
+    const pastB = b.next < today;
+    if (pastA !== pastB) return pastA ? 1 : -1;
+    if (a.next !== b.next) return (a.next < b.next) !== pastA ? -1 : 1;
+    if ((a.time || "") !== (b.time || "")) return (a.time || "") < (b.time || "") ? -1 : 1;
+    return a.id - b.id;
+  });
+}
+
+function formatEventDate(iso) {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(currentLanguage === "de" ? "de-DE" : "en-GB",
+    { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function eventIconButton(icon, label, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "iconButton ghost";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#${icon}"></use></svg>`;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function renderEvents() {
+  const today = todayIso();
+  const list = $("eventList");
+  list.replaceChildren();
+  for (const event of sortEventsForList(calendarEvents, today)) {
+    const item = document.createElement("li");
+    item.className = "eventItem";
+    item.classList.toggle("isToday", event.next === today);
+    item.classList.toggle("isPast", event.next < today);
+    item.classList.toggle("isEditing", event.id === editingEventId);
+    const when = document.createElement("span");
+    when.className = "eventWhen";
+    const day = document.createElement("strong");
+    day.textContent = event.next === today ? tr("Heute") : formatEventDate(event.next);
+    when.append(day, [event.time || tr("ganztägig"), event.yearly ? tr("jährlich") : ""].filter(Boolean).join(" · "));
+    const text = document.createElement("span");
+    text.className = "eventText";
+    text.textContent = event.text;
+    const actions = document.createElement("span");
+    actions.className = "eventActions";
+    actions.append(
+      eventIconButton("icon-edit", tr("Bearbeiten"), () => editEvent(event)),
+      eventIconButton("icon-trash", tr("Löschen"), () => deleteEvent(event).catch(showEventFailure))
+    );
+    item.append(when, text, actions);
+    list.append(item);
+  }
+  $("eventEmpty").hidden = calendarEvents.length > 0;
+  $("eventCount").hidden = !calendarEvents.length;
+  $("eventCount").textContent = trFormat("{count} von {max}", { count: calendarEvents.length, max: calendarEventsMax });
+}
+
+function showEventMessage(text, values = {}) {
+  $("eventMessage").hidden = !text;
+  $("eventMessage").textContent = text ? trFormat(text, values) : "";
+}
+
+function showEventFailure(error) {
+  if (error.message === "Unauthorized") return;
+  showEventMessage(error.message === "Failed to fetch" || error.name === "AbortError" ? "Uhr nicht erreichbar" : error.message);
+}
+
+function setEvents(data) {
+  calendarEvents = Array.isArray(data.events) ? data.events : [];
+  calendarEventsMax = Number(data.max) || calendarEventsMax;
+  calendarEventsLoaded = true;
+  if (!$("eventDate").value) $("eventDate").value = todayIso();
+  renderEvents();
+}
+
+function loadEvents() {
+  if (calendarEventsLoading) return calendarEventsLoading;
+  calendarEventsLoading = apiFetch("/api/events").then(async (res) => {
+    if (!res.ok) throw new Error("Termine konnten nicht geladen werden.");
+    setEvents(await res.json());
+  }).catch(showEventFailure).finally(() => { calendarEventsLoading = null; });
+  return calendarEventsLoading;
+}
+
+function updateEventFormMode() {
+  $("eventSubmitLabel").textContent = tr(editingEventId === null ? "Termin hinzufügen" : "Änderungen speichern");
+  $("eventCancelBtn").hidden = editingEventId === null;
+}
+
+function resetEventForm() {
+  editingEventId = null;
+  $("eventDate").value = todayIso();
+  $("eventTime").value = "";
+  $("eventText").value = "";
+  $("eventYearly").checked = false;
+  showEventMessage("");
+  updateEventFormMode();
+  if (calendarEventsLoaded) renderEvents();
+}
+
+function editEvent(event) {
+  editingEventId = event.id;
+  $("eventDate").value = event.date;
+  $("eventTime").value = event.time || "";
+  $("eventText").value = event.text;
+  $("eventYearly").checked = Boolean(event.yearly);
+  showEventMessage("");
+  updateEventFormMode();
+  renderEvents();
+  $("eventForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("eventText").focus({ preventScroll: true });
+}
+
+function eventInputError(date, text) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "Bitte ein gültiges Datum wählen.";
+  if (!text) return "Bitte einen Text für den Termin eingeben.";
+  if (editingEventId === null && calendarEvents.length >= calendarEventsMax) return "Es sind höchstens {max} Termine möglich. Bitte alte Termine löschen.";
+  return "";
+}
+
+async function submitEvent(event) {
+  event.preventDefault();
+  if ($("eventSubmitBtn").disabled) return;
+  const date = $("eventDate").value;
+  const text = $("eventText").value.trim();
+  const error = eventInputError(date, text);
+  if (error) {
+    showEventMessage(error, { max: calendarEventsMax });
+    return;
+  }
+  const body = new URLSearchParams({ date, time: $("eventTime").value, text, yearly: $("eventYearly").checked ? "1" : "0" });
+  const editing = editingEventId !== null;
+  if (editing) body.set("id", String(editingEventId));
+  $("eventSubmitBtn").disabled = true;
+  try {
+    const res = await apiFetch("/api/events", { method: "POST", body });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showEventMessage(data.error || "Termin konnte nicht gespeichert werden.");
+      return;
+    }
+    setEvents(data);
+    resetEventForm();
+    message(editing ? "Termin geändert." : "Termin gespeichert.");
+  } catch (failure) {
+    showEventFailure(failure);
+  } finally {
+    $("eventSubmitBtn").disabled = false;
+  }
+}
+
+async function deleteEvent(event) {
+  if (!confirm(trFormat("Termin „{text}“ löschen?", { text: event.text }))) return;
+  const res = await apiFetch("/api/events/delete", { method: "POST", body: new URLSearchParams({ id: String(event.id) }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showEventMessage(data.error || "Termin konnte nicht gelöscht werden.");
+    return;
+  }
+  if (editingEventId === event.id) resetEventForm();
+  setEvents(data);
+  message("Termin gelöscht.");
+}
+
 function updateCapabilityUi() {
   const live = Boolean(capabilities.displayFrame);
   $("liveCard").hidden = !live;
   $("liveCardDisplay").hidden = !live;
   $("resetButtonHint").hidden = !capabilities.resetButton;
+  const events = Boolean(capabilities.calendarEvents);
+  document.querySelector('.tabs a[data-page="events"]').hidden = !events;
+  const eventsOption = $("selectedPage").querySelector('option[value="3"]');
+  eventsOption.hidden = !events;
+  eventsOption.disabled = !events;
+  if (events && currentPage === "events" && !calendarEventsLoaded) loadEvents();
   if (live && !liveTimer && !liveInFlight && !livePaused) scheduleLiveMatrix();
 }
 
@@ -1674,6 +1879,9 @@ $("setupCardHideBtn").addEventListener("click", () => {
   message("Der Assistent ist unter System jederzeit erneut verfügbar.");
 });
 $("saveBtn").addEventListener("click", saveConfig);
+$("eventForm").addEventListener("submit", submitEvent);
+$("eventForm").addEventListener("input", () => showEventMessage(""));
+$("eventCancelBtn").addEventListener("click", resetEventForm);
 bindAction("scanBtn", scanNetworks);
 $("brightnessPercent").addEventListener("input", () => syncBrightnessNumberFromSlider("brightness", "brightnessPercent", "brightnessPercentValue"));
 $("nightBrightnessPercent").addEventListener("input", () => syncBrightnessNumberFromSlider("nightBrightness", "nightBrightnessPercent", "nightBrightnessPercentValue"));

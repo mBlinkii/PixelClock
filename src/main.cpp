@@ -14,6 +14,7 @@ void setup() {
   pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
   bootStarted = millis();
   loadConfig();
+  loadCalendarEvents();
   seedTimeFromBuild();
   if (authConfigMigrationNeeded) saveConfig();
   setupFastLed();
@@ -47,10 +48,9 @@ void loop() {
       if (pendingFactoryWipe) performFactoryWipe();
       ESP.restart();
     }
-    const uint8_t seconds = currentPage == 0 ? config.timePageSeconds : config.pageSeconds;
-    if (config.autoPage && !displayTest && now - lastPageSwitch >= seconds * 1000UL) {
+    if (config.autoPage && !displayTest && now - lastPageSwitch >= displayPageDurationMs(currentPage)) {
       lastPageSwitch = now;
-      currentPage = (currentPage + 1) % 3;
+      currentPage = nextDisplayPage(currentPage);
       lastRender = 0;
     }
     if (!lastRender || now - lastRender >= displayRenderInterval()) {

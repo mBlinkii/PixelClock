@@ -826,6 +826,38 @@ progress {
 .networkList.isCollapsed .networkItem:not(.isSelected) { display: none; }
 .networkMore { padding: 4px 2px; font-size: 14px; }
 
+/* ---------- Events ---------- */
+
+.eventList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.eventList:empty { display: none; }
+
+.eventItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 6px 6px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.eventItem.isToday { border-color: var(--accent); background: var(--accent-soft); }
+.eventItem.isEditing { border-color: var(--accent); }
+.eventItem.isPast { opacity: 0.55; }
+.eventWhen { flex: 0 0 auto; min-width: 104px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.eventWhen strong { display: block; color: var(--text); font-size: 14px; }
+.eventText { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.eventActions { display: flex; flex: 0 0 auto; gap: 4px; }
+.eventActions .iconButton { width: 38px; min-height: 38px; }
+
 .locationResult { margin: 0; font-size: 14px; font-weight: 600; color: var(--accent); }
 .locationResult.isPending { color: var(--muted); font-weight: 500; }
 .locationResult.isError { color: var(--danger); }

@@ -8,6 +8,7 @@
 #include "../src/admin_auth.h"
 #include "../src/weather_models.h"
 #include "../src/location_query.h"
+#include "../src/calendar_events.h"
 
 struct TestClock {
   static inline uint32_t time = 0, pauses = 0;
@@ -204,8 +205,71 @@ static void testPostalQuery() {
   assert(!parsePostalQuery("Ort-12345x", q));
 }
 
+static CalendarEvent calendarEvent(uint16_t id, uint16_t year, uint8_t month, uint8_t day, int16_t minute, bool yearly) {
+  CalendarEvent event = {};
+  event.id = id;
+  event.year = year;
+  event.month = month;
+  event.day = day;
+  event.minute = minute;
+  event.yearly = yearly;
+  strcpy(event.text, "X");
+  return event;
+}
+
+static std::string displayText(const char *text) {
+  char out[CALENDAR_TEXT_MAX + 1];
+  calendarDisplayText(text, out, sizeof(out));
+  return out;
+}
+
+static void testCalendarEvents() {
+  uint16_t year;
+  uint8_t month, day;
+  assert(parseCalendarDate("2026-10-16", year, month, day) && year == 2026 && month == 10 && day == 16);
+  assert(parseCalendarDate("1958-09-20", year, month, day));
+  assert(parseCalendarDate("2028-02-29", year, month, day));
+  assert(!parseCalendarDate("2026-02-29", year, month, day));
+  assert(!parseCalendarDate("2026-13-01", year, month, day));
+  assert(!parseCalendarDate("2026-1-01", year, month, day));
+  assert(!parseCalendarDate("", year, month, day));
+  int16_t minute;
+  assert(parseCalendarTime("", minute) && minute == CALENDAR_ALL_DAY);
+  assert(parseCalendarTime("14:30", minute) && minute == 870);
+  assert(parseCalendarTime("00:00:00", minute) && minute == 0);
+  assert(!parseCalendarTime("24:00", minute));
+  assert(!parseCalendarTime("9:30", minute));
+
+  const CalendarEvent once = calendarEvent(1, 2026, 10, 16, 870, false);
+  assert(calendarEventOn(once, 2026, 10, 16) && !calendarEventOn(once, 2027, 10, 16));
+  const CalendarEvent birthday = calendarEvent(2, 1958, 9, 20, CALENDAR_ALL_DAY, true);
+  assert(calendarEventOn(birthday, 2026, 9, 20) && !calendarEventOn(birthday, 2026, 9, 21));
+  const CalendarEvent leap = calendarEvent(3, 2024, 2, 29, CALENDAR_ALL_DAY, true);
+  assert(calendarEventOn(leap, 2026, 2, 28) && calendarEventOn(leap, 2028, 2, 29) && !calendarEventOn(leap, 2028, 2, 28));
+  assert(!calendarEventOn(calendarEvent(4, 2030, 5, 1, CALENDAR_ALL_DAY, true), 2026, 5, 1));
+
+  CalendarEvent list[] = {calendarEvent(5, 2026, 10, 16, 870, false), calendarEvent(6, 2026, 10, 16, CALENDAR_ALL_DAY, false),
+                          calendarEvent(7, 2026, 1, 2, 60, false)};
+  sortCalendarEvents(list, 3);
+  assert(list[0].id == 7 && list[1].id == 6 && list[2].id == 5);
+
+  char text[CALENDAR_TEXT_MAX + 1];
+  assert(sanitizeCalendarText("  Zahnarzt \n ", text) && std::string(text) == "Zahnarzt");
+  assert(!sanitizeCalendarText("   ", text));
+  // Cut at the byte limit without splitting the two-byte "ä".
+  std::string longText(CALENDAR_TEXT_MAX - 1, 'a');
+  longText += "\xC3\xA4";
+  assert(sanitizeCalendarText(longText.c_str(), text) && strlen(text) == CALENDAR_TEXT_MAX - 1);
+
+  assert(displayText("Zahnarzt 14:30!") == "ZAHNARZT 14:30!");
+  assert(displayText("M\xC3\xBCll, Stra\xC3\x9F" "e") == std::string("M") + CALENDAR_GLYPH_UE + "LL, STRASSE");
+  assert(displayText("\xC3\x84rger \xC3\x96l") == std::string(1, CALENDAR_GLYPH_AE) + "RGER " + CALENDAR_GLYPH_OE + "L");
+  assert(displayText("Caf\xC3\xA9 \xF0\x9F\x8E\x82 #1") == "CAFE  1");
+}
+
 int main() {
   testPostalQuery();
+  testCalendarEvents();
   testNetworkReader();
   testBasicAuthorization();
   testLoginThrottle();
@@ -257,5 +321,5 @@ int main() {
   assert(normalizeWeatherApiCode(1000) == 0);
   assert(normalizeWeatherApiCode(1168) == 57);
   assert(normalizeWeatherApiCode(1258) == 85);
-  std::cout << "Firmware regression tests passed (cooperative network reads, deadlines, scheduling, rollover, five providers, missing/null data, condition mapping, Basic auth parsing, login throttling).\n";
+  std::cout << "Firmware regression tests passed (cooperative network reads, deadlines, scheduling, rollover, five providers, missing/null data, condition mapping, Basic auth parsing, login throttling, calendar events).\n";
 }

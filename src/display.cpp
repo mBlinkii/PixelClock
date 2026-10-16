@@ -17,8 +17,13 @@ uint16_t xy(uint8_t x, uint8_t y) {
   return physY * config.width + physX;
 }
 
+// Horizontal clip window, used to keep scrolling appointment text off the icon.
+static int clipMinX = 0;
+static int clipMaxX = MAX_LEDS;
+
 void px(int x, int y, CRGB color) {
   if (x < 0 || y < 0 || x >= config.width || y >= config.height) return;
+  if (x < clipMinX || x > clipMaxX) return;
   const uint16_t i = xy(x, y);
   if (i < ledCount) leds[i] = color;
 }
@@ -130,6 +135,26 @@ const char *glyphFor(char c) {
     case 'E': return "111100110100111";
     case 'P': return "110101110100100";
     case 'W': return "101101111111101";
+    case 'G': return "111100101101111";
+    case 'J': return "001001001101111";
+    case 'K': return "101101110101101";
+    case 'Q': return "111101101110011";
+    case 'V': return "101101101101010";
+    case 'X': return "101101010101101";
+    case 'Y': return "101101010010010";
+    case 'Z': return "111001010100111";
+    case '!': return "010010010000010";
+    case '?': return "111001010000010";
+    case '/': return "001001010100100";
+    case '+': return "000010111010000";
+    case ',': return "000000000010100";
+    case '\'': return "010010000000000";
+    case '(': return "001010010010001";
+    case ')': return "100010010010100";
+    // Umlauts from calendarDisplayText(); drawChar3x5() adds the dots above.
+    case CALENDAR_GLYPH_AE: return glyphFor('A');
+    case CALENDAR_GLYPH_OE: return glyphFor('O');
+    case CALENDAR_GLYPH_UE: return glyphFor('U');
     default: return nullptr;
   }
 }
@@ -142,6 +167,10 @@ uint8_t drawChar3x5(int x, int y, char c, CRGB color) {
     for (uint8_t col = 0; col < 3; col++) {
       if (g[row * 3 + col] == '1') px(x + col, y + row, textPixelColor(x + col, y + row, color));
     }
+  }
+  if (c == CALENDAR_GLYPH_AE || c == CALENDAR_GLYPH_OE || c == CALENDAR_GLYPH_UE) {
+    px(x, y - 1, textPixelColor(x, y - 1, color));
+    px(x + 2, y - 1, textPixelColor(x + 2, y - 1, color));
   }
   return 4;
 }
@@ -396,10 +425,12 @@ void drawFixedClock(int x, int y, const tm &timeinfo, bool showColon) {
 
 void drawIndicator(uint8_t active) {
   const uint8_t y = config.height - 1;
-  int start = VALUE_SLOT_X + ((VALUE_SLOT_W - 13) / 2);
-  if (config.displayMode == 1) start = LEFT_VALUE_X + ((LEFT_VALUE_W - 13) / 2);
-  else if (config.displayMode == 2) start = (config.width - 13) / 2;
-  for (uint8_t i = 0; i < 3; i++) {
+  const uint8_t count = max<uint8_t>(displayPageCount(), active + 1);
+  const int width = count * 5 - 2;
+  int start = VALUE_SLOT_X + ((VALUE_SLOT_W - width) / 2);
+  if (config.displayMode == 1) start = LEFT_VALUE_X + ((LEFT_VALUE_W - width) / 2);
+  else if (config.displayMode == 2) start = (config.width - width) / 2;
+  for (uint8_t i = 0; i < count; i++) {
     CRGB color = i == active ? packedColor(config.colorPoint) : CRGB(18, 18, 18);
     px(start + i * 5, y, color);
     px(start + i * 5 + 1, y, color);
@@ -607,6 +638,167 @@ void drawWeatherPage() {
   }
 }
 
+// Own appointments: a calendar icon and today's events as one line of text
+// that scrolls when it does not fit.
+constexpr uint32_t EVENT_SCROLL_MS = 70;
+constexpr uint32_t EVENT_SCROLL_DELAY_MS = 1200;
+constexpr int EVENT_GAP = 7;
+constexpr uint8_t EVENT_DISPLAY_TEXT_MAX = CALENDAR_TEXT_MAX + 1;
+static bool eventPageScrolls = false;
+
+void drawCalendarIcon(int x, int y) {
+  const CRGB ring(150, 150, 160);
+  const CRGB top(230, 40, 40);
+  const CRGB body(200, 200, 205);
+  const CRGB mark = packedColor(config.colorPoint);
+  px(x + 2, y, ring); px(x + 6, y, ring);
+  for (uint8_t xx = 0; xx < 9; xx++) {
+    px(x + xx, y + 1, top);
+    px(x + xx, y + 2, top);
+    px(x + xx, y + 7, body);
+  }
+  for (uint8_t yy = 3; yy < 7; yy++) {
+    px(x, y + yy, body);
+    px(x + 8, y + yy, body);
+  }
+  for (uint8_t xx = 2; xx <= 6; xx += 2) {
+    px(x + xx, y + 4, mark);
+    px(x + xx, y + 6, mark);
+  }
+}
+
+// Narrow punctuation sits in the middle column of its glyph.
+static bool eventNarrowChar(char c) {
+  return c == ':' || c == '.' || c == ',' || c == '!' || c == '\'';
+}
+
+static uint8_t eventCharAdvance(char c) {
+  if (c == ' ' || eventNarrowChar(c)) return 2;
+  return glyphFor(c) ? 4 : 0;
+}
+
+static int eventTextWidth(const char *text) {
+  int width = 0;
+  for (const char *p = text; *p; ++p) width += eventCharAdvance(*p);
+  return width > 0 ? width - 1 : 0;
+}
+
+static int drawEventText(int x, int y, const char *text, CRGB color) {
+  for (const char *p = text; *p; ++p) {
+    if (*p != ' ') drawChar3x5(eventNarrowChar(*p) ? x - 1 : x, y, *p, color);
+    x += eventCharAdvance(*p);
+  }
+  return x;
+}
+
+static void eventTimeText(const CalendarEvent &event, char *out, size_t size) {
+  if (event.minute == CALENDAR_ALL_DAY) {
+    out[0] = '\0';
+    return;
+  }
+  uint8_t hour = event.minute / 60;
+  if (config.hourFormat == 12) {
+    hour %= 12;
+    if (hour == 0) hour = 12;
+  }
+  snprintf(out, size, "%u:%02u", hour, event.minute % 60);
+}
+
+// Time and text of one event; the time is followed by a 3-pixel gap.
+static int eventWidth(const CalendarEvent &event) {
+  char time[6];
+  char text[EVENT_DISPLAY_TEXT_MAX];
+  eventTimeText(event, time, sizeof(time));
+  calendarDisplayText(event.text, text, sizeof(text));
+  const int timeWidth = time[0] ? eventTextWidth(time) + 4 : 0;
+  return timeWidth + eventTextWidth(text);
+}
+
+static int eventStripWidth(const CalendarEvent *const *events, uint8_t count) {
+  int width = 0;
+  for (uint8_t i = 0; i < count; i++) width += eventWidth(*events[i]) + (i ? EVENT_GAP : 0);
+  return width;
+}
+
+// Events are separated by a dot in the point color.
+static void drawEventStrip(int x, int y, const CalendarEvent *const *events, uint8_t count) {
+  char time[6];
+  char text[EVENT_DISPLAY_TEXT_MAX];
+  for (uint8_t i = 0; i < count; i++) {
+    if (i) {
+      const int dotX = x + EVENT_GAP / 2;
+      px(dotX, y + 2, textPixelColor(dotX, y + 2, packedColor(config.colorPoint)));
+      x += EVENT_GAP;
+    }
+    eventTimeText(*events[i], time, sizeof(time));
+    if (time[0]) x = drawEventText(x, y, time, packedColor(config.colorWeekday)) + 3;
+    calendarDisplayText(events[i]->text, text, sizeof(text));
+    x = drawEventText(x, y, text, packedColor(config.colorText)) - 1;
+  }
+}
+
+static void eventTextArea(int &x, int &width) {
+  x = 0;
+  width = config.width;
+  if (config.displayMode == 0) {
+    x = LEFT_SLOT_X + WEATHER_ICON_W + 1;
+    width = config.width - x;
+  } else if (config.displayMode == 1) {
+    width = config.width - WEATHER_ICON_W - 2;
+  }
+}
+
+void drawEventsPage() {
+  const CalendarEvent *events[MAX_CALENDAR_EVENTS];
+  const uint8_t count = calendarEventsToday(events, MAX_CALENDAR_EVENTS);
+  int areaX, areaW;
+  eventTextArea(areaX, areaW);
+  if (config.displayMode == 0) drawCalendarIcon(LEFT_SLOT_X, 0);
+  else if (config.displayMode == 1) drawCalendarIcon(config.width - WEATHER_ICON_W, 0);
+  clipMinX = areaX;
+  clipMaxX = areaX + areaW - 1;
+  if (!count) {
+    drawEventText(areaX + (areaW - eventTextWidth("--")) / 2, 1, "--", packedColor(config.colorText));
+  } else {
+    const int width = eventStripWidth(events, count);
+    if (width <= areaW) {
+      drawEventStrip(areaX + (areaW - width) / 2, 1, events, count);
+    } else {
+      eventPageScrolls = true;
+      const int cycle = width + EVENT_GAP;
+      const uint32_t shown = millis() - lastPageSwitch;
+      const int offset = shown < EVENT_SCROLL_DELAY_MS ? 0 : ((shown - EVENT_SCROLL_DELAY_MS) / EVENT_SCROLL_MS) % cycle;
+      drawEventStrip(areaX - offset, 1, events, count);
+      drawEventStrip(areaX - offset + cycle, 1, events, count);
+    }
+  }
+  clipMinX = 0;
+  clipMaxX = MAX_LEDS;
+}
+
+uint8_t displayPageCount() {
+  return hasCalendarEventsToday() ? 4 : 3;
+}
+
+uint8_t nextDisplayPage(uint8_t page) {
+  const uint8_t next = (page + 1) % 4;
+  return next == EVENTS_PAGE && !hasCalendarEventsToday() ? 0 : next;
+}
+
+// The events page stays until its text has scrolled through once.
+uint32_t displayPageDurationMs(uint8_t page) {
+  if (page == 0) return config.timePageSeconds * 1000UL;
+  const uint32_t base = config.pageSeconds * 1000UL;
+  if (page != EVENTS_PAGE) return base;
+  const CalendarEvent *events[MAX_CALENDAR_EVENTS];
+  const uint8_t count = calendarEventsToday(events, MAX_CALENDAR_EVENTS);
+  int areaX, areaW;
+  eventTextArea(areaX, areaW);
+  const int width = eventStripWidth(events, count);
+  if (width <= areaW) return base;
+  return max<uint32_t>(base, EVENT_SCROLL_DELAY_MS + (width + EVENT_GAP) * EVENT_SCROLL_MS);
+}
+
 void drawTestPattern() {
   for (uint8_t y = 0; y < config.height; y++) {
     for (uint8_t x = 0; x < config.width; x++) {
@@ -616,6 +808,7 @@ void drawTestPattern() {
 }
 
 uint32_t displayRenderInterval() {
+  if (eventPageScrolls) return EVENT_SCROLL_MS;
   if (millis() - bootStarted < BOOT_GREETING_MS || setupMode || config.colorGradientMode != 0) return 200;
   return 1000;
 }
@@ -632,6 +825,7 @@ void renderDisplay() {
   const uint8_t brightness = FastLED.getBrightness();
   if (brightness == 0 && previousBrightness == 0) return;
   fill_solid(leds, ledCount, CRGB::Black);
+  eventPageScrolls = false;
   if (brightness == 0) {
     // Send black once; leave the matrix latched off without further transfers.
   } else if (resetNotice) {
@@ -651,6 +845,7 @@ void renderDisplay() {
     const uint8_t page = config.autoPage ? currentPage : config.selectedPage;
     if (page == 0) drawClockPage();
     else if (page == 1) drawDatePage();
+    else if (page == EVENTS_PAGE) drawEventsPage();
     else drawWeatherPage();
     if (config.displayMode != 2) drawIndicator(page);
   }

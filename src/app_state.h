@@ -9,6 +9,7 @@
 #include "weather_data.h"
 #include "admin_auth.h"
 #include "weather_models.h"
+#include "calendar_events.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
@@ -47,6 +48,8 @@ constexpr uint8_t MIN_SETUP_AP_PASSWORD_LENGTH = 8;
 constexpr uint8_t MAX_SETUP_AP_PASSWORD_LENGTH = 63;
 constexpr uint32_t ADMIN_HASH_ITERATIONS = 1000;
 constexpr uint32_t DISPLAY_PREVIEW_MS = 120000;
+// Matrix page with own appointments; only rotates in on days that have some.
+constexpr uint8_t EVENTS_PAGE = 3;
 // The ESP32 DevKit BOOT button; holding it resets the clock to factory state.
 constexpr uint8_t RESET_BUTTON_PIN = 0;
 constexpr uint32_t RESET_BUTTON_NOTICE_MS = 3000;
@@ -92,6 +95,7 @@ struct AppConfig {
   // The time page stays twice as long as the date and weather pages by default.
   uint8_t timePageSeconds = 16;
   bool autoPage = true;
+  // 0 time, 1 date, 2 weather, 3 own appointments (EVENTS_PAGE).
   uint8_t selectedPage = 0;
   uint8_t nightBrightness = 16;
   uint8_t nightStart = 22;
@@ -165,6 +169,8 @@ extern uint32_t displayPreviewUntil;
 extern DisplayPreviewFields displayPreviewBackup;
 extern bool pendingFactoryWipe;
 extern uint8_t resetCountdownSeconds;
+extern CalendarEvent calendarEvents[MAX_CALENDAR_EVENTS];
+extern uint8_t calendarEventCount;
 
 // Hold only while copying/publishing shared state, never during HTTPS.
 class StateLock {
@@ -211,6 +217,16 @@ bool isNightTime();
 float displayTemperature(float celsius);
 String temperatureUnitText();
 void drawBitmapIcon(int x, int y, const uint32_t *icon);
+uint8_t displayPageCount();
+uint8_t nextDisplayPage(uint8_t page);
+uint32_t displayPageDurationMs(uint8_t page);
+
+void loadCalendarEvents();
+bool saveCalendarEvents();
+uint16_t nextCalendarEventId();
+int findCalendarEvent(uint16_t id);
+uint8_t calendarEventsToday(const CalendarEvent **out, uint8_t capacity);
+bool hasCalendarEventsToday();
 
 void fetchWeather();
 bool resolveCity();

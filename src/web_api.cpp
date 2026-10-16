@@ -121,7 +121,7 @@ static void readDisplayParams(AsyncWebServerRequest *request) {
   config.pageSeconds = constrain(paramValue(request, "pageSeconds", String(config.pageSeconds)).toInt(), 3, 60);
   config.timePageSeconds = constrain(paramValue(request, "timePageSeconds", String(config.timePageSeconds)).toInt(), 3, 60);
   config.autoPage = paramValue(request, "autoPage", "0") == "1";
-  config.selectedPage = constrain(paramValue(request, "selectedPage", String(config.selectedPage)).toInt(), 0, 2);
+  config.selectedPage = constrain(paramValue(request, "selectedPage", String(config.selectedPage)).toInt(), 0, EVENTS_PAGE);
   config.colorWeekday = parseColor(paramValue(request, "colorWeekday", colorToHex(config.colorWeekday)), config.colorWeekday);
   config.colorText = parseColor(paramValue(request, "colorText", colorToHex(config.colorText)), config.colorText);
   config.colorPoint = parseColor(paramValue(request, "colorPoint", colorToHex(config.colorPoint)), config.colorPoint);
@@ -343,6 +343,7 @@ void sendStatusJson(AsyncWebServerRequest *request) {
   capabilities["openSetup"] = true;
   capabilities["passwordRecovery"] = true;
   capabilities["locationResult"] = true;
+  capabilities["calendarEvents"] = true;
   if (isnan(weather.temperature)) {
     doc["temperature"] = nullptr;
   } else {
@@ -510,6 +511,103 @@ void handleDisplayPreviewCancel(AsyncWebServerRequest *request) {
   request->send(200, "application/json", "{\"ok\":true}");
 }
 
+// Own appointments entered in the web UI (no iCal). Every change answers with
+// the full, sorted list so the browser needs no second request.
+static void sendCalendarEvents(AsyncWebServerRequest *request) {
+  JsonDocument doc;
+  doc["ok"] = true;
+  doc["max"] = MAX_CALENDAR_EVENTS;
+  JsonArray list = doc["events"].to<JsonArray>();
+  char date[11];
+  char time[6];
+  for (uint8_t i = 0; i < calendarEventCount; i++) {
+    const CalendarEvent &event = calendarEvents[i];
+    JsonObject item = list.add<JsonObject>();
+    item["id"] = event.id;
+    snprintf(date, sizeof(date), "%04u-%02u-%02u", event.year, event.month, event.day);
+    item["date"] = date;
+    if (event.minute == CALENDAR_ALL_DAY) time[0] = '\0';
+    else snprintf(time, sizeof(time), "%02d:%02d", event.minute / 60, event.minute % 60);
+    item["time"] = time;
+    item["yearly"] = event.yearly != 0;
+    item["text"] = event.text;
+  }
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  response->addHeader("Cache-Control", "no-store");
+  serializeJson(doc, *response);
+  request->send(response);
+}
+
+void handleCalendarEventsGet(AsyncWebServerRequest *request) {
+  StateLock lock;
+  if (!requireAdminAuth(request)) return;
+  sendCalendarEvents(request);
+}
+
+// Adds an event, or replaces the one with the given id.
+void handleCalendarEventPost(AsyncWebServerRequest *request) {
+  StateLock lock;
+  if (!requireAdminAuth(request)) return;
+  CalendarEvent event = {};
+  if (!parseCalendarDate(paramValue(request, "date").c_str(), event.year, event.month, event.day)) {
+    sendJsonError(request, 400, "Bitte ein gültiges Datum wählen.");
+    return;
+  }
+  if (!parseCalendarTime(paramValue(request, "time").c_str(), event.minute)) {
+    sendJsonError(request, 400, "Bitte eine gültige Uhrzeit eingeben.");
+    return;
+  }
+  if (!sanitizeCalendarText(paramValue(request, "text").c_str(), event.text)) {
+    sendJsonError(request, 400, "Bitte einen Text für den Termin eingeben.");
+    return;
+  }
+  event.yearly = paramValue(request, "yearly", "0") == "1";
+  const String id = paramValue(request, "id");
+  int index;
+  if (!id.isEmpty()) {
+    index = findCalendarEvent(id.toInt());
+    if (index < 0) {
+      sendJsonError(request, 404, "Termin nicht gefunden.");
+      return;
+    }
+    event.id = calendarEvents[index].id;
+  } else {
+    if (calendarEventCount >= MAX_CALENDAR_EVENTS) {
+      sendJsonError(request, 409, "Es sind höchstens " + String(MAX_CALENDAR_EVENTS) + " Termine möglich. Bitte alte Termine löschen.");
+      return;
+    }
+    event.id = nextCalendarEventId();
+    index = calendarEventCount++;
+  }
+  calendarEvents[index] = event;
+  if (!saveCalendarEvents()) {
+    loadCalendarEvents();
+    sendJsonError(request, 500, "Termin konnte nicht gespeichert werden.");
+    return;
+  }
+  lastRender = 0;
+  sendCalendarEvents(request);
+}
+
+void handleCalendarEventDelete(AsyncWebServerRequest *request) {
+  StateLock lock;
+  if (!requireAdminAuth(request)) return;
+  const int index = findCalendarEvent(paramValue(request, "id").toInt());
+  if (index < 0) {
+    sendJsonError(request, 404, "Termin nicht gefunden.");
+    return;
+  }
+  for (uint8_t i = index; i + 1 < calendarEventCount; i++) calendarEvents[i] = calendarEvents[i + 1];
+  --calendarEventCount;
+  if (!saveCalendarEvents()) {
+    loadCalendarEvents();
+    sendJsonError(request, 500, "Termin konnte nicht gelöscht werden.");
+    return;
+  }
+  lastRender = 0;
+  sendCalendarEvents(request);
+}
+
 // Captive portal: while the setup AP runs, requests for foreign host names
 // (connectivity checks of phones and laptops) are redirected to the web UI.
 static bool isIpAddressHost(const String &host) {
@@ -578,6 +676,10 @@ void setupServer() {
   server.on("/api/restart", HTTP_POST, restartSoon);
   server.on("/api/reset/settings", HTTP_POST, handleSettingsReset);
   server.on("/api/reset/factory", HTTP_POST, handleFactoryReset);
+  // Registered before /api/events, which would also match its sub-paths.
+  server.on("/api/events/delete", HTTP_POST, handleCalendarEventDelete);
+  server.on("/api/events", HTTP_GET, handleCalendarEventsGet);
+  server.on("/api/events", HTTP_POST, handleCalendarEventPost);
   server.on("/api/display/frame", HTTP_GET, sendDisplayFrame);
   server.on("/api/display/preview/cancel", HTTP_POST, handleDisplayPreviewCancel);
   server.on("/api/display/preview", HTTP_POST, handleDisplayPreview);

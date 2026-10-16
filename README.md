@@ -40,6 +40,7 @@ The detailed guide is under [First Setup](#first-setup).
 ## Features
 
 - time, date, and weather on a 32x8 LED matrix
+- own appointments and yearly birthdays without iCal, shown as an extra page on their day
 - configurable matrix size up to 64x16, maximum 512 LEDs
 - row or column wiring, straight or serpentine
 - configurable start corner, data pin, and color order
@@ -262,6 +263,7 @@ Do not disconnect power during an update. Settings are kept.
 
 - `Overview`: time on the clock, current weather, live view of the matrix, connection, address, and brightness. While Wi-Fi or an own admin password is missing, a setup card with a checklist is shown; it can be hidden.
 - `Display`: live preview, layout, time and temperature format, page rotation, colors, day and night brightness, safety unlock, and Wi-Fi power saving. Changes appear on the clock immediately and revert after 2 minutes unless saved.
+- `Appointments`: add, edit, and delete own appointments with a date, optional time, and text, optionally repeated every year. On the day the clock shows a page with a calendar icon; long text scrolls. Up to 24 appointments; they are kept when the settings are reset.
 - `Weather`: city, weather provider, interval, API keys, and an optional manual time zone.
 - `Hardware`: matrix size, data pin, color order, start corner, and wiring with a live wiring diagram and test pattern.
 - `Wi-Fi & access`: network with scan, Wi-Fi password, Wi-Fi region, browser address, admin user, admin password, and the setup Wi-Fi password.

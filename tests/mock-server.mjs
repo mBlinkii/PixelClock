@@ -24,6 +24,13 @@ const config = {
   setupApPasswordIsDefault: true, routerHostname: 'pixelclock-A1B2C3'
 };
 let scans = 0;
+// Own appointments; the mock's "today" is 2026-09-11 like localTime below.
+const events = [
+  { id: 1, date: '2026-09-11', time: '14:30', yearly: false, text: 'Zahnarzt' },
+  { id: 2, date: '1958-09-20', time: '', yearly: true, text: 'Geburtstag Oma' },
+  { id: 3, date: '2026-08-30', time: '', yearly: false, text: 'Müll rausbringen' }
+];
+const eventsReply = () => ({ ok: true, max: 24, events });
 let preview = null;
 const glyphs = {
   0: '111101101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001111001111', 4: '101101111001001',
@@ -104,7 +111,7 @@ http.createServer(async (req, res) => {
         routerHostname: config.routerHostname, displayPreviewActive: Boolean(preview), weatherModel: config.weatherModel,
         capabilities: { asyncWifiScan: true, weatherProviderMax: 4, wifiPowerSave: true, captivePortal: true,
           setupApPassword: true, setupTestPattern: true, displayFrame: true, displayPreview: true,
-          fullFactoryReset: true, resetButton: true, loginThrottle: true } }); return;
+          fullFactoryReset: true, resetButton: true, loginThrottle: true, calendarEvents: true } }); return;
     }
     if (url.pathname === '/api/networks') {
       reply(200, ++scans % 3 ? { scanning: true } : { networks: [{ ssid: 'Test-Netz', rssi: -45, secure: true }, { ssid: 'Test-Netz', rssi: -60, secure: true },
@@ -112,6 +119,30 @@ http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/display/frame') { reply(200, renderFrame()); return; }
     let body = ''; for await (const chunk of req) body += chunk;
+    if (url.pathname === '/api/events/delete') {
+      const index = events.findIndex((event) => event.id === Number(new URLSearchParams(body).get('id')));
+      if (index < 0) { reply(404, { ok: false, error: 'Termin nicht gefunden.' }); return; }
+      events.splice(index, 1);
+      reply(200, eventsReply()); return;
+    }
+    if (url.pathname === '/api/events') {
+      if (req.method === 'GET') { reply(200, eventsReply()); return; }
+      const params = new URLSearchParams(body);
+      const text = (params.get('text') || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(params.get('date') || '')) { reply(400, { ok: false, error: 'Bitte ein gültiges Datum wählen.' }); return; }
+      if (!text) { reply(400, { ok: false, error: 'Bitte einen Text für den Termin eingeben.' }); return; }
+      const event = { date: params.get('date'), time: (params.get('time') || '').slice(0, 5), yearly: params.get('yearly') === '1', text };
+      if (params.get('id')) {
+        const existing = events.find((item) => item.id === Number(params.get('id')));
+        if (!existing) { reply(404, { ok: false, error: 'Termin nicht gefunden.' }); return; }
+        Object.assign(existing, event);
+      } else {
+        if (events.length >= 24) { reply(409, { ok: false, error: 'Es sind höchstens 24 Termine möglich. Bitte alte Termine löschen.' }); return; }
+        events.push({ id: Math.max(0, ...events.map((item) => item.id)) + 1, ...event });
+      }
+      events.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time) || a.id - b.id);
+      reply(200, eventsReply()); return;
+    }
     if (url.pathname === '/api/display/preview/cancel') { preview = null; reply(200, { ok: true }); return; }
     if (url.pathname === '/api/display/preview') {
       preview = Object.fromEntries(new URLSearchParams(body));
